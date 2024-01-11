@@ -40,13 +40,13 @@
           read -r zig_cache < <(zig env | jq -r '.global_cache_dir')
 
           zon2json-recursive() {
-            zon2json "$1"
             while {
               read -r url;
               read -r zhash;
             } do
               # Prevent dependency loop
               if [[ ! -f "$tmpdir/$zhash.read" ]]; then
+                printf '{"%s": "%s"}\n' "$zhash" "$url"
                 if [[ ! -d "$zig_cache/p/$zhash" ]]; then
                   printf -- 'fetching: %s\n' "$url" 1>&2
                   zig fetch "$url" 1>/dev/null
@@ -60,7 +60,7 @@
           }
 
           json2nix() {
-            jq -r '.dependencies | .[] | .url, .hash' | while {
+            jq -r 'to_entries | .[] | .value, .key' | while {
               read -r url;
               read -r zhash;
             }; do
@@ -84,7 +84,7 @@
           { linkFarm, fetchzip }:
 
           linkFarm "zig-packages" [
-          $(zon2json-recursive "''${1:-build.zig.zon}" | jq -s 'reduce .[] as $item ({}; . * $item)' | json2nix)
+          $(zon2json-recursive "''${1:-build.zig.zon}" | jq -s add | json2nix)
           ]
           EOF
         '';
