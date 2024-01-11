@@ -187,6 +187,8 @@
         #!       It is recommended to commit the build.zig.zon.nix to your repo.
         #! <https://github.com/NixOS/nixpkgs/blob/master/doc/hooks/zig.section.md>
         package = attrs: let
+          triple = replaceStrings ["darwin" "-unknown-"] ["macos" "-"] "${pkgs.stdenv.targetPlatform.config}";
+          target = if (attrs ? zigTarget) then attrs.zigTarget else triple;
           build-zig-zon-path = if attrs ? build-zig-zon then attrs.build-zig-zon else "${attrs.src}/build.zig.zon";
           has-build-zig-zon = pathExists build-zig-zon-path;
           has-build-zig-zon-nix = pathExists "${build-zig-zon-path}.nix";
@@ -197,6 +199,7 @@
             pname = build-zig-zon.name;
             version = build-zig-zon.version;
           } // attrs // {
+            zigBuildFlags = lib.optionals (attrs ? zigBuildFlags) attrs.zigBuildFlags ++ [ "-Dtarget=${target}" ];
             nativeBuildInputs = [ zig.hook ] ++ lib.optionals (attrs ? nativeBuildInputs) attrs.nativeBuildInputs;
             postPatch = lib.optionalString (attrs ? postPatch) attrs.postPatch
               + lib.optionalString (has-build-zig-zon-nix) ''
@@ -316,13 +319,13 @@
       apps.test = app [] ''
         (cd templates/default; nix run --override-input zig2nix ../..  .)
         (cd templates/default; nix run --override-input zig2nix ../..  .#test)
-        (cd templates/default; nix build --override-input zig2nix ../.. .)
+        (cd templates/default; nix build --override-input zig2nix ../.. .; ./result/bin/default)
         rm -f templates/default/result
         rm -rf templates/default/zig-out
         rm -rf templates/default/zig-cache
         (cd templates/master; nix run --override-input zig2nix ../..  .)
         (cd templates/master; nix run --override-input zig2nix ../..  .#test)
-        (cd templates/master; nix build --override-input zig2nix ../.. .)
+        (cd templates/master; nix build --override-input zig2nix ../.. .; ./result/bin/master)
         rm -f templates/master/result
         rm -rf templates/master/zig-out
         rm -rf templates/master/zig-cache
