@@ -28,13 +28,15 @@
       # Converts build.zig.zon to nix
       zon2nix = _pkgs.writeShellApplication {
         name = "zon2nix";
-        runtimeInputs = with _pkgs; [ curl coreutils jq zon2json zigv.master ];
+        runtimeInputs = with _pkgs; [ curl jq zon2json zigv.master ];
         text = ''
           if [[ ! -f "''${1:-build.zig.zon}" ]]; then
               printf -- "error: file does not exist: %s" "''${1:-build.zig.zon}" 1>&2
               exit 1
           fi
 
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
           read -r zig_cache < <(zig env | jq -r '.global_cache_dir')
 
           zon2json-recursive() {
@@ -58,13 +60,14 @@
               read -r url;
               read -r zhash;
             }; do
-            read -r sha256 _ < <(curl -sl "$url" | sha256sum)
+            curl -sl "$url" -o "$tmpdir/$zhash"
+            nhash="$(nix hash file "$tmpdir/$zhash")"
             cat <<EOF
             {
               name = "$zhash";
               path = fetchzip {
                 url = "$url";
-                hash = "sha256-$sha256";
+                hash = "$nhash";
               };
             }
           EOF
