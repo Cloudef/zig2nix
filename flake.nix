@@ -28,7 +28,7 @@
       # Converts build.zig.zon to nix
       zon2nix = _pkgs.writeShellApplication {
         name = "zon2nix";
-        runtimeInputs = with _pkgs; [ curl jq zon2json zigv.master ];
+        runtimeInputs = with _pkgs; [jq zon2json zigv.master ];
         text = ''
           if [[ ! -f "''${1:-build.zig.zon}" ]]; then
               printf -- "error: file does not exist: %s" "''${1:-build.zig.zon}" 1>&2
@@ -45,12 +45,16 @@
               read -r url;
               read -r zhash;
             } do
-              if [[ ! -d "$zig_cache/p/$zhash" ]]; then
-                printf -- 'fetching: %s\n' "$url" 1>&2
-                zig fetch "$url" 1>/dev/null
-              fi
-              if [[ -f "$zig_cache/p/$zhash/build.zig.zon" ]]; then
-                zon2json-recursive "$zig_cache/p/$zhash/build.zig.zon"
+              # Prevent dependency loop
+              if [[ ! -f "$tmpdir/$zhash.read" ]]; then
+                if [[ ! -d "$zig_cache/p/$zhash" ]]; then
+                  printf -- 'fetching: %s\n' "$url" 1>&2
+                  zig fetch "$url" 1>/dev/null
+                fi
+                if [[ -f "$zig_cache/p/$zhash/build.zig.zon" ]]; then
+                  zon2json-recursive "$zig_cache/p/$zhash/build.zig.zon"
+                fi
+                touch "$tmpdir/$zhash.read"
               fi
             done < <(zon2json "$1" | jq -r '.dependencies | .[] | .url, .hash')
           }
@@ -60,8 +64,8 @@
               read -r url;
               read -r zhash;
             }; do
-            curl -sl "$url" -o "$tmpdir/$zhash"
-            nhash="$(nix hash file "$tmpdir/$zhash")"
+            sha256=$(nix-prefetch-url --type sha256 --unpack "$url")
+            nhash="$(nix hash to-sri --type sha256 "$sha256")"
             cat <<EOF
             {
               name = "$zhash";
