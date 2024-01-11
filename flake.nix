@@ -200,7 +200,7 @@
             version = build-zig-zon.version;
           } // attrs // {
             zigBuildFlags = lib.optionals (attrs ? zigBuildFlags) attrs.zigBuildFlags ++ [ "-Dtarget=${target}" ];
-            nativeBuildInputs = [ zig.hook ] ++ lib.optionals (attrs ? nativeBuildInputs) attrs.nativeBuildInputs;
+            nativeBuildInputs = [ zig.hook pkgs.autoPatchelfHook ] ++ lib.optionals (attrs ? nativeBuildInputs) attrs.nativeBuildInputs;
             postPatch = lib.optionalString (attrs ? postPatch) attrs.postPatch
               + lib.optionalString (has-build-zig-zon-nix) ''
                 ln -s ${pkgs.callPackage "${build-zig-zon-path}.nix" {}} "$ZIG_GLOBAL_CACHE_DIR"/p
