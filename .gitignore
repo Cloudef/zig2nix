@@ -1,1 +1,3 @@
 templates/*/flake.lock
+zig-cache/
+zig-out/
