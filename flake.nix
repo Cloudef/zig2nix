@@ -152,7 +152,7 @@
             runtimeInputs = [] ++ deps;
             text = ''
               # shellcheck disable=SC2059
-              error() { printf -- "error: $1" "''${@:1}" 1>&2; exit 1; }
+              error() { printf -- "error: $1" "''${@:2}" 1>&2; exit 1; }
               ${script}
               '';
           }) + "/bin/app";
