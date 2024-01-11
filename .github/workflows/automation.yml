@@ -1,0 +1,29 @@
+name: automation
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  automation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: cachix/install-nix-action@v24
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - run: |
+          nix run .#update-versions > versions.json
+          nix run .#update-templates
+          nix run .#test
+          nix run .#readme > README.md
+      - uses: test-room-7/action-update-file@v1.8.0
+        with:
+          file-path: |
+            versions.json
+            templates/**
+            README.md
+          commit-msg: Automatic update
+          github-token: ${{ secrets.GITHUB_TOKEN }}
