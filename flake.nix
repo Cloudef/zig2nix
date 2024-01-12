@@ -169,15 +169,16 @@
         #:
         #: Additional attributes:
         #:    zigTarget: Specify target for zig compiler, defaults to stdenv.targetPlatform.
+        #:    zigPreferMusl: Prefer musl libc without specifying the target.
         #:    zigDisableWrap: makeWrapper will not be used. Might be useful if distributing outside nix.
         #:    zigWrapperArgs: Additional arguments to makeWrapper.
         #:    zigBuildZon: Path to build.zig.zon file, defaults to build.zig.zon.
         #:    zigBuildZonLock: Path to build.zig.zon2json-lock file, defaults to build.zig.zon2json-lock.
         #:
         #: <https://github.com/NixOS/nixpkgs/blob/master/doc/hooks/zig.section.md>
-        package = attrs: (pkgs.callPackage ./package.nix {
+        package = pkgs.callPackage (pkgs.callPackage ./package.nix {
           inherit zig zon2nix zig2nix-lib runtimeForTarget;
-        }) attrs;
+        });
       };
 
       # Default zig env used by this flake
@@ -279,7 +280,7 @@
         rm -rf templates/default
         mkdir -p templates/default
         sed 's#/[*]SED_ZIG_VER[*]/##' templates/flake.nix > templates/default/flake.nix
-        cp -f templates/flake.nix templates/default/flake.nix
+        sed -i 's#@SED_ZIG_BIN@#default#' templates/default/flake.nix
         cp -f templates/gitignore templates/default/.gitignore
         cp -f .gitattributes templates/default/.gitattributes
         (cd templates/default; ${packages.zig.default}/bin/zig init || ${packages.zig.default}/bin/zig init-exe)
@@ -288,6 +289,7 @@
         mkdir -p templates/master
         # shellcheck disable=SC2016
         sed 's#/[*]SED_ZIG_VER[*]/# zig = zig2nix.outputs.packages.''${system}.zig.master; #' templates/flake.nix > templates/master/flake.nix
+        sed -i 's#@SED_ZIG_BIN@#master#' templates/master/flake.nix
         cp -f templates/gitignore templates/master/.gitignore
         cp -f .gitattributes templates/master/.gitattributes
         (cd templates/master; ${packages.zig.master}/bin/zig init)
@@ -295,18 +297,15 @@
 
       # nix run .#test
       apps.test = app [] ''
-        (cd templates/default; nix run --override-input zig2nix ../..  .)
-        (cd templates/default; nix run --override-input zig2nix ../..  .#test)
-        (cd templates/default; nix build --override-input zig2nix ../.. .; ./result/bin/default)
-        rm -f templates/default/result
-        rm -rf templates/default/zig-out
-        rm -rf templates/default/zig-cache
-        (cd templates/master; nix run --override-input zig2nix ../..  .)
-        (cd templates/master; nix run --override-input zig2nix ../..  .#test)
-        (cd templates/master; nix build --override-input zig2nix ../.. .; ./result/bin/master)
-        rm -f templates/master/result
-        rm -rf templates/master/zig-out
-        rm -rf templates/master/zig-cache
+        for var in default master; do
+          (cd templates/"$var"; nix run --override-input zig2nix ../.. .)
+          (cd templates/"$var"; nix run --override-input zig2nix ../.. .#bundle)
+          (cd templates/"$var"; nix run --override-input zig2nix ../.. .#test)
+          (cd templates/"$var"; nix build --override-input zig2nix ../.. .; ./result/bin/"$var")
+          rm -f templates/"$var"/result
+          rm -rf templates/"$var"/zig-out
+          rm -rf templates/"$var"/zig-cache
+        done
         '';
 
       # nix run .#readme

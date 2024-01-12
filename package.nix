@@ -1,36 +1,37 @@
+{ zig, zon2nix, zig2nix-lib, runtimeForTarget, stdenvNoCC, lib, runCommandLocal, makeWrapper, callPackage }:
+
 {
-    stdenvNoCC
-    , lib
-    , runCommandLocal
-    , zon2nix
-    , zig2nix-lib
-    , zig
-    , makeWrapper
-    , autoPatchelfHook
-    , callPackage
-    , runtimeForTarget
-}:
+  src
+  # Specify target for zig compiler, defaults to stdenv.targetPlatform.
+  , zigTarget ? null
+  # Prefer musl libc without specifying the target.
+  , zigPreferMusl ? false
+  # makeWrapper will not be used. Might be useful if distributing outside nix.
+  , zigDisableWrap ? false
+  # Additional arguments to makeWrapper.
+  , zigWrapperArgs ? []
+  # Path to build.zig.zon file, defaults to build.zig.zon.
+  , zigBuildZon ? "${src}/build.zig.zon"
+  # Path to build.zig.zon2json-lock file, defaults to build.zig.zon2json-lock.
+  , zigBuildZonLock ? "${zigBuildZon}2json-lock"
+  , ...
+} @attrs:
 
 with builtins;
 with lib;
 
-attrs: let
-  target = attrs.zigTarget or zig2nix-lib.nixTargetToZigTarget (zig2nix-lib.elaborate stdenvNoCC.targetPlatform).parsed;
-  build-zig-zon-path = attrs.zigBuildZon or "${attrs.src}/build.zig.zon";
-  has-build-zig-zon = pathExists build-zig-zon-path;
-  build-zig-zon2json-lock-path = attrs.zigBuildZonLock or "${build-zig-zon-path}2json-lock";
-  has-build-zig-zon2json-lock = pathExists build-zig-zon2json-lock-path;
-  build-zig-zon = zig2nix-lib.readBuildZigZon build-zig-zon-path;
-  zig-deps = runCommandLocal "zig-deps" {} ''${zon2nix}/bin/zon2nix "${build-zig-zon2json-lock-path}" > $out'';
+let
+  target = zig2nix-lib.resolveTarget zigTarget stdenvNoCC zigPreferMusl;
+  zon = zig2nix-lib.readBuildZigZon zigBuildZon;
+  deps = runCommandLocal "deps" {} ''${zon2nix}/bin/zon2nix "${zigBuildZonLock}" > $out'';
   runtime = runtimeForTarget (zig2nix-lib.zigTargetToNixTarget target);
-  wrapper-args = attrs.zigWrapperArgs or []
+  wrapper-args = zigWrapperArgs
     ++ optionals (length runtime.bins > 0) [ "--prefix" "PATH" ":" (makeBinPath runtime.bins) ]
     ++ optionals (length runtime.libs > 0) [ "--prefix" runtime.env.LIBRARY_PATH ":" (makeLibraryPath runtime.libs) ];
-  disable-wrap = attrs.zigDisableWrap or false;
 in stdenvNoCC.mkDerivation (
-  lib.optionalAttrs (has-build-zig-zon) {
-    pname = build-zig-zon.name;
-    version = build-zig-zon.version;
+  lib.optionalAttrs (pathExists zigBuildZon) {
+    pname = zon.name;
+    version = zon.version;
   }
   // attrs //
   {
@@ -38,13 +39,15 @@ in stdenvNoCC.mkDerivation (
     nativeBuildInputs = [ zig.hook makeWrapper ]
       ++ (runtime.env.nativeBuildInputs or [])
       ++ (attrs.nativeBuildInputs or []);
-    postPatch = optionalString (has-build-zig-zon2json-lock) ''
-      ln -s ${callPackage "${zig-deps}" {}} "$ZIG_GLOBAL_CACHE_DIR"/p
-      '' + optionalString (attrs ? postPatch) attrs.postPatch;
-    postFixup = optionalString (!disable-wrap && length wrapper-args > 0) ''
+    postPatch = optionalString (pathExists zigBuildZonLock) ''
+      ln -s ${callPackage "${deps}" {}} "$ZIG_GLOBAL_CACHE_DIR"/p
+      ${attrs.postPatch or ""}
+      '';
+    postFixup = optionalString (!zigDisableWrap && length wrapper-args > 0) ''
       for bin in $out/bin/*; do
         wrapProgram $bin ${concatStringsSep " " wrapper-args}
       done
-      '' + optionalString (attrs ? postFixup) attrs.postFixup;
+      ${attrs.postFixup or ""}
+      '';
   }
 )

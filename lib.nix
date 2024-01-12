@@ -7,7 +7,7 @@
 with builtins;
 with lib;
 
-{
+rec {
    zigTargetToNixTarget = target: let
       kernel = {
          freestanding = l: "${head l}-unknown-none-${last l}";
@@ -54,6 +54,10 @@ with lib;
    supportsStatic = target: let
       inherit (systems.elaborate target) parsed;
    in parsed.kernel.name != "darwin";
+
+   resolveTarget = target: stdenv: preferMusl: let
+      resolved = if target != null then target else nixTargetToZigTarget (elaborate stdenv.targetPlatform).parsed;
+   in if preferMusl then replaceStrings [ "-gnu" ] [ "-musl" ] resolved else resolved;
 
    readBuildZigZon = path: fromJSON (readFile (runCommandLocal "build.zig.zon.json" {} ''${zon2json}/bin/zon2json "${path}" > "$out"''));
 }

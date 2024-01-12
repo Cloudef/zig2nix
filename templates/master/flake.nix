@@ -12,7 +12,7 @@
       # Check the flake.nix in zig2nix project for more options:
       # <https://github.com/Cloudef/zig2nix/blob/master/flake.nix>
       env = zig2nix.outputs.zig-env.${system} { zig = zig2nix.outputs.packages.${system}.zig.master; };
-    in {
+    in rec {
       # nix build .
       packages.default = with env.pkgs.lib; env.package ({
         src = ./.;
@@ -20,6 +20,22 @@
         pname = "my-zig-project";
         version = "0.0.0";
       });
+
+      # For bundling with nix bundle for running outside of nix
+      # example: https://github.com/ralismark/nix-appimage
+      apps.bundle = let
+        pkg = packages.default.override {
+          # This disables LD_LIBRARY_PATH mangling.
+          # vulkan-loader, x11, wayland, etc... won't be included in the bundle.
+          zigDisableWrap = true;
+
+          # Smaller binaries and avoids shipping glibc.
+          zigPreferMusl = true;
+        };
+      in {
+        type = "app";
+        program = "${pkg}/bin/master";
+      };
 
       # nix run .
       apps.default = env.app [] "zig build run -- \"$@\"";

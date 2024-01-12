@@ -112,13 +112,14 @@ shell = pkgs.mkShell {
 #:
 #: Additional attributes:
 #:    zigTarget: Specify target for zig compiler, defaults to stdenv.targetPlatform.
+#:    zigPreferMusl: Prefer musl libc without specifying the target.
 #:    zigDisableWrap: makeWrapper will not be used. Might be useful if distributing outside nix.
 #:    zigWrapperArgs: Additional arguments to makeWrapper.
 #:    zigBuildZon: Path to build.zig.zon file, defaults to build.zig.zon.
 #:    zigBuildZonLock: Path to build.zig.zon2json-lock file, defaults to build.zig.zon2json-lock.
 #:
 #: <https://github.com/NixOS/nixpkgs/blob/master/doc/hooks/zig.section.md>
-package = attrs: (pkgs.callPackage ./package.nix {
+package = pkgs.callPackage (pkgs.callPackage ./package.nix {
   inherit zig zon2nix zig2nix-lib runtimeForTarget;
 };
 
