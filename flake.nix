@@ -59,6 +59,8 @@
         customAppHook ? "",
         # Custom prelude in the flake shell helper.
         customDevShellHook ? "",
+        # Enable Vulkan support.
+        enableVulkan ? false,
         # Enable Wayland support.
         enableWayland ? false,
         # Enable X11 support.
@@ -70,24 +72,41 @@
         #!     access: (zig-env {}).thing
 
         # Solving platform specific spaghetti below
-        _linux_libs = with pkgs; [ vulkan-loader ]
-          ++ lib.optionals (enableX11) [ xorg.libX11 ]
-          ++ lib.optionals (enableWayland) [ wayland libxkbcommon ];
+        runtimeForTarget = config: let
+          parsed = (zig2nix-lib.elaborate {inherit config;}).parsed;
+          ldenv = {
+            linux = "LD_LIBRARY_PATH";
+            darwin = "DYLD_LIBRARY_PATH";
+          };
+          libs = {
+            linux = with pkgs; []
+              ++ nlib.optionals (enableVulkan) [ vulkan-loader ]
+              ++ nlib.optionals (enableX11) [ xorg.libX11 ]
+              ++ nlib.optionals (enableWayland) [ wayland libxkbcommon ];
+          };
+          bins = {};
+        in {
+          ldenv = ldenv.${parsed.kernel.name} or null;
+          libs = libs.${parsed.kernel.name} or [];
+          bins = bins.${parsed.kernel.name} or [];
+        };
+
         _linux_extra = let
-          ld_string = nlib.makeLibraryPath (_linux_libs ++ customRuntimeLibs);
+          runtime = runtimeForTarget system;
+          ld_string = nlib.makeLibraryPath (runtime.libs ++ customRuntimeLibs);
         in ''
           export ZIG_BTRFS_WORKAROUND=1
-          export LD_LIBRARY_PATH="${ld_string}:''${LD_LIBRARY_PATH:-}"
+          export ${runtime.ldenv}="${ld_string}:''${LD_LIBRARY_PATH:-}"
         '';
 
         _darwin_extra = let
-          ld_string = nlib.makeLibraryPath (customRuntimeLibs);
+          runtime = runtimeForTarget system;
+          ld_string = nlib.makeLibraryPath (runtime.libs ++ customRuntimeLibs);
         in ''
-          export DYLD_LIBRARY_PATH="${ld_string}:''${DYLD_LIBRARY_PATH:-}"
+          export ${runtime.ldenv}="${ld_string}:''${DYLD_LIBRARY_PATH:-}"
         '';
 
-        _deps = [ zig ] ++ customRuntimeDeps
-          ++ nlib.optionals (pkgs.stdenv.isLinux) _linux_libs;
+        _deps = [ zig ] ++ customRuntimeDeps;
         _extraApp = customAppHook
           + nlib.optionalString (pkgs.stdenv.isLinux) _linux_extra
           + nlib.optionalString (pkgs.stdenv.isDarwin) _darwin_extra;
@@ -145,12 +164,13 @@
         #!
         #! Additional attributes:
         #!    zigTarget: Specify target for zig compiler, defaults to nix host.
+        #!    zigWrapperArgs: Additional arguments to makeWrapper.
         #!    zigBuildZon: Path to build.zig.zon file, defaults to build.zig.zon.
         #!    zigBuildZonLock: Path to build.zig.zon2json-lock file, defaults to build.zig.zon2json-lock.
         #!
         #! <https://github.com/NixOS/nixpkgs/blob/master/doc/hooks/zig.section.md>
         package = attrs: (pkgs.callPackage ./package.nix {
-          inherit zig zon2nix zig2nix-lib;
+          inherit zig zon2nix zig2nix-lib runtimeForTarget;
         }) attrs;
       };
 

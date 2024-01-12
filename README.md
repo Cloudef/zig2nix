@@ -61,6 +61,8 @@ zig-env = {
   customAppHook ? "",
   # Custom prelude in the flake shell helper.
   customDevShellHook ? "",
+  # Enable Vulkan support.
+  enableVulkan ? false,
   # Enable Wayland support.
   enableWayland ? false,
   # Enable X11 support.
@@ -90,13 +92,13 @@ app-bare-no-root = deps: script: {
 };
 
 #! Flake app helper (Without zig-env).
-app-bare = deps: script: app-bare-no-root deps
+app-bare = deps: script: app-bare-no-root deps 
 
 #! Flake app helper (without root dir restriction).
-app-no-root = deps: script: app-bare-no-root (deps ++ _deps)
+app-no-root = deps: script: app-bare-no-root (deps ++ _deps) 
 
 #! Flake app helper.
-app = deps: script: app-bare (deps ++ _deps)
+app = deps: script: app-bare (deps ++ _deps) 
 
 #: Creates dev shell.
 shell = pkgs.mkShell {
@@ -110,6 +112,7 @@ shell = pkgs.mkShell {
 #!
 #! Additional attributes:
 #!    zigTarget: Specify target for zig compiler, defaults to nix host.
+#!    zigWrapperArgs: Additional arguments to makeWrapper.
 #!    zigBuildZon: Path to build.zig.zon file, defaults to build.zig.zon.
 #!    zigBuildZonLock: Path to build.zig.zon2json-lock file, defaults to build.zig.zon2json-lock.
 #!
@@ -222,13 +225,13 @@ templates.default = rec {
   welcomeText = ''
   # ${description}
   - Zig: https://ziglang.org/
-
+  
   ## Build & Run
-
+  
   ---
   nix run .
   ---
-
+  
   See flake.nix for more options.
   '';
 };
@@ -241,13 +244,13 @@ templates.master = rec {
   welcomeText = ''
   # ${description}
   - Zig: https://ziglang.org/
-
+  
   ## Build & Run
-
+  
   ---
   nix run .
   ---
-
+  
   See flake.nix for more options.
   '';
 };
