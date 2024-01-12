@@ -37,7 +37,7 @@ writeShellApplication {
             fi
 
             # do not redownload artifact if we know its hash already
-            maybe_hash="$(jq -r --arg k "$zhash" '.\($k)'.hash "''${path}2json-lock" 2>/dev/null || true)"
+            maybe_hash="$(jq -r --arg k "$zhash" '."\($k)".hash' "''${path}2json-lock" 2>/dev/null || true)"
             if [[ ! "$maybe_hash" ]]; then
               printf -- 'fetching (nix hash): %s\n' "$url" 1>&2
               curl -sL "$url" -o "$tmpdir/$zhash.artifact"
