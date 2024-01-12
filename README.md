@@ -8,7 +8,7 @@ https://ziglang.org/
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-* Zig master: `0.12.0-dev.2139+e025ad7b4 @ 2024-01-10`
+* Zig master: `0.12.0-dev.2150+63de8a598 @ 2024-01-12`
 * Zig default: `0.11.0 @ 2023-08-04`
 
 ## Zig project template
@@ -71,7 +71,7 @@ zig-env = {
 #!     access: (zig-env {}).thing
 
 #! Inherit given pkgs and zig version
-inherit pkgs zig;
+inherit pkgs zig zon2json zon2nix;
 
 #: Flake app helper (Without zig-env and root dir restriction).
 app-bare-no-root = deps: script: {
@@ -81,7 +81,7 @@ app-bare-no-root = deps: script: {
   runtimeInputs = [] ++ deps;
   text = ''
   # shellcheck disable=SC2059
-  error() { printf -- "error: $1" "''${@:1}" 1>&2; exit 1; }
+  error() { printf -- "error: $1" "''${@:2}" 1>&2; exit 1; }
   ${script}
   '';
 };
