@@ -158,18 +158,18 @@
           shellHook = _extraShell;
         };
 
-        #! Packages zig project.
-        #! NOTE: If your project has build.zig.zon you must first generate build.zig.zon2json-lock using zon2json-lock.
-        #!       It is recommended to commit the build.zig.zon2json-lock to your repo.
-        #!
-        #! Additional attributes:
-        #!    zigTarget: Specify target for zig compiler, defaults to nix host.
-        #!    zigDisableWrap: makeWrapper will not be used. Might be useful if distributing outside nix.
-        #!    zigWrapperArgs: Additional arguments to makeWrapper.
-        #!    zigBuildZon: Path to build.zig.zon file, defaults to build.zig.zon.
-        #!    zigBuildZonLock: Path to build.zig.zon2json-lock file, defaults to build.zig.zon2json-lock.
-        #!
-        #! <https://github.com/NixOS/nixpkgs/blob/master/doc/hooks/zig.section.md>
+        #: Packages zig project.
+        #: NOTE: If your project has build.zig.zon you must first generate build.zig.zon2json-lock using zon2json-lock.
+        #:       It is recommended to commit the build.zig.zon2json-lock to your repo.
+        #:
+        #: Additional attributes:
+        #:    zigTarget: Specify target for zig compiler, defaults to nix host.
+        #:    zigDisableWrap: makeWrapper will not be used. Might be useful if distributing outside nix.
+        #:    zigWrapperArgs: Additional arguments to makeWrapper.
+        #:    zigBuildZon: Path to build.zig.zon file, defaults to build.zig.zon.
+        #:    zigBuildZonLock: Path to build.zig.zon2json-lock file, defaults to build.zig.zon2json-lock.
+        #:
+        #: <https://github.com/NixOS/nixpkgs/blob/master/doc/hooks/zig.section.md>
         package = attrs: (pkgs.callPackage ./package.nix {
           inherit zig zon2nix zig2nix-lib runtimeForTarget;
         }) attrs;
