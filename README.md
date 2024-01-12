@@ -71,7 +71,10 @@ zig-env = {
 #!     access: (zig-env {}).thing
 
 #! Inherit given pkgs and zig version
-inherit pkgs zig zon2json zon2nix;
+inherit pkgs zig zon2json zon2json-lock zon2nix;
+
+#! Tools for bridging zig and nix
+lib = zig2nix-lib;
 
 #: Flake app helper (Without zig-env and root dir restriction).
 app-bare-no-root = deps: script: {
@@ -87,13 +90,13 @@ app-bare-no-root = deps: script: {
 };
 
 #! Flake app helper (Without zig-env).
-app-bare = deps: script: app-bare-no-root deps 
+app-bare = deps: script: app-bare-no-root deps
 
 #! Flake app helper (without root dir restriction).
-app-no-root = deps: script: app-bare-no-root (deps ++ _deps) 
+app-no-root = deps: script: app-bare-no-root (deps ++ _deps)
 
 #! Flake app helper.
-app = deps: script: app-bare (deps ++ _deps) 
+app = deps: script: app-bare (deps ++ _deps)
 
 #: Creates dev shell.
 shell = pkgs.mkShell {
@@ -102,16 +105,22 @@ shell = pkgs.mkShell {
 };
 
 #! Packages zig project.
-#! NOTE: If your project has build.zig.zon you must first generate build.zig.zon.nix using zon2nix.
-#!       It is recommended to commit the build.zig.zon.nix to your repo.
+#! NOTE: If your project has build.zig.zon you must first generate build.zig.zon2json-lock using zon2json-lock.
+#!       It is recommended to commit the build.zig.zon2json-lock to your repo.
+#!
+#! Additional attributes:
+#!    zigTarget: Specify target for zig compiler, defaults to nix host.
+#!    zigBuildZon: Path to build.zig.zon file, defaults to build.zig.zon.
+#!    zigBuildZonLock: Path to build.zig.zon2json-lock file, defaults to build.zig.zon2json-lock.
+#!
 #! <https://github.com/NixOS/nixpkgs/blob/master/doc/hooks/zig.section.md>
-package = attrs: let
+package = attrs: (pkgs.callPackage ./package.nix {
 
 #! --- Architecture dependent flake outputs.
 #!     access: `zig2nix.outputs.thing.${system}`
 
-#! Helper function for building and running Zig projects.
-inherit zig-env;
+#! Helper functions for building and running Zig projects.
+inherit zig-env zig2nix-lib;
 
 #! Versioned Zig packages.
 packages.zig = zigv;
@@ -119,7 +128,10 @@ packages.zig = zigv;
 #! zon2json: Converts zon files to json
 packages.zon2json = zon2json;
 
-#! zon2nix: Converts build.zig.zon files to nix
+#! zon2json-lock: Converts build.zig.zon to a build.zig.zon2json lock file
+packages.zon2json-lock = zon2json-lock;
+
+#! zon2nix: Converts build.zig.zon and build.zig.zon2json-lock to nix deriviation
 packages.zon2nix = zon2nix;
 
 #! Default zig package.
@@ -128,6 +140,9 @@ packages.default = zigv.default;
 
 #! Run zon2json
 apps.zon2json = app-no-root [zon2json] ''zon2json "$@"'';
+
+#! Run zon2json-lock
+apps.zon2json-lock = app-no-root [zon2json-lock] ''zon2json-lock "$@"'';
 
 #! Run zon2nix
 apps.zon2nix = app-no-root [zon2nix] ''zon2nix "$@"'';
@@ -207,13 +222,13 @@ templates.default = rec {
   welcomeText = ''
   # ${description}
   - Zig: https://ziglang.org/
-  
+
   ## Build & Run
-  
+
   ---
   nix run .
   ---
-  
+
   See flake.nix for more options.
   '';
 };
@@ -226,13 +241,13 @@ templates.master = rec {
   welcomeText = ''
   # ${description}
   - Zig: https://ziglang.org/
-  
+
   ## Build & Run
-  
+
   ---
   nix run .
   ---
-  
+
   See flake.nix for more options.
   '';
 };
