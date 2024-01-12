@@ -74,9 +74,14 @@
         # Solving platform specific spaghetti below
         runtimeForTarget = config: let
           parsed = (zig2nix-lib.elaborate {inherit config;}).parsed;
-          ldenv = {
-            linux = "LD_LIBRARY_PATH";
-            darwin = "DYLD_LIBRARY_PATH";
+          env = {
+            linux = {
+              LIBRARY_PATH = "LD_LIBRARY_PATH";
+              nativeBuildInputs = [ pkgs.autoPatchelfHook ];
+            };
+            darwin = {
+              LIBRARY_PATH = "DYLD_LIBRARY_PATH";
+            };
           };
           libs = {
             linux = with pkgs; []
@@ -86,7 +91,7 @@
           };
           bins = {};
         in {
-          ldenv = ldenv.${parsed.kernel.name} or null;
+          env = env.${parsed.kernel.name} or {};
           libs = libs.${parsed.kernel.name} or [];
           bins = bins.${parsed.kernel.name} or [];
         };
@@ -96,14 +101,14 @@
           ld_string = nlib.makeLibraryPath (runtime.libs ++ customRuntimeLibs);
         in ''
           export ZIG_BTRFS_WORKAROUND=1
-          export ${runtime.ldenv}="${ld_string}:''${LD_LIBRARY_PATH:-}"
+          export ${runtime.env.LIBRARY_PATH}="${ld_string}:''${LD_LIBRARY_PATH:-}"
         '';
 
         _darwin_extra = let
           runtime = runtimeForTarget system;
           ld_string = nlib.makeLibraryPath (runtime.libs ++ customRuntimeLibs);
         in ''
-          export ${runtime.ldenv}="${ld_string}:''${DYLD_LIBRARY_PATH:-}"
+          export ${runtime.env.LIBRARY_PATH}="${ld_string}:''${DYLD_LIBRARY_PATH:-}"
         '';
 
         _deps = [ zig ] ++ customRuntimeDeps;

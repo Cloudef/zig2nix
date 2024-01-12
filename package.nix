@@ -25,7 +25,7 @@ attrs: let
   runtime = runtimeForTarget (zig2nix-lib.zigTargetToNixTarget target);
   wrapper-args = attrs.zigWrapperArgs or []
     ++ optionals (length runtime.bins > 0) [ "--prefix" "PATH" ":" (makeBinPath runtime.bins) ]
-    ++ optionals (length runtime.libs > 0) [ "--prefix" runtime.ldenv ":" (makeLibraryPath runtime.libs) ];
+    ++ optionals (length runtime.libs > 0) [ "--prefix" runtime.env.LIBRARY_PATH ":" (makeLibraryPath runtime.libs) ];
   disable-wrap = attrs.zigDisableWrap or false;
 in stdenvNoCC.mkDerivation (
   lib.optionalAttrs (has-build-zig-zon) {
@@ -35,7 +35,9 @@ in stdenvNoCC.mkDerivation (
   // attrs //
   {
     zigBuildFlags = (attrs.zigBuildFlags or []) ++ [ "-Dtarget=${target}" ];
-    nativeBuildInputs = [ zig.hook autoPatchelfHook makeWrapper ] ++ (attrs.nativeBuildInputs or []);
+    nativeBuildInputs = [ zig.hook makeWrapper ]
+      ++ (runtime.env.nativeBuildInputs or [])
+      ++ (attrs.nativeBuildInputs or []);
     postPatch = optionalString (has-build-zig-zon2json-lock) ''
       ln -s ${callPackage "${zig-deps}" {}} "$ZIG_GLOBAL_CACHE_DIR"/p
       '' + optionalString (attrs ? postPatch) attrs.postPatch;
