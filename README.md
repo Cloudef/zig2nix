@@ -111,7 +111,7 @@ shell = pkgs.mkShell {
 #:       It is recommended to commit the build.zig.zon2json-lock to your repo.
 #:
 #: Additional attributes:
-#:    zigTarget: Specify target for zig compiler, defaults to nix host.
+#:    zigTarget: Specify target for zig compiler, defaults to stdenv.targetPlatform.
 #:    zigDisableWrap: makeWrapper will not be used. Might be useful if distributing outside nix.
 #:    zigWrapperArgs: Additional arguments to makeWrapper.
 #:    zigBuildZon: Path to build.zig.zon file, defaults to build.zig.zon.

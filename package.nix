@@ -1,6 +1,5 @@
 {
-    stdenv
-    , system
+    stdenvNoCC
     , lib
     , runCommandLocal
     , zon2nix
@@ -16,7 +15,7 @@ with builtins;
 with lib;
 
 attrs: let
-  target = attrs.zigTarget or zig2nix-lib.nixTargetToZigTarget (zig2nix-lib.elaborate {config = system;}).parsed;
+  target = attrs.zigTarget or zig2nix-lib.nixTargetToZigTarget (zig2nix-lib.elaborate stdenvNoCC.targetPlatform).parsed;
   build-zig-zon-path = attrs.zigBuildZon or "${attrs.src}/build.zig.zon";
   has-build-zig-zon = pathExists build-zig-zon-path;
   build-zig-zon2json-lock-path = attrs.zigBuildZonLock or "${build-zig-zon-path}2json-lock";
@@ -28,7 +27,7 @@ attrs: let
     ++ optionals (length runtime.bins > 0) [ "--prefix" "PATH" ":" (makeBinPath runtime.bins) ]
     ++ optionals (length runtime.libs > 0) [ "--prefix" runtime.ldenv ":" (makeLibraryPath runtime.libs) ];
   disable-wrap = attrs.zigDisableWrap or false;
-in stdenv.mkDerivation (
+in stdenvNoCC.mkDerivation (
   lib.optionalAttrs (has-build-zig-zon) {
     pname = build-zig-zon.name;
     version = build-zig-zon.version;
