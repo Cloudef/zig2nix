@@ -15,7 +15,7 @@ writeShellApplication {
       # Requires network access
       if [[ "$path" == *.zig.zon ]]; then
         if [[ ! -f "''${path}2json-lock" ]]; then
-          zon2json-lock "$path" > "''${path}2json-lock"
+          zon2json-lock "$path"
         fi
         path="''${path}2json-lock"
       fi
