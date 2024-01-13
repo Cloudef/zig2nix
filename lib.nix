@@ -51,8 +51,8 @@ rec {
       inherit (systems.elaborate target) parsed;
    in parsed.kernel.name != "darwin";
 
-   resolveTarget = target: stdenv: preferMusl: let
-      resolved = if target != null then target else nixTargetToZigTarget (elaborate stdenv.targetPlatform).parsed;
+   resolveTarget = target: platform: preferMusl: let
+      resolved = if target != null then target else nixTargetToZigTarget (elaborate platform).parsed;
    in if preferMusl then replaceStrings [ "-gnu" ] [ "-musl" ] resolved else resolved;
 
    resolveSystem = system: let

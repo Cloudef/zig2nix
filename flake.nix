@@ -23,7 +23,7 @@
 
       # Converts zon files to json
       zon2json = let
-        target = zig2nix-lib.resolveTarget system {} true;
+        target = zig2nix-lib.resolveTarget null {config = system;} true;
       in _pkgs.callPackage tools/zon2json/default.nix {
         zig = zigv.master;
         zigBuildFlags = [ "-Dtarget=${target}" ];
