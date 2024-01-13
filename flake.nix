@@ -61,6 +61,8 @@
         customDevShellHook ? "",
         # Enable Vulkan support.
         enableVulkan ? false,
+        # Enable OpenGL support.
+        enableOpenGL ? false,
         # Enable Wayland support.
         enableWayland ? false,
         # Enable X11 support.
@@ -86,8 +88,11 @@
           libs = {
             linux = with pkgs; []
               ++ nlib.optionals (enableVulkan) [ vulkan-loader ]
-              ++ nlib.optionals (enableX11) [ xorg.libX11 ]
-              ++ nlib.optionals (enableWayland) [ wayland libxkbcommon ];
+              ++ nlib.optionals (enableOpenGL) [ libGL ]
+              # Some common runtime libs used by x11 apps, for example: https://www.glfw.org/docs/3.3/compat.html
+              # You can always include more if you need with customRuntimeLibs.
+              ++ nlib.optionals (enableX11) [ xorg.libX11 xorg.libXext xorg.libXfixes xorg.libXi xorg.libXrender xorg.libXrandr ]
+              ++ nlib.optionals (enableWayland) [ wayland libxkbcommon libdecor ];
           };
           bins = {};
         in {
