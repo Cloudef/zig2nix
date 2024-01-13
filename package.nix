@@ -15,7 +15,7 @@
   # Path to build.zig.zon2json-lock file, defaults to build.zig.zon2json-lock.
   , zigBuildZonLock ? "${zigBuildZon}2json-lock"
   , ...
-} @attrs:
+} @userAttrs:
 
 with builtins;
 with lib;
@@ -28,19 +28,19 @@ let
   wrapper-args = zigWrapperArgs
     ++ optionals (length runtime.bins > 0) [ "--prefix" "PATH" ":" (makeBinPath runtime.bins) ]
     ++ optionals (length runtime.libs > 0) [ "--prefix" runtime.env.LIBRARY_PATH ":" (makeLibraryPath runtime.libs) ];
-in stdenvNoCC.mkDerivation (
-  lib.optionalAttrs (pathExists zigBuildZon) {
+  attrs = lib.optionalAttrs (pathExists zigBuildZon && !userAttrs ? name) {
     pname = zon.name;
+  } // lib.optionalAttrs (pathExists zigBuildZon && !userAttrs ? version) {
     version = zon.version;
-  }
-  // attrs //
-  {
+  } // userAttrs;
+in stdenvNoCC.mkDerivation (
+  attrs // {
     zigBuildFlags = (attrs.zigBuildFlags or []) ++ [ "-Dtarget=${target}" ];
     nativeBuildInputs = [ zig.hook makeWrapper ]
       ++ (runtime.env.nativeBuildInputs or [])
       ++ (attrs.nativeBuildInputs or []);
     postPatch = optionalString (pathExists zigBuildZonLock) ''
-      ln -s ${callPackage "${deps}" {}} "$ZIG_GLOBAL_CACHE_DIR"/p
+      ln -s ${callPackage "${deps}" { name = "${attrs.pname or attrs.name}-dependencies"; }} "$ZIG_GLOBAL_CACHE_DIR"/p
       ${attrs.postPatch or ""}
       '';
     postFixup = optionalString (!zigDisableWrap && length wrapper-args > 0) ''
