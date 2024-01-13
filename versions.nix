@@ -1,10 +1,10 @@
 {
-    lib
-    , stdenvNoCC
-    , callPackage
-    , fetchurl
-    , zigSystem
-    , zigHook
+  lib
+  , stdenvNoCC
+  , callPackage
+  , fetchurl
+  , zigSystem
+  , zigHook
 }:
 
 with lib;
