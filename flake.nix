@@ -12,20 +12,18 @@
 
       #! Structures.
 
+      zig2nix-lib-base = _pkgs.callPackage ./lib.nix {};
+
       # Zig versions.
       # <https://ziglang.org/download/index.json>
-      zigv = import ./versions.nix {
-        inherit system;
-        pkgs = _pkgs;
-      };
-
-      zig2nix-lib-base = import ./lib.nix {
-        inherit (_pkgs) lib runCommandLocal;
+      zigv = _pkgs.callPackage ./versions.nix {
+        zigSystem = zig2nix-lib.resolveSystem system;
+        zigHook = _pkgs.zig.hook;
       };
 
       # Converts zon files to json
       zon2json = let
-        target = zig2nix-lib.resolveTarget null _pkgs.stdenvNoCC true;
+        target = zig2nix-lib.resolveTarget system {} true;
       in _pkgs.callPackage tools/zon2json/default.nix {
         zig = zigv.master;
         zigBuildFlags = [ "-Dtarget=${target}" ];

@@ -1,7 +1,4 @@
-{
-   lib
-   , runCommandLocal
-}:
+{ lib }:
 
 with builtins;
 with lib;
@@ -57,4 +54,8 @@ rec {
    resolveTarget = target: stdenv: preferMusl: let
       resolved = if target != null then target else nixTargetToZigTarget (elaborate stdenv.targetPlatform).parsed;
    in if preferMusl then replaceStrings [ "-gnu" ] [ "-musl" ] resolved else resolved;
+
+   resolveSystem = system: let
+      resolved = nixTargetToZigTarget (elaborate {config = system;}).parsed;
+   in concatStringsSep "-" (sublist 0 2 (splitString "-" resolved));
 }
