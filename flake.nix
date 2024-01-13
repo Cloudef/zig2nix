@@ -302,7 +302,7 @@
         '';
 
       # nix run .#test-zon2json-lock
-      apps.test-zon2json-lock = with env.pkgs; app [ zon2json-lock ] ''
+      apps.test-zon2json-lock = app [ zon2json-lock ] ''
         for f in tools/fixtures/*.zig.zon; do
           echo "testing (zon2json-lock): $f"
           if ! cmp <(zon2json-lock "$f" -) "''${f}2json-lock"; then
@@ -310,6 +310,25 @@
           fi
         done
         '';
+
+      # nix run .#test-zon2nix
+      apps.test-zon2nix = with env.pkgs; with env.pkgs.lib; let
+        fixtures = filter (f: hasSuffix ".zig.zon2json-lock" f) (attrNames (readDir ./tools/fixtures));
+        drvs = map (f: rec {
+          lck = f;
+          out = callPackage (runCommandLocal "deps" {} ''${zon2nix}/bin/zon2nix ${./tools/fixtures/${f}} > $out'') {};
+        }) fixtures;
+        test = drv: ''
+          echo "testing (zon2nix): ${drv.lck}"
+          for d in ${drv.out}/*; do
+            test -d "$d" || error "is not a directory: %s" "$d"
+            if [[ $(wc -l < <(find "$d/" -mindepth 1 -maxdepth 1 -type f)) == 0 ]]; then
+              error "does not contain any regular files: %s" "$d"
+            fi
+          done
+          echo "  ${drv.out}"
+          '';
+      in app [] (concatStringsSep "\n" (map test drvs));
 
       # nix run .#test-templates
       apps.test-templates = app [] ''
@@ -327,6 +346,7 @@
       # nix run .#test
       apps.test = app [] ''
         nix run .#test-zon2json-lock
+        nix run .#test-zon2nix
         nix run .#test-templates
         '';
 
