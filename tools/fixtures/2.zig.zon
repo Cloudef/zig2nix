@@ -1,0 +1,15 @@
+.{
+    .name = "mach-engine-project",
+    .version = "0.1.0",
+    .paths = .{
+      "build.zig.zon",
+      "build.zig",
+      "src",
+    },
+    .dependencies = .{
+      .mach = .{
+        .url = "https://pkg.machengine.org/mach/3b180a58d55a8af3b8e3f6d87c9ff6f8d082c62c.tar.gz",
+        .hash = "12209a6b28acfa4bb5d23fa2ab5229acce50e5329e1581bc68f0be3e763dbf222907",
+      },
+    },
+}

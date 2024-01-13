@@ -1,0 +1,157 @@
+{
+  "12209a6b28acfa4bb5d23fa2ab5229acce50e5329e1581bc68f0be3e763dbf222907": {
+    "name": "mach",
+    "url": "https://pkg.machengine.org/mach/3b180a58d55a8af3b8e3f6d87c9ff6f8d082c62c.tar.gz",
+    "hash": "sha256-CYSbXXRMLmgw3xixQAwI/wlAbRNiRY2zkhDZDlFNQd0="
+  },
+  "1220d252360b3ddb0e9a3d813f179142a455c089eccdfdb5e4615b6d39fab5e23e96": {
+    "name": "mach_ecs",
+    "url": "https://pkg.machengine.org/mach-ecs/7267d8eb26ced985f65d4526770e96af488d007c.tar.gz",
+    "hash": "sha256-Mrn7ZgT6svTD4xQPTsupscrfCeBQsQ/LeLlAR6vyq3A="
+  },
+  "122096b39d9266d275b780df4d63b1afe6e9a3726f19766baf74b34af3f092532cd3": {
+    "name": "mach_core",
+    "url": "https://pkg.machengine.org/mach-core/cce02fb96ca787378289c5855b381f0ca9f3e090.tar.gz",
+    "hash": "sha256-d6T6rJhht4BOFKFP5sP6wKEbmWyklRx6Hfxl0f72+oI="
+  },
+  "12207562ecd84ebeefaabb9e33bd874d03e9d47cb44d95bc61384838df0fd3a26834": {
+    "name": "mach_core_example_assets",
+    "url": "https://pkg.machengine.org/mach-core-example-assets/550f31210d806af0fc0d03f38ec70bec51f7b83b.tar.gz",
+    "hash": "sha256-U7WZT1Gp4c6heox1kzloLIVSqqcX29AdsUZqfXuodz4="
+  },
+  "1220d4b32bf9d74efb498a939b81b5f1c77bea213a346b88d06ae079836d2dc84aff": {
+    "name": "mach_model3d",
+    "url": "https://pkg.machengine.org/mach-model3d/8d94416c815e9f151806e87b9daa54111a7d6d39.tar.gz",
+    "hash": "sha256-JgOqrBjEzw9vnkASm+IEoKJn6uXsBA1e5UxmPVO9hF0="
+  },
+  "1220187935c4c5d4cf824927df28e858dcd06cb864bb5d6be4cd349d2836abb4aec4": {
+    "name": "mach_sysjs",
+    "url": "https://pkg.machengine.org/mach-sysjs/bafd6c9b8fd5e7be1e8e24cfbd156703d6026aa8.tar.gz",
+    "hash": "sha256-JM5r+Ar5EDz7yr1KQPyjeWcmlHj9ZxC3T0i1qdEODFA="
+  },
+  "122033bae174097c3236afaf934f56c35abfa7b68238abacc4a7df9c0ff43c29ed2e": {
+    "name": "mach_gamemode",
+    "url": "https://pkg.machengine.org/mach-gamemode/a020ce1fedb5154491beda630c32ba75114c7fb3.tar.gz",
+    "hash": "sha256-eSeqcLR5M8asALEbOQnccQkIjJRyhfV7L6ZRbZIAX9U="
+  },
+  "1220d0bf732d8291b8629ce7e115efb6adef84dcc1218317ee0a89a6f1663153f2a9": {
+    "name": "mach_dusk",
+    "url": "https://pkg.machengine.org/mach-dusk/ee8abd31daefa617832c590d61c1e1d665a5e55a.tar.gz",
+    "hash": "sha256-pvCRBKfuZnWjJQUJ2iVAavqZu3y9bemxlxM73QB/fbg="
+  },
+  "122080249197eef2dc5290874ead429285741bcd509b57badc22b716f2630d78149e": {
+    "name": "vulkan_zig_generated",
+    "url": "https://pkg.machengine.org/vulkan-zig-generated/b2cb02b98b5359d714006ea07502ee02b7d9a353.tar.gz",
+    "hash": "sha256-wHtdagNwJbLYf9vnsOkFH1Qa57NsoYDDiySsKmXml3w="
+  },
+  "12207ae0264760e850554e47a71124dd0156e86785510662f87a268b222c10a86206": {
+    "name": "mach_gpu",
+    "url": "https://pkg.machengine.org/mach-gpu/724787c4339f32537550b23f50acb345f7e17f16.tar.gz",
+    "hash": "sha256-rLGtBspLIZTeLjqsp9OAZ05SvNcXAhaPCyiYpHi7Tso="
+  },
+  "1220533928f944fe59f6dd2807db71cd69108cc810101e627835c3abcc4afea4fb06": {
+    "name": "mach_glfw",
+    "url": "https://pkg.machengine.org/mach-glfw/20d247fa4b70c0b3951cb3c439d3466f204754e1.tar.gz",
+    "hash": "sha256-FLfuQ6hq0VmQEZtkGqsSnKWhw6lUrbK+Ml2Gej9gD/E="
+  },
+  "122020d1ba277ff9e4b5ffff3e3bf4a3c98eeaec821e2a497d031070b05f7814b91f": {
+    "name": "glfw",
+    "url": "https://pkg.machengine.org/glfw/49d153ebfc4f45eacc757ec2b063decbf5bb1779.tar.gz",
+    "hash": "sha256-8UEDfvsudBOiz4w2DRMwcCnYRkTpIuJKM344bX9kqYA="
+  },
+  "122051b3c616c62d55a82207c1cb76e2264b26e8378f56b1e5376d7684bd13616589": {
+    "name": "xcode_frameworks",
+    "url": "https://pkg.machengine.org/xcode-frameworks/8a920385383cc4c0a2a4f55b084d402a9400a5a8.tar.gz",
+    "hash": "sha256-287eJNeRV6e8/9fo9sdHOtG4fvUnU60ifXRUA9T6U6Y="
+  },
+  "12209e716013e33618aaf5d915c6f2d196922b36aa16e06b52d7c28eafb2b3da0f4e": {
+    "name": "vulkan_headers",
+    "url": "https://pkg.machengine.org/vulkan-headers/1feb2d841870f7461c28b95549cb707440226138.tar.gz",
+    "hash": "sha256-vItPW7QJKc4JY7bf100XtAnnlwDVQ8GWvQ47AG4f66Y="
+  },
+  "1220552bb224e57205049e1c47be8d078a3dc09cb772c0c2e9dea09e452d0c5d6adf": {
+    "name": "wayland_headers",
+    "url": "https://pkg.machengine.org/wayland-headers/651515e2d6deb69f0e5ddc39e6f921b33abaf9d6.tar.gz",
+    "hash": "sha256-dV12Cda+rdEIQN5Vkw8Y5yT5LeYyGoq0kFUHAqbMHAc="
+  },
+  "12208aaa9355611470ae1357dfa2fd8c86e61679c2a9d343a8afaf25d3826a893111": {
+    "name": "x11_headers",
+    "url": "https://pkg.machengine.org/x11-headers/d5594ef666e51b2531511a15db03b5439e4c11e5.tar.gz",
+    "hash": "sha256-sMoM7Wt004yzWhQMLcW83aRS36RXW2nQAdNmAcsnlKk="
+  },
+  "1220bbdbedab9568a37795090e38341c241fe0e22131b8e882bc02954c4b87eecdf3": {
+    "name": "mach_gpu_dawn",
+    "url": "https://pkg.machengine.org/mach-gpu-dawn/6273d7f31a07fc685e8b4049ba467be071227a71.tar.gz",
+    "hash": "sha256-hs/uCXgU8HbZmZVm5zn9mA53tHR4atd1Md4eme44XM0="
+  },
+  "122098cc0b0a39d24aaffcd6d5556e8f31f5dd1a754559ffa468918f2ed6c1ad0a03": {
+    "name": "direct3d_headers",
+    "url": "https://pkg.machengine.org/direct3d-headers/9617cfd497fae598610a7b0a4be0b035e7308e93.tar.gz",
+    "hash": "sha256-9xlDBhPPEvbMLKHJIAJQxKCVqlnVowa6xgssbRhAv9I="
+  },
+  "122039b4af1d6006d2daa48547a6224464fbc5d69d480a54a9c8f92dfe4a555d1af6": {
+    "name": "mach_objc",
+    "url": "https://pkg.machengine.org/mach-objc/52ce29436bc43e69d84cb48ba8f0b1b284847125.tar.gz",
+    "hash": "sha256-5klNi5RlKx9879IishnaVQB1vClg0qafiLiBkyYw9n4="
+  },
+  "12202044ed9fd69af156b0afde619ffd1d111554c557f57ab670ca9960e76d60d0b8": {
+    "name": "xcode_frameworks",
+    "url": "https://pkg.machengine.org/xcode-frameworks/e77a5c6809a0d3f62ec549ee56e9d2dc6807cd5b.tar.gz",
+    "hash": "sha256-w9T+YyxVuTE/N2wJeVmdfnKLreTDjMHRAmL/toE6fFM="
+  },
+  "1220fbe0d105e6cb85c02572cb7510057c3fa7aceee4f0d877dccbd76d484709d892": {
+    "name": "mach_gpu",
+    "url": "https://pkg.machengine.org/mach-gpu/fcd1c3d54dface0968d554795cf39cc644d55278.tar.gz",
+    "hash": "sha256-MErKYde1kVlaeanUhdiVIEOz1nzYext16P/DJQWopbY="
+  },
+  "12209d26c597b7ce8be2b5d69389c43bbcf08144431c294782b30fdd0047e114e600": {
+    "name": "mach_gpu_dawn",
+    "url": "https://pkg.machengine.org/mach-gpu-dawn/16b234c1aae36469b71b640bcfbe4967f1086260.tar.gz",
+    "hash": "sha256-AMuMvPwIXBZfqBPpWB1cWQEuRBcdd3C3rUEyuECptTA="
+  },
+  "1220db419f993fe9204580f761f8d805a9cb07fa910f182899089ad0f4873bfd8b49": {
+    "name": "mach_basisu",
+    "url": "https://pkg.machengine.org/mach-basisu/30897f45e8d2d58ac90f1e8fbe15ceabe2127adb.tar.gz",
+    "hash": "sha256-eZDkHLfQ13ZzokBUWEmclJiyaZyXuo4jkb+lDGV6LuA="
+  },
+  "122025ad0448f4c1234002cc242d2497cb8649bdefb279411589f3a355a6db3f4bf7": {
+    "name": "basisu",
+    "url": "https://pkg.machengine.org/basisu/3490ab25a19d7fdb9ddb0cc924d44204f0e6a940.tar.gz",
+    "hash": "sha256-KkPi0GJkoqEI/OGJLzcd/JQ3SGeMjqHV1LVPH7wbzMs="
+  },
+  "1220a547d08517c7be1b3b0fd2806a399cb71d4189ab5a794f58570af215adc3903a": {
+    "name": "mach_sysaudio",
+    "url": "https://pkg.machengine.org/mach-sysaudio/ec0d3e4a9f053163b4b99ca96d10fd1912563b55.tar.gz",
+    "hash": "sha256-CPNWTKeNU+BMrYigllpr78KRsbKMxwnjUZV6rQ61FN4="
+  },
+  "122052c4415f4d5be98e3324083939af644d5f8eddd2e6a1a544596645eda8cf411a": {
+    "name": "linux_audio_headers",
+    "url": "https://pkg.machengine.org/linux-audio-headers/6b182ff9d51009ca903f3bac63777fbfa654e5f5.tar.gz",
+    "hash": "sha256-UPzIdBrauQzGv3C3or8gLti+7BwEQyr1zxc19qKUphw="
+  },
+  "1220e0de43cacb583b8f9efddcbe359398cfca17a39e265b56c8f2a10314eb8f7a5f": {
+    "name": "mach_freetype",
+    "url": "https://pkg.machengine.org/mach-freetype/a6d971285dfe731e49f82e81c81da2b7f5c6a442.tar.gz",
+    "hash": "sha256-1FiCQ+6mDCRYkSkexUVb6NNrs6TNDH3wGgJ3rEyxJls="
+  },
+  "12206ed50a939287c717f76547baf24e54301de4500505c19f10965ef559619baf10": {
+    "name": "freetype",
+    "url": "https://pkg.machengine.org/freetype/fa33c2db730c0e888046e863b5550ddc3d24e739.tar.gz",
+    "hash": "sha256-gtMGI7X3EYOvSw62kuPqqxL/Axl6yRzhFHafZ0DEH2I="
+  },
+  "1220682fcfe1caaa9160a6e6243821c21f0c080e4150c9e100f81e969a407a34d432": {
+    "name": "brotli",
+    "url": "https://pkg.machengine.org/brotli/13f8e428c00cc28b051f5c05e528b0ab65b0c834.tar.gz",
+    "hash": "sha256-/d3MWUMa7rbi0Dui6rodGAbj+xHQsu07gr7u50hJWDY="
+  },
+  "1220995d89d65595371320b0609b9f51b363ba795b7ad64fdff050b8c751f90a8792": {
+    "name": "harfbuzz",
+    "url": "https://pkg.machengine.org/harfbuzz/84d3479f20c277b90dbd0a97ab44b57851afd9e9.tar.gz",
+    "hash": "sha256-o83MRYQqLw5payodexhxO7TFYunPyRYxo1iSIxz42io="
+  },
+  "122008070b460fcb5d513362fd9ee21cda3e8984920ca4239f6190cedda1ea2b8de8": {
+    "name": "font_assets",
+    "url": "https://pkg.machengine.org/font-assets/4c6ed096d705fb98f811f010ca1237a260c88617.tar.gz",
+    "hash": "sha256-OH0sQb0lrTG09NN4ayYi6+6z85ui6jMi+yONBc0Rgzw="
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "122095273d370fe3a29c2cd98027bae899065db6d759f3eacf049c4941af113b099c": {
+    "name": "linenoize",
+    "url": "https://github.com/joachimschmidt557/linenoize/archive/a69e3764e32523c28717113da309bbee5dab66c4.tar.gz",
+    "hash": "sha256-xg/Kkz/14VXy44fZZOh7sJ5xZMHUW5YxmNYvHyXsldQ="
+  },
+  "1220ae6991b133c3c0f9b8989ee15f26d02f44a21ef5d77ca1e8c3232356cb45d51b": {
+    "name": "wcwidth",
+    "url": "https://github.com/joachimschmidt557/zig-wcwidth/archive/7fc06445d17beb94fe06ad0d60d636e40fe8490a.tar.gz",
+    "hash": "sha256-dbIh2UgKK3ZlTATijp+2qqLDWqQsJl1+BzGcVKjneP4="
+  },
+  "1220300f52d7592914660ee3c8e461dc7c10bd45708eb32deb0e341b47c7921536dc": {
+    "name": "getty",
+    "url": "https://github.com/getty-zig/getty/archive/cb007b8ed148510de71ccc52143343b2e11413ff.tar.gz",
+    "hash": "sha256-qALaXveW6cWkR7pPJxOqj7pTpECdXmJvzgq3TI9GPqM="
+  }
+}

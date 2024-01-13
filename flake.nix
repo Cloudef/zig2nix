@@ -303,8 +303,18 @@
         (cd templates/master; ${packages.zig.master}/bin/zig init)
         '';
 
-      # nix run .#test
-      apps.test = app [] ''
+      # nix run .#test-zon2json-lock
+      apps.test-zon2json-lock = with env.pkgs; app [ zon2json-lock ] ''
+        for f in tools/fixtures/*.zig.zon; do
+          echo "testing (zon2json-lock): $f"
+          if ! cmp <(zon2json-lock "$f" -) "''${f}2json-lock"; then
+            error "unexpected output"
+          fi
+        done
+        '';
+
+      # nix run .#test-templates
+      apps.test-templates = app [] ''
         for var in default master; do
           (cd templates/"$var"; nix run --override-input zig2nix ../.. .)
           (cd templates/"$var"; nix run --override-input zig2nix ../.. .#bundle)
@@ -314,6 +324,12 @@
           rm -rf templates/"$var"/zig-out
           rm -rf templates/"$var"/zig-cache
         done
+        '';
+
+      # nix run .#test
+      apps.test = app [] ''
+        nix run .#test-zon2json-lock
+        nix run .#test-templates
         '';
 
       # nix run .#readme
