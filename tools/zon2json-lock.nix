@@ -36,14 +36,15 @@ writeShellApplication {
             fi
 
             # do not redownload artifact if we know its hash already
-            maybe_hash="$(jq -r --arg k "$zhash" '."\($k)".hash' "''${path}2json-lock" 2>/dev/null || true)"
-            if [[ ! "$maybe_hash" ]]; then
+            # we can't just rely on the zhash because it may not change even though the artifact changes
+            old_url="$(jq -r --arg k "$zhash" '."\($k)".url' "''${path}2json-lock" 2>/dev/null || true)"
+            if [[ "$old_url" != "$url" ]]; then
               printf -- 'fetching (nix hash): %s\n' "$url" 1>&2
               curl -sL "$url" -o "$tmpdir/$zhash.artifact"
               ahash="$(nix hash file "$tmpdir/$zhash.artifact")"
               rm -f "$tmpdir/$zhash.artifact"
             else
-              ahash="$maybe_hash"
+              ahash="$(jq -r --arg k "$zhash" '."\($k)".hash' "''${path}2json-lock")"
             fi
 
             printf '{"%s":{"name":"%s","url":"%s","hash":"%s"}}\n' "$zhash" "$name" "$url" "$ahash"
