@@ -282,7 +282,7 @@
         '';
 
       # nix run .#update-templates
-      apps.update-templates = with env.pkgs; app [ coreutils ] ''
+      apps.update-templates = with env.pkgs; app [ coreutils gnused ] ''
         rm -rf templates/default
         mkdir -p templates/default
         sed 's#/[*]SED_ZIG_VER[*]/##' templates/flake.nix > templates/default/flake.nix
@@ -357,7 +357,7 @@
       # nix run .#readme
       apps.readme = let
         project = "zig2nix flake";
-      in with env.pkgs; app [ gawk jq ] (replaceStrings ["`"] ["\\`"] ''
+      in with env.pkgs; app [ gawk gnused jq ] (replaceStrings ["`"] ["\\`"] ''
       cat <<EOF
       # ${project}
 
