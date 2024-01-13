@@ -50,7 +50,7 @@ Below is auto-generated dump of important outputs in this flake.
 zig-env = {
   # Overrideable nixpkgs.
   pkgs ? _pkgs,
-  # Zig version to use. Normally there is no need to change this.
+  # Zig version to use.
   zig ? zigv.default,
   # Additional runtime deps to inject into the helpers.
   customRuntimeDeps ? [],
