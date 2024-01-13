@@ -314,16 +314,20 @@
       # nix run .#test-zon2nix
       apps.test-zon2nix = with env.pkgs; with env.pkgs.lib; let
         fixtures = filter (f: hasSuffix ".zig.zon2json-lock" f) (attrNames (readDir ./tools/fixtures));
-        drvs = map (f: rec {
+        drvs = map (f: {
           lck = f;
           out = callPackage (runCommandLocal "deps" {} ''${zon2nix}/bin/zon2nix ${./tools/fixtures/${f}} > $out'') {};
         }) fixtures;
         test = drv: ''
           echo "testing (zon2nix): ${drv.lck}"
           for d in ${drv.out}/*; do
-            test -d "$d" || error "is not a directory: %s" "$d"
+            test -d "$d" || error 'is not a directory: %s' "$d"
             if [[ $(wc -l < <(find "$d/" -mindepth 1 -maxdepth 1 -type f)) == 0 ]]; then
               error "does not contain any regular files: %s" "$d"
+            fi
+            zhash="$(basename "$d")"
+            if ! ${jq}/bin/jq -er --arg k "$zhash" '."\($k)"' ${./tools/fixtures/${drv.lck}} > /dev/null; then
+              error 'missing zhash: %s' "$zhash"
             fi
           done
           echo "  ${drv.out}"
