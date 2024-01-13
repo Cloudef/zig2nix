@@ -63,6 +63,8 @@ zig-env = {
   customDevShellHook ? "",
   # Enable Vulkan support.
   enableVulkan ? false,
+  # Enable OpenGL support.
+  enableOpenGL ? false,
   # Enable Wayland support.
   enableWayland ? false,
   # Enable X11 support.
