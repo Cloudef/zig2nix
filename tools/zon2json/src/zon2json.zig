@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const Debug = false;
+
 fn stringifyFieldName(allocator: std.mem.Allocator, ast: std.zig.Ast, idx: std.zig.Ast.Node.Index) !?[]const u8 {
     if (ast.firstToken(idx) < 2) return null;
     const slice = ast.tokenSlice(ast.firstToken(idx) - 2);
@@ -13,7 +15,7 @@ fn stringifyFieldName(allocator: std.mem.Allocator, ast: std.zig.Ast, idx: std.z
 
 fn stringifyValue(allocator: std.mem.Allocator, ast: std.zig.Ast, idx: std.zig.Ast.Node.Index) !?[]const u8 {
     const slice = ast.tokenSlice(ast.nodes.items(.main_token)[idx]);
-    std.log.debug("value: {s}", .{slice});
+    if (Debug) std.log.debug("value: {s}", .{slice});
     if (slice[0] == '\'') {
         switch (std.zig.parseCharLiteral(slice)) {
             .success => |v| return try std.json.stringifyAlloc(allocator, v, .{}),
@@ -38,7 +40,7 @@ fn stringify(allocator: std.mem.Allocator, writer: anytype, ast: std.zig.Ast, id
     if (has_name) {
         if (try stringifyFieldName(allocator, ast, idx)) |name| {
             defer allocator.free(name);
-            std.log.debug("field: {s}", .{name});
+            if (Debug) std.log.debug("field: {s}", .{name});
             try writer.print("{s}:", .{name});
         }
     }
@@ -66,24 +68,47 @@ fn stringify(allocator: std.mem.Allocator, writer: anytype, ast: std.zig.Ast, id
     }
 }
 
-const Options = struct {
+pub const Options = struct {
     limit: usize = std.math.maxInt(usize),
     file_name: []const u8 = "build.zig.zon", // for errors
 };
 
-fn parse(allocator: std.mem.Allocator, reader: std.io.AnyReader, writer: anytype, error_writer: anytype, opts: Options) !void {
-    const zon = reader.readAllAlloc(allocator, opts.limit)[0.. :0];
+pub fn parse(allocator: std.mem.Allocator, reader: std.io.AnyReader, writer: anytype, error_writer: anytype, opts: Options) !void {
+    const zon = blk: {
+        var tmp = try reader.readAllAlloc(allocator, opts.limit);
+        errdefer allocator.free(tmp);
+        tmp = try allocator.realloc(tmp, tmp.len + 1);
+        tmp[tmp.len - 1] = 0;
+        break :blk tmp[0..tmp.len - 1 :0];
+    };
+
     defer allocator.free(zon);
     var ast = try std.zig.Ast.parse(allocator, zon, .zon);
     defer ast.deinit(allocator);
 
     if (ast.errors.len > 0) {
-        for (ast.errors) |e| {
-            const loc = ast.tokenLocation(ast.errorOffset(e), e.token);
-            try error_writer.print("error: {s}:{}:{}: ", .{opts.file_name, loc.line, loc.column});
-            try ast.renderError(e, writer);
-            try error_writer.writeAll("\n");
+        if (@TypeOf(error_writer) != void) {
+            for (ast.errors) |e| {
+                const loc = ast.tokenLocation(ast.errorOffset(e), e.token);
+                try error_writer.print("error: {s}:{}:{}: ", .{opts.file_name, loc.line, loc.column});
+                try ast.renderError(e, error_writer);
+                try error_writer.writeAll("\n");
+            }
         }
         return error.ParseFailed;
     }
+
+    try stringify(allocator, writer, ast, ast.nodes.items(.data)[0].lhs, false);
+}
+
+test {
+    const allocator = std.testing.allocator;
+    var json = std.ArrayList(u8).init(allocator);
+    defer json.deinit();
+    var file = try std.fs.cwd().openFile("build.zig.zon", .{.mode = .read_only});
+    defer file.close();
+    try parse(allocator, file.reader().any(), json.writer(), {}, .{});
+    try std.testing.expectEqualStrings(
+        \\{"name":"zon2json","version":"0.0.0","dependencies":{},"paths":["src","build.zig","build.zig.zon","LICENSE"]}
+        , json.items);
 }
