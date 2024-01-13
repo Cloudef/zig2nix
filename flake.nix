@@ -190,7 +190,6 @@
       # Default zig env used by this flake
       env = zig-env {};
       app = env.app-bare;
-      app-no-root = env.app-no-root;
     in rec {
       #! --- Architecture dependent flake outputs.
       #!     access: `zig2nix.outputs.thing.${system}`
@@ -213,15 +212,6 @@
       #! Default zig package.
       #! Latest released zig.
       packages.default = zigv.default;
-
-      #! Run zon2json
-      apps.zon2json = app-no-root [zon2json] ''zon2json "$@"'';
-
-      #! Run zon2json-lock
-      apps.zon2json-lock = app-no-root [zon2json-lock] ''zon2json-lock "$@"'';
-
-      #! Run zon2nix
-      apps.zon2nix = app-no-root [zon2nix] ''zon2nix "$@"'';
 
       #! Run a version of a Zig compiler inside a `zig-env`.
       #! nix run#zig."zig-version"
