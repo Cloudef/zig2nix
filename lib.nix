@@ -1,7 +1,6 @@
 {
    lib
    , runCommandLocal
-   , zon2json
 }:
 
 with builtins;
@@ -58,6 +57,4 @@ rec {
    resolveTarget = target: stdenv: preferMusl: let
       resolved = if target != null then target else nixTargetToZigTarget (elaborate stdenv.targetPlatform).parsed;
    in if preferMusl then replaceStrings [ "-gnu" ] [ "-musl" ] resolved else resolved;
-
-   readBuildZigZon = path: fromJSON (readFile (runCommandLocal "build.zig.zon.json" {} ''${zon2json}/bin/zon2json "${path}" > "$out"''));
 }

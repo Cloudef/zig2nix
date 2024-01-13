@@ -22,7 +22,7 @@ with lib;
 
 let
   target = zig2nix-lib.resolveTarget zigTarget stdenvNoCC zigPreferMusl;
-  zon = zig2nix-lib.readBuildZigZon zigBuildZon;
+  zon = zig2nix-lib.fromZON zigBuildZon;
   deps = runCommandLocal "deps" {} ''${zon2nix}/bin/zon2nix "${zigBuildZonLock}" > $out'';
   runtime = runtimeForTarget (zig2nix-lib.zigTargetToNixTarget target);
   wrapper-args = zigWrapperArgs

@@ -1,11 +1,10 @@
 {
-    pkgs ? import <nixpkgs> {}
-    , writeShellApplication ? pkgs.writeShellApplication
-    , zon2json
-    , jq ? pkgs.jq
-    , zig ? pkgs.zig
-    , curl ? pkgs.curl
-    , coreutils ? pkgs.coreutils
+    zon2json
+    , writeShellApplication
+    , jq
+    , zig
+    , curl
+    , coreutils
 }:
 
 writeShellApplication {

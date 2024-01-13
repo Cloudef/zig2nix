@@ -1,9 +1,8 @@
 {
-    pkgs ? import <nixpkgs> {}
-    , writeShellApplication ? pkgs.writeShellApplication
-    , zon2json-lock
-    , jq ? pkgs.jq
-    , coreutils ? pkgs.coreutils
+    zon2json-lock
+    , writeShellApplication
+    , jq
+    , coreutils
 }:
 
 writeShellApplication {

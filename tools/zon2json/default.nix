@@ -1,11 +1,11 @@
 {
-  pkgs ? import <nixpkgs> {}
-  , stdenv ? pkgs.stdenvNoCC
-  , zig ? pkgs.zig
-}:
+  stdenvNoCC
+  , zig
+  , ...
+} @attrs:
 
-stdenv.mkDerivation {
+stdenvNoCC.mkDerivation (attrs // {
   name = "zon2json";
   src = ./.;
   nativeBuildInputs = [ zig.hook ];
-}
+})

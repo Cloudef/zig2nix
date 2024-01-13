@@ -19,29 +19,32 @@
         pkgs = _pkgs;
       };
 
+      zig2nix-lib-base = import ./lib.nix {
+        inherit (_pkgs) lib runCommandLocal;
+      };
+
       # Converts zon files to json
-      zon2json = import tools/zon2json/default.nix {
-        pkgs = _pkgs;
+      zon2json = let
+        target = zig2nix-lib.resolveTarget null _pkgs.stdenvNoCC true;
+      in _pkgs.callPackage tools/zon2json/default.nix {
         zig = zigv.master;
+        zigBuildFlags = [ "-Dtarget=${target}" ];
       };
 
       # Converts build.zig.zon to a build.zig.zon2json lock file
-      zon2json-lock = import tools/zon2json-lock.nix {
-        pkgs = _pkgs;
+      zon2json-lock = _pkgs.callPackage tools/zon2json-lock.nix {
         zig = zigv.master;
         inherit zon2json;
       };
 
       # Converts build.zig.zon and build.zig.zon2json-lock to nix deriviation
-      zon2nix = import tools/zon2nix.nix {
-        pkgs = _pkgs;
+      zon2nix = _pkgs.callPackage tools/zon2nix.nix {
         inherit zon2json-lock;
       };
 
       # Tools for bridging zig and nix
-      zig2nix-lib = import ./lib.nix {
-        inherit (_pkgs) lib runCommandLocal;
-        inherit zon2json;
+      zig2nix-lib = zig2nix-lib-base // {
+        fromZON = path: fromJSON (readFile (_pkgs.runCommandLocal "readZon" {} ''${zon2json}/bin/zon2json "${path}" > "$out"''));
       };
 
       #: Helper function for building and running Zig projects.
