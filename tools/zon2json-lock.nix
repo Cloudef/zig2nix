@@ -11,10 +11,12 @@ writeShellApplication {
     name = "zon2json-lock";
     runtimeInputs = [ zon2json jq zig curl coreutils ];
     text = ''
+      # shellcheck disable=SC2059
+      error() { printf -- "error: $1" "''${@:2}" 1>&2; exit 1; }
+
       path="''${1:-build.zig.zon}"
       if [[ ! -f "$path" ]]; then
-          printf -- "error: file does not exist: %s" "$path" 1>&2
-          exit 1
+          error 'file does not exist: %s' "$path"
       fi
 
       tmpdir="$(mktemp -d)"
@@ -32,7 +34,10 @@ writeShellApplication {
             # do not zig fetch if we have the dep already
             if [[ ! -d "$zig_cache/p/$zhash" ]]; then
               printf -- 'fetching (zig fetch): %s\n' "$url" 1>&2
-              zig fetch "$url" 1>/dev/null
+              zhash2="$(zig fetch "$url")"
+              if [[ "$zhash" != "$zhash2" ]]; then
+                error 'unexpected zig hash, got: %s, expected: %s' "$zhash2" "$zhash"
+              fi
             fi
 
             # do not redownload artifact if we know its hash already
