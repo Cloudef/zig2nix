@@ -2,12 +2,11 @@
     zon2json-lock
     , writeShellApplication
     , jq
-    , coreutils
 }:
 
 writeShellApplication {
     name = "zon2nix";
-    runtimeInputs = [ zon2json-lock jq coreutils ];
+    runtimeInputs = [ zon2json-lock jq ];
     text = ''
       path="''${1:-build.zig.zon}"
 
