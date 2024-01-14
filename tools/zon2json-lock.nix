@@ -49,7 +49,18 @@ writeShellApplication {
             # do not zig fetch if we have the dep already
             if [[ ! -d "$zig_cache/p/$zhash" ]]; then
               printf -- 'fetching (zig fetch): %s\n' "$url" 1>&2
-              zhash2="$(zig fetch "$url" || true)"
+              case "$url" in
+                file://*)
+                  # workaround bug: https://github.com/ziglang/zig/issues/18549
+                  mkdir -p "$tmpdir/tmp"
+                  fname="$(cd "$tmpdir/tmp"; curl -sSL "$url" -O; find . -mindepth 1 -maxdepth 1 -type f)"
+                  zhash2="$(zig fetch "$tmpdir/tmp/$fname" || true)"
+                  rm -rf "$tmpdir/tmp"
+                  ;;
+                *)
+                  zhash2="$(zig fetch "$url" || true)"
+                  ;;
+              esac
               if [[ ! "$zhash2" ]] || [[ "$zhash" != "$zhash2" ]]; then
                 error 'unexpected zig hash, got: %s, expected: %s' "''${zhash2:-nothing}" "$zhash"
               fi
