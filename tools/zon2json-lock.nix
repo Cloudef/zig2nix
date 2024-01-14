@@ -38,18 +38,6 @@ writeShellApplication {
         esac
       }
 
-      is_impure_url() {
-          case "$1" in
-            git+http://*|git+https://*)
-              read -r _ rev < <(split_git_url "$1")
-              if [[ "$rev" == "HEAD" ]]; then
-                return 0
-              fi
-              ;;
-          esac
-          return 1
-      }
-
       zon2json-recursive() {
         while {
           read -r name;
@@ -68,13 +56,13 @@ writeShellApplication {
             fi
 
             # do not redownload artifact if we know its hash already
-            # we can't just rely on the zhash because it may not change even though the artifact changes
+            # we can't just rely on the zhash because it may not change even though the artifact change
             old_url="$(jq -r --arg k "$zhash" '."\($k)".url' "''${path}2json-lock" 2>/dev/null || true)"
-            if [[ "$old_url" != "$url" ]] || is_impure_url "$url"; then
+            if [[ ! "$old_url" ]] || [[ "$old_url" != "$url" ]]; then
               printf -- 'fetching (nix hash): %s\n' "$url" 1>&2
               case "$url" in
                 git+http://*|git+https://*)
-                  read -r git_url git_rev < <(split_git_url "$url")
+                  IFS=$'\n' read -rd "" git_url git_rev < <(split_git_url "$url") || true
                   ahash="$(nix-prefetch-git --out "$tmpdir/$zhash.git" \
                             --url "$git_url" --rev "$git_rev" \
                             --no-deepClone --quiet | jq -r '.hash')"
