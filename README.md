@@ -8,7 +8,7 @@ https://ziglang.org/
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-* Zig master: `0.12.0-dev.2150+63de8a598 @ 2024-01-12`
+* Zig master: `0.12.0-dev.2158+4f2009de1 @ 2024-01-13`
 * Zig default: `0.11.0 @ 2023-08-04`
 
 ## Zig project template
@@ -146,15 +146,6 @@ packages.zon2nix = zon2nix;
 #! Default zig package.
 #! Latest released zig.
 packages.default = zigv.default;
-
-#! Run zon2json
-apps.zon2json = app-no-root [zon2json] ''zon2json "$@"'';
-
-#! Run zon2json-lock
-apps.zon2json-lock = app-no-root [zon2json-lock] ''zon2json-lock "$@"'';
-
-#! Run zon2nix
-apps.zon2nix = app-no-root [zon2nix] ''zon2nix "$@"'';
 
 #! Run a version of a Zig compiler inside a `zig-env`.
 #! nix run#zig."zig-version"
