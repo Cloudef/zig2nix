@@ -40,7 +40,7 @@ writeShellApplication {
             old_url="$(jq -r --arg k "$zhash" '."\($k)".url' "''${path}2json-lock" 2>/dev/null || true)"
             if [[ "$old_url" != "$url" ]]; then
               printf -- 'fetching (nix hash): %s\n' "$url" 1>&2
-              curl -sL "$url" -o "$tmpdir/$zhash.artifact"
+              curl -sSL "$url" -o "$tmpdir/$zhash.artifact"
               ahash="$(nix hash file "$tmpdir/$zhash.artifact")"
               rm -f "$tmpdir/$zhash.artifact"
             else
