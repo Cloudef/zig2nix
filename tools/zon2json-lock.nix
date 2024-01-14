@@ -49,9 +49,9 @@ writeShellApplication {
             # do not zig fetch if we have the dep already
             if [[ ! -d "$zig_cache/p/$zhash" ]]; then
               printf -- 'fetching (zig fetch): %s\n' "$url" 1>&2
-              zhash2="$(zig fetch "$url")"
-              if [[ "$zhash" != "$zhash2" ]]; then
-                error 'unexpected zig hash, got: %s, expected: %s' "$zhash2" "$zhash"
+              zhash2="$(zig fetch "$url" || true)"
+              if [[ ! "$zhash2" ]] || [[ "$zhash" != "$zhash2" ]]; then
+                error 'unexpected zig hash, got: %s, expected: %s' "''${zhash2:-nothing}" "$zhash"
               fi
             fi
 
