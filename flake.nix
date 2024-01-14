@@ -266,7 +266,7 @@
       apps.update-versions = with env.pkgs; app [ curl jq ] ''
         tmpdir="$(mktemp -d)"
         trap 'rm -rf "$tmpdir"' EXIT
-        curl https://ziglang.org/download/index.json |\
+        curl -sSL https://ziglang.org/download/index.json |\
           jq 'with_entries(select(.key != "0.1.1" and .key != "0.2.0" and .key != "0.3.0" and .key != "0.4.0" and .key != "0.5.0" and .key != "0.6.0" and .key != "0.7.0" and .key != "0.7.1"))' > "$tmpdir"/versions.json
         jq 'to_entries | {"default": ({"version": .[1].key} + .[1].value)}' "$tmpdir/versions.json" | cat "$tmpdir/versions.json" - | jq -s add
         '';
