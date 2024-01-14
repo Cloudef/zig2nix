@@ -21,7 +21,7 @@ writeShellApplication {
       fi
 
       if [[ ! -f "$path" ]]; then
-          printf -- "error: file does not exist: %s" "$path" 1>&2
+          printf -- "error: file does not exist: %s\n" "$path" 1>&2
           exit 1
       fi
 
