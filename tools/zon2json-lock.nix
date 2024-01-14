@@ -63,10 +63,10 @@ writeShellApplication {
         done < <(zon2json "$1" | jq -r '.dependencies | to_entries | .[] | select(.value.url != null) | .key, .value.url, .value.hash')
       }
 
+      zon2json-recursive "$path" | jq -s 'add | if . == null then halt_error(1) else . end' > "$tmpdir/build.zig.zon2json-lock"
       if [[ "''${2:-}" == "-" ]]; then
-        zon2json-recursive "$path" | jq -s 'add | if . == null then halt_error(1) else . end'
+        jq . "$tmpdir/build.zig.zon2json-lock"
       else
-        zon2json-recursive "$path" | jq -s 'add | if . == null then halt_error(1) else . end' > "$tmpdir/build.zig.zon2json-lock"
         cp -f "$tmpdir/build.zig.zon2json-lock" "''${2:-''${path}2json-lock}"
       fi
       '';
