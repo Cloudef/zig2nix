@@ -307,7 +307,9 @@
         fixtures = filter (f: hasSuffix ".zig.zon2json-lock" f) (attrNames (readDir ./tools/fixtures));
         drvs = map (f: {
           lck = f;
-          out = callPackage (runCommandLocal "deps" {} ''${zon2nix}/bin/zon2nix ${./tools/fixtures/${f}} > $out'') {};
+          out = callPackage (runCommandLocal "deps" {} ''${zon2nix}/bin/zon2nix ${./tools/fixtures/${f}} > $out'') {
+            zig = zigv.master;
+          };
         }) fixtures;
         test = drv: ''
           echo "testing (zon2nix): ${drv.lck}"

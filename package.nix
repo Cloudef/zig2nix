@@ -40,7 +40,10 @@ in stdenvNoCC.mkDerivation (
       ++ (runtime.env.nativeBuildInputs or [])
       ++ (attrs.nativeBuildInputs or []);
     postPatch = optionalString (pathExists zigBuildZonLock) ''
-      ln -s ${callPackage "${deps}" { name = "${attrs.pname or attrs.name}-dependencies"; }} "$ZIG_GLOBAL_CACHE_DIR"/p
+      ln -s ${callPackage "${deps}" {
+        inherit zig;
+        name = "${attrs.pname or attrs.name}-dependencies";
+      }} "$ZIG_GLOBAL_CACHE_DIR"/p
       ${attrs.postPatch or ""}
       '';
     postFixup = optionalString (!zigDisableWrap && length wrapper-args > 0) ''
