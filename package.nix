@@ -33,9 +33,13 @@ let
   } // lib.optionalAttrs (pathExists zigBuildZon && !userAttrs ? version) {
     version = zon.version;
   } // userAttrs;
+  default-flags = if lib.versionAtLeast zig.version "0.11" then
+      [ "-Doptimize=ReleaseSafe" ]
+    else
+      [ "-Drelease-safe=true" ];
 in stdenvNoCC.mkDerivation (
   attrs // {
-    zigBuildFlags = (attrs.zigBuildFlags or []) ++ [ "-Dtarget=${target}" ];
+    zigBuildFlags = (attrs.zigBuildFlags or default-flags) ++ [ "-Dtarget=${target}" ];
     nativeBuildInputs = [ zig.hook makeWrapper ]
       ++ (runtime.env.nativeBuildInputs or [])
       ++ (attrs.nativeBuildInputs or []);

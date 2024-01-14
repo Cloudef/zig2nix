@@ -18,7 +18,16 @@
       # <https://ziglang.org/download/index.json>
       zigv = _pkgs.callPackage ./versions.nix {
         zigSystem = zig2nix-lib.resolveSystem system;
-        zigHook = _pkgs.zig.hook;
+        # Use our own zig hook, but reuse the setup-hook.sh.
+        # The nixpkgs one forces flags which can't be overridden.
+        # Also -target is recommended over use of -Dcpu=baseline.
+        # https://ziggit.dev/t/exe-files-not-interchangeable-among-identical-linux-systems/2708/6
+        zigHook = { makeSetupHook, zig }: makeSetupHook {
+          name = "zig-hook";
+          propagatedBuildInputs = [ zig ];
+          substitutions.zig_default_flags = [];
+          passthru = { inherit zig; };
+        } "${nixpkgs.outPath}/pkgs/development/compilers/zig/setup-hook.sh";
       };
 
       # Converts zon files to json
