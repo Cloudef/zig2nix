@@ -13,7 +13,7 @@ writeShellApplication {
     runtimeInputs = [ zon2json jq zig curl coreutils nix-prefetch-git ];
     text = ''
       # shellcheck disable=SC2059
-      error() { printf -- "error: $1" "''${@:2}" 1>&2; exit 1; }
+      error() { printf -- "error: $1\n" "''${@:2}" 1>&2; exit 1; }
 
       path="''${1:-build.zig.zon}"
       if [[ ! -f "$path" ]]; then
