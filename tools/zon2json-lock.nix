@@ -5,11 +5,12 @@
     , zig
     , curl
     , coreutils
+    , nix-prefetch-git
 }:
 
 writeShellApplication {
     name = "zon2json-lock";
-    runtimeInputs = [ zon2json jq zig curl coreutils ];
+    runtimeInputs = [ zon2json jq zig curl coreutils nix-prefetch-git ];
     text = ''
       # shellcheck disable=SC2059
       error() { printf -- "error: $1" "''${@:2}" 1>&2; exit 1; }
@@ -45,9 +46,25 @@ writeShellApplication {
             old_url="$(jq -r --arg k "$zhash" '."\($k)".url' "''${path}2json-lock" 2>/dev/null || true)"
             if [[ "$old_url" != "$url" ]]; then
               printf -- 'fetching (nix hash): %s\n' "$url" 1>&2
-              curl -sSL "$url" -o "$tmpdir/$zhash.artifact"
-              ahash="$(nix hash file "$tmpdir/$zhash.artifact")"
-              rm -f "$tmpdir/$zhash.artifact"
+              case "$url" in
+                git+http://*|git+https://*)
+                  url_part="''${url%\#*}"
+                  git_url="''${url_part##git+}"
+                  git_rev="''${url##*\#}"
+                  ahash="$(nix-prefetch-git --out "$tmpdir/$zhash.git" \
+                            --url "$git_url" --rev "''${git_rev:-HEAD}" \
+                            --no-deepClone --quiet | jq -r '.hash')"
+                  rm -rf "$tmpdir/$zhash.git"
+                  ;;
+                file://*|http://*|https://*)
+                  curl -sSL "$url" -o "$tmpdir/$zhash.artifact"
+                  ahash="$(nix hash file "$tmpdir/$zhash.artifact")"
+                  rm -f "$tmpdir/$zhash.artifact"
+                  ;;
+                *)
+                  error 'unsupported url: %s' "$url"
+                  ;;
+              esac
             else
               ahash="$(jq -r --arg k "$zhash" '."\($k)".hash' "''${path}2json-lock")"
             fi
