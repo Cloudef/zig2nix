@@ -14,20 +14,22 @@
 
       zig2nix-lib-base = _pkgs.callPackage ./lib.nix {};
 
+      # Use our own zig hook, but reuse the setup-hook.sh.
+      # The nixpkgs one forces flags which can't be overridden.
+      # Also -target is recommended over use of -Dcpu=baseline.
+      # https://ziggit.dev/t/exe-files-not-interchangeable-among-identical-linux-systems/2708/6
+      zig-hook = { makeSetupHook, zig }: makeSetupHook {
+        name = "zig-hook";
+        propagatedBuildInputs = [ zig ];
+        substitutions.zig_default_flags = [];
+        passthru = { inherit zig; };
+      } "${nixpkgs.outPath}/pkgs/development/compilers/zig/setup-hook.sh";
+
       # Zig versions.
       # <https://ziglang.org/download/index.json>
       zigv = _pkgs.callPackage ./versions.nix {
         zigSystem = zig2nix-lib.resolveSystem system;
-        # Use our own zig hook, but reuse the setup-hook.sh.
-        # The nixpkgs one forces flags which can't be overridden.
-        # Also -target is recommended over use of -Dcpu=baseline.
-        # https://ziggit.dev/t/exe-files-not-interchangeable-among-identical-linux-systems/2708/6
-        zigHook = { makeSetupHook, zig }: makeSetupHook {
-          name = "zig-hook";
-          propagatedBuildInputs = [ zig ];
-          substitutions.zig_default_flags = [];
-          passthru = { inherit zig; };
-        } "${nixpkgs.outPath}/pkgs/development/compilers/zig/setup-hook.sh";
+        zigHook = zig-hook;
       };
 
       # Converts zon files to json
@@ -135,7 +137,7 @@
           + nlib.optionalString (pkgs.stdenv.isDarwin) _darwin_extra;
       in rec {
         #! Inherit given pkgs and zig version
-        inherit pkgs zig zon2json zon2json-lock zon2nix;
+        inherit pkgs zig zon2json zon2json-lock zon2nix zig-hook;
 
         #! Tools for bridging zig and nix
         lib = zig2nix-lib;
@@ -204,7 +206,7 @@
       #!     access: `zig2nix.outputs.thing.${system}`
 
       #! Helper functions for building and running Zig projects.
-      inherit zig-env zig2nix-lib;
+      inherit zig-env zig2nix-lib zig-hook;
 
       #! Versioned Zig packages.
       packages.zig = zigv;

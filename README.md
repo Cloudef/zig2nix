@@ -98,7 +98,7 @@ zig-env = {
 #!     access: (zig-env {}).thing
 
 #! Inherit given pkgs and zig version
-inherit pkgs zig zon2json zon2json-lock zon2nix;
+inherit pkgs zig zon2json zon2json-lock zon2nix zig-hook;
 
 #! Tools for bridging zig and nix
 lib = zig2nix-lib;
@@ -152,7 +152,7 @@ package = pkgs.callPackage (pkgs.callPackage ./package.nix {
 #!     access: `zig2nix.outputs.thing.${system}`
 
 #! Helper functions for building and running Zig projects.
-inherit zig-env zig2nix-lib;
+inherit zig-env zig2nix-lib zig-hook;
 
 #! Versioned Zig packages.
 packages.zig = zigv;
