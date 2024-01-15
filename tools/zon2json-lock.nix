@@ -22,7 +22,7 @@ writeShellApplication {
 
       tmpdir="$(mktemp -d)"
       trap 'rm -rf "$tmpdir"' EXIT
-      read -r zig_cache < <(zig env | jq -r '.global_cache_dir')
+      read -r zig_cache < <(zig env | jq -er '.global_cache_dir')
 
       split_git_url() {
         url_part="''${1##git+}"
@@ -68,7 +68,7 @@ writeShellApplication {
 
             # do not redownload artifact if we know its hash already
             # we can't just rely on the zhash because it may not change even though the artifact change
-            old_url="$(jq -r --arg k "$zhash" '."\($k)".url' "''${path}2json-lock" 2>/dev/null || true)"
+            old_url="$(jq -er --arg k "$zhash" '."\($k)".url' "''${path}2json-lock" 2>/dev/null || true)"
             if [[ ! "$old_url" ]] || [[ "$old_url" != "$url" ]]; then
               printf -- 'fetching (nix hash): %s\n' "$url" 1>&2
               case "$url" in
@@ -76,7 +76,7 @@ writeShellApplication {
                   IFS=$'\n' read -rd "" git_url git_rev < <(split_git_url "$url") || true
                   ahash="$(nix-prefetch-git --out "$tmpdir/$zhash.git" \
                             --url "$git_url" --rev "$git_rev" \
-                            --no-deepClone --quiet | jq -r '.hash')"
+                            --no-deepClone --quiet | jq -er '.hash')"
                   rm -rf "$tmpdir/$zhash.git"
                   ;;
                 file://*|http://*|https://*)
@@ -89,7 +89,7 @@ writeShellApplication {
                   ;;
               esac
             else
-              ahash="$(jq -r --arg k "$zhash" '."\($k)".hash' "''${path}2json-lock")"
+              ahash="$(jq -er --arg k "$zhash" '."\($k)".hash' "''${path}2json-lock")"
             fi
 
             printf '{"%s":{"name":"%s","url":"%s","hash":"%s"}}\n' "$zhash" "$name" "$url" "$ahash"
