@@ -103,7 +103,7 @@ writeShellApplication {
         done < <(zon2json "$1" | jq -r '.dependencies | to_entries | .[] | select(.value.url != null) | .key, .value.url, .value.hash')
       }
 
-      zon2json-recursive "$path" | jq -s 'add | if . == null then halt_error(1) else . end' > "$tmpdir/build.zig.zon2json-lock"
+      zon2json-recursive "$path" | jq -se add > "$tmpdir/build.zig.zon2json-lock"
       if [[ "''${2:-}" == "-" ]]; then
         jq . "$tmpdir/build.zig.zon2json-lock"
       else
