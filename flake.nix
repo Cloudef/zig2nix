@@ -28,13 +28,13 @@
       # Zig versions.
       # <https://ziglang.org/download/index.json>
       zigv = _pkgs.callPackage ./versions.nix {
-        zigSystem = zig2nix-lib.resolveSystem system;
+        zigSystem = zig2nix-lib.zigDoubleFromString system;
         zigHook = zig-hook;
       };
 
       # Converts zon files to json
       zon2json = let
-        target = zig2nix-lib.resolveTarget null {config = system;} true;
+        target = zig2nix-lib.resolveTarget { nix = system; musl = true; };
       in _pkgs.callPackage tools/zon2json/default.nix {
         zig = zigv.master;
         zigBuildFlags = [ "-Dtarget=${target}" ];
@@ -86,8 +86,8 @@
         #!     access: (zig-env {}).thing
 
         # Solving platform specific spaghetti below
-        runtimeForTarget = config: let
-          parsed = (zig2nix-lib.elaborate {inherit config;}).parsed;
+        runtimeForTarget = target: let
+          system = zig2nix-lib.mkZigSystemFromString target;
           env = {
             linux = {
               LIBRARY_PATH = "LD_LIBRARY_PATH";
@@ -108,9 +108,9 @@
           };
           bins = {};
         in {
-          env = env.${parsed.kernel.name} or {};
-          libs = libs.${parsed.kernel.name} or [];
-          bins = bins.${parsed.kernel.name} or [];
+          env = env.${system.kernel.name} or {};
+          libs = libs.${system.kernel.name} or [];
+          bins = bins.${system.kernel.name} or [];
         };
 
         _linux_extra = let

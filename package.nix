@@ -21,10 +21,14 @@ with builtins;
 with lib;
 
 let
-  target = zig2nix-lib.resolveTarget zigTarget stdenvNoCC.targetPlatform zigPreferMusl;
+  target = zig2nix-lib.resolveTarget {
+    zig = zigTarget;
+    platform = stdenvNoCC.targetPlatform;
+    musl = zigPreferMusl;
+  };
   zon = zig2nix-lib.fromZON zigBuildZon;
   deps = runCommandLocal "deps" {} ''${zon2nix}/bin/zon2nix "${zigBuildZonLock}" > $out'';
-  runtime = runtimeForTarget (zig2nix-lib.zigTargetToNixTarget target);
+  runtime = runtimeForTarget target;
   wrapper-args = zigWrapperArgs
     ++ optionals (length runtime.bins > 0) [ "--prefix" "PATH" ":" (makeBinPath runtime.bins) ]
     ++ optionals (length runtime.libs > 0) [ "--prefix" runtime.env.LIBRARY_PATH ":" (makeLibraryPath runtime.libs) ];

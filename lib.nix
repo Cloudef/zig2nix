@@ -4,58 +4,84 @@ with builtins;
 with lib;
 
 rec {
-   zigTargetToNixTarget = target: let
-      kernel = {
-         freestanding = l: "${head l}-unknown-none-${last l}";
-         linux = l: "${head l}-unknown-linux-${last l}";
-         macos = l: "${head l}-apple-darwin";
-         windows = l: "${head l}-w64-mingw32";
-         wasi = l: "${head l}-unknown-wasi";
+   mkZigSystemFromString = s: let
+      res = tryEval (systems.parse.mkSystemFromString s);
+   in {
+      zig = let
+         parts = splitString "-" s;
+
+         cpu = elemAt parts 0;
+
+         kernel = {
+            "2" = elemAt parts 1;
+            "3" = elemAt parts 1;
+            "4" = elemAt parts 2;
+         }.${toString (length parts)} or (throw "zig target string has invalid number of hyphen-separated components");
+
+         abi = {
+            "2" = "none";
+            "3" = elemAt parts 2;
+            "4" = elemAt parts 3;
+         }.${toString (length parts)} or (throw "zig target string has invalid number of hyphen-separated components");
+
+         nixKernel = let
+            stripped = elemAt (splitString "." kernel) 0;
+         in {
+            freestanding = "none";
+         }.${stripped} or stripped;
+
+         nixAbi = {
+            none = "unknown";
+         }.${abi} or abi;
+
+         system = systems.parse.mkSystemFromSkeleton {
+            inherit cpu;
+            kernel = nixKernel;
+            abi = nixAbi;
+         };
+      in system // {
+         zig = {
+            inherit cpu kernel abi;
+            supportsStaticLinking = system.kernel.execFormat.name != "macho";
+         };
       };
-      cpu = {
-         powerpc64 = s: "${s}abi64";
-         sparcv9 = s: "sparc64-${removePrefix "sparcv9-" s}";
-         thumb = s: "armv5tel-${removePrefix "thumb-" s}";
-         x86 = s: "i386-${removePrefix "x86-" s}";
+
+      nix = let
+         zigKernel = {
+            none = "freestanding";
+            darwin = "macos";
+         }.${res.value.kernel.name} or res.value.kernel.name;
+
+         zigAbi = {
+            unknown = "none";
+         }.${res.value.abi.name} or res.value.abi.name;
+      in res.value // {
+         zig = {
+            cpu = res.value.cpu.name;
+            kernel = zigKernel;
+            abi = zigAbi;
+            supportsStaticLinking = res.value.kernel.execFormat.name != "macho";
+         };
       };
-      split = splitString "-" target;
-   in cpu."${head split}" or (_: _) (kernel."${elemAt split 1}" split);
+   }.${if res.success then "nix" else "zig"};
 
-   nixTargetToZigTarget = target: let
-      kernel = {
-         none = t: "${t.cpu.name}-freestanding-${t.abi.name}";
-         linux = t: "${t.cpu.name}-linux-${t.abi.name}";
-         darwin = t: "${t.cpu.name}-macos-none";
-         windows = t: "${t.cpu.name}-windows-gnu";
-         wasi = t: "${t.cpu.name}-wasi-musl";
-      };
-      cpu = {
-         powerpc64 = s: removeSuffix "abi64" s;
-         sparc64 = s: "sparcv9-${removePrefix "sparc64-" s}";
-         armv5tel = s: "thumb-${removePrefix "armv5tel-" s}";
-         i386 = s: "x86-${removePrefix "i386-" s}";
-      };
-   in cpu."${target.cpu.name}" or (_: _) (kernel."${target.kernel.name}" target);
+   zigDoubleFromSystem = system: "${system.zig.cpu}-${system.zig.kernel}";
+   zigTripleFromSystem = system: "${system.zig.cpu}-${system.zig.kernel}-${system.zig.abi}";
+   zigDoubleFromString = s: zigDoubleFromSystem (mkZigSystemFromString s);
+   zigTripleFromString = s: zigTripleFromSystem (mkZigSystemFromString s);
 
-   elaborate = system: let
-      target = system.config;
-   in systems.elaborate (system
-         // optionalAttrs (hasSuffix "mingw32" target) { libc = "msvcrt"; }
-         // optionalAttrs (hasSuffix "darwin" target) { libc = "libSystem"; }
-         // optionalAttrs (hasSuffix "wasi" target) { libc = "wasilibc"; }
-         // optionalAttrs (hasInfix "musl" target) { libc = "musl"; }
-         // optionalAttrs (hasInfix "gnu" target) { libc = "glibc"; }
-         );
+   zigTripleFromPlatform = p: let
+      system = mkZigSystemFromString p.config;
+   in {
+      darwin = "${system.zig.cpu}-${system.zig.kernel}.${p.darwinSdkVersion}-${system.zig.abi}";
+   }.${system.kernel.name} or (zigTripleFromSystem system);
 
-   supportsStatic = target: let
-      inherit (systems.elaborate target) parsed;
-   in parsed.kernel.name != "darwin";
-
-   resolveTarget = target: platform: preferMusl: let
-      resolved = if target != null then target else nixTargetToZigTarget (elaborate platform).parsed;
-   in if preferMusl then replaceStrings [ "-gnu" ] [ "-musl" ] resolved else resolved;
-
-   resolveSystem = system: let
-      resolved = nixTargetToZigTarget (elaborate {config = system;}).parsed;
-   in concatStringsSep "-" (sublist 0 2 (splitString "-" resolved));
+   # helper for resolving final target for building a package from derivation attrs
+   resolveTarget = args: let
+      target =
+         if args ? zig && args.zig != null then zigTripleFromString args.zig
+         else if args ? nix && args.nix != null then zigTripleFromString args.nix
+         else if args ? platform && args.platform != null then zigTripleFromPlatform args.platform
+         else throw "either zig, nix or platform must be specified";
+   in if args.musl or false then replaceStrings [ "-gnu" ] [ "-musl" ] target else target;
 }
