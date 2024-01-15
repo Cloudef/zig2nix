@@ -103,7 +103,7 @@ writeShellApplication {
         done < <(zon2json "$1" | jq -r '.dependencies | to_entries | .[] | select(.value.url != null) | .key, .value.url, .value.hash')
       }
 
-      if ! jq -e '.dependencies[] | select(.url != null) | length > 0' <(zon2json "$1") >/dev/null; then
+      if ! jq -e '.dependencies[] | select(.url != null) | length > 0' <(zon2json "$path") >/dev/null; then
         printf -- '%s has no dependencies\n' "$path" 1>&2
         exit 0
       fi
