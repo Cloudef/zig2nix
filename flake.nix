@@ -345,9 +345,13 @@
       # nix run .#test-templates
       apps.test-templates = app [] ''
         for var in default master; do
+          printf -- 'run . (%s)\n' "$var"
           (cd templates/"$var"; nix run --override-input zig2nix ../.. .)
+          printf -- 'run .#bundle (%s)\n' "$var"
           (cd templates/"$var"; nix run --override-input zig2nix ../.. .#bundle)
+          printf -- 'run .#test (%s)\n' "$var"
           (cd templates/"$var"; nix run --override-input zig2nix ../.. .#test)
+          printf -- 'build . (%s)\n' "$var"
           (cd templates/"$var"; nix build --override-input zig2nix ../.. .; ./result/bin/"$var")
           rm -f templates/"$var"/result
           rm -rf templates/"$var"/zig-out
