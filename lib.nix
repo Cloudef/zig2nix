@@ -73,7 +73,11 @@ rec {
    zigTripleFromPlatform = p: let
       system = mkZigSystemFromString p.config;
    in {
-      darwin = "${system.zig.cpu}-${system.zig.kernel}.${p.darwinSdkVersion}-${system.zig.abi}";
+      darwin = let
+         sdkVer =
+            if (versionAtLeast p.darwinSdkVersion "10.13") then p.darwinSdkVersion
+            else warn "zig only supports macOS 10.13+, forcing darwinSdkVersion to 10.13" "10.13";
+      in "${system.zig.cpu}-${system.zig.kernel}.${sdkVer}-${system.zig.abi}";
    }.${system.kernel.name} or (zigTripleFromSystem system);
 
    # helper for resolving final target for building a package from derivation attrs
