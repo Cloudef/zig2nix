@@ -340,7 +340,7 @@
           fi
           echo "  ${drv.out}"
           '';
-      in app [] (concatStringsSep "\n" (map test drvs));
+      in app [ findutils coreutils ] (concatStringsSep "\n" (map test drvs));
 
       # nix run .#test-templates
       apps.test-templates = app [] ''
