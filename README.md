@@ -39,6 +39,29 @@ nix run github:Cloudef/zig2nix -- version
 nix develop github:Cloudef/zig2nix
 ```
 
+## Convert zon file to json
+
+```bash
+nix run .#zon2json -- build.zig.zon
+```
+
+## Convert build.zig.zon to a build.zig.zon2json-lock
+
+```bash
+nix run .#zon2json-lock -- build.zig.zon
+# alternatively output to stdout
+nix run .#zon2json-lock -- build.zig.zon -
+```
+
+## Convert build.zig.zon/2json-lock to a nix derivation
+
+```bash
+# calls zon2json-lock if build.zig.zon2json-lock does not exist (requires network access)
+nix run .#zon2nix -- build.zig.zon
+# alternatively run against the lock file (no network access required)
+nix run .#zon2nix -- build.zig.zon2json-lock
+```
+
 ## Crude documentation
 
 Below is auto-generated dump of important outputs in this flake.
@@ -202,13 +225,13 @@ devShells.x11 = devShells.zig-x11.default;
 #: Overlay for overriding Zig with specific version.
 overlays.zig = mapAttrs (k: v: (final: prev: {
   zig = v;
-  zon2json = outputs.packages.zon2json;
-  zon2nix = outputs.packages.zon2nix;
+  inherit (outputs.packages) zon2json zon2json-lock zon2nix;
 };
 
 #: mitchellh/zig-overlay compatible overlay.
 overlays.zig-overlay = final: prev: {
   zigpkgs = outputs.packages.${prev.system}.zig;
+  inherit (outputs.packages) zon2json zon2json-lock zon2nix;
 };
 
 #! Default overlay
