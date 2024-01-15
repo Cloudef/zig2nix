@@ -432,13 +432,13 @@
       #: Overlay for overriding Zig with specific version.
       overlays.zig = mapAttrs (k: v: (final: prev: {
         zig = v;
-        zon2json = outputs.packages.zon2json;
-        zon2nix = outputs.packages.zon2nix;
+        inherit (outputs.packages) zon2json zon2json-lock zon2nix;
       })) outputs.packages.${prev.system}.zig;
 
       #: mitchellh/zig-overlay compatible overlay.
       overlays.zig-overlay = final: prev: {
         zigpkgs = outputs.packages.${prev.system}.zig;
+        inherit (outputs.packages) zon2json zon2json-lock zon2nix;
       };
 
       #! Default overlay
