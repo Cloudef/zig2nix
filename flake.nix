@@ -322,16 +322,20 @@
         }) fixtures;
         test = drv: ''
           echo "testing (zon2nix): ${drv.lck}"
-          for d in ${drv.out}/*; do
-            test -d "$d" || error 'is not a directory: %s' "$d"
-            if [[ $(wc -l < <(find "$d/" -mindepth 1 -maxdepth 1 -type f)) == 0 ]]; then
-              error "does not contain any regular files: %s" "$d"
-            fi
-            zhash="$(basename "$d")"
-            if ! ${jq}/bin/jq -er --arg k "$zhash" '."\($k)"' ${./tools/fixtures/${drv.lck}} > /dev/null; then
-              error 'missing zhash: %s' "$zhash"
-            fi
-          done
+          if [[ -s "${./tools/fixtures/${drv.lck}}" ]]; then
+            for d in ${drv.out}/*; do
+              test -d "$d" || error 'is not a directory: %s' "$d"
+              if [[ $(wc -l < <(find "$d/" -mindepth 1 -maxdepth 1 -type f)) == 0 ]]; then
+                error "does not contain any regular files: %s" "$d"
+              fi
+              zhash="$(basename "$d")"
+              if ! ${jq}/bin/jq -er --arg k "$zhash" '."\($k)"' ${./tools/fixtures/${drv.lck}} > /dev/null; then
+                error 'missing zhash: %s' "$zhash"
+              fi
+            done
+          else
+            test "$(find ${drv.out}/ -mindepth 1 -maxdepth 1 | wc -l)" = 0 || error 'output not empty: %s' '${drv.out}'
+          fi
           echo "  ${drv.out}"
           '';
       in app [] (concatStringsSep "\n" (map test drvs));
