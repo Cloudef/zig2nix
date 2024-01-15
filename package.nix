@@ -32,18 +32,20 @@ let
   wrapper-args = zigWrapperArgs
     ++ optionals (length runtime.bins > 0) [ "--prefix" "PATH" ":" (makeBinPath runtime.bins) ]
     ++ optionals (length runtime.libs > 0) [ "--prefix" runtime.env.LIBRARY_PATH ":" (makeLibraryPath runtime.libs) ];
-  attrs = lib.optionalAttrs (pathExists zigBuildZon && !userAttrs ? name) {
+  attrs = optionalAttrs (pathExists zigBuildZon && !userAttrs ? name) {
     pname = zon.name;
-  } // lib.optionalAttrs (pathExists zigBuildZon && !userAttrs ? version) {
+  } // optionalAttrs (pathExists zigBuildZon && !userAttrs ? version) {
     version = zon.version;
   } // userAttrs;
-  default-flags = if lib.versionAtLeast zig.version "0.11" then
+  default-flags =
+    if versionAtLeast zig.version "0.11" then
       [ "-Doptimize=ReleaseSafe" ]
     else
       [ "-Drelease-safe=true" ];
+  default-target-flags = optionals (zigTarget == null) (runtime.env.defaultTargetFlags or []);
 in stdenvNoCC.mkDerivation (
   attrs // {
-    zigBuildFlags = (attrs.zigBuildFlags or default-flags) ++ [ "-Dtarget=${target}" ];
+    zigBuildFlags = (attrs.zigBuildFlags or default-flags) ++ [ "-Dtarget=${target}" ] ++ default-target-flags;
     nativeBuildInputs = [ zig.hook makeWrapper ]
       ++ (runtime.env.nativeBuildInputs or [])
       ++ (attrs.nativeBuildInputs or []);

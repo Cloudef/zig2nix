@@ -76,7 +76,7 @@ rec {
       darwin = let
          sdkVer =
             if (versionAtLeast p.darwinSdkVersion "10.13") then p.darwinSdkVersion
-            else warn "zig only supports macOS 10.13+, forcing darwinSdkVersion to 10.13" "10.13";
+            else warn "zig only supports macOS 10.13+, forcing SDK 11.0" "11.0";
       in "${system.zig.cpu}-${system.zig.kernel}.${sdkVer}-${system.zig.abi}";
    }.${system.kernel.name} or (zigTripleFromSystem system);
 

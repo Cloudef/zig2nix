@@ -79,32 +79,37 @@
         enableWayland ? false,
         # Enable X11 support.
         enableX11 ? false,
-      }: let
-        nlib = pkgs.lib;
-
+      }: with pkgs.lib; let
         #! --- Outputs of zig-env {} function.
         #!     access: (zig-env {}).thing
 
         # Solving platform specific spaghetti below
         runtimeForTarget = target: let
           system = zig2nix-lib.mkZigSystemFromString target;
+          double = systems.parse.doubleFromSystem system;
+          targetPkgs = nixpkgs.outputs.legacyPackages.${double};
           env = {
             linux = {
               LIBRARY_PATH = "LD_LIBRARY_PATH";
               nativeBuildInputs = [ pkgs.autoPatchelfHook ];
             };
-            darwin = {
+            darwin = let
+             sdk =
+                if (versionAtLeast targetPkgs.targetPlatform.darwinSdkVersion "10.13") then targetPkgs.darwin.apple_sdk.MacOSX-SDK
+                else warn "zig only supports macOS 10.13+, forcing SDK 11.0" targetPkgs.darwin.apple_sdk_11_0.MacOSX-SDK;
+            in {
               LIBRARY_PATH = "DYLD_LIBRARY_PATH";
+              defaultTargetFlags = [ "--sysroot" sdk ];
             };
           };
           libs = {
-            linux = with pkgs; []
-              ++ nlib.optionals (enableVulkan) [ vulkan-loader ]
-              ++ nlib.optionals (enableOpenGL) [ libGL ]
+            linux = with targetPkgs; []
+              ++ optionals (enableVulkan) [ vulkan-loader ]
+              ++ optionals (enableOpenGL) [ libGL ]
               # Some common runtime libs used by x11 apps, for example: https://www.glfw.org/docs/3.3/compat.html
               # You can always include more if you need with customRuntimeLibs.
-              ++ nlib.optionals (enableX11) [ xorg.libX11 xorg.libXext xorg.libXfixes xorg.libXi xorg.libXrender xorg.libXrandr ]
-              ++ nlib.optionals (enableWayland) [ wayland libxkbcommon libdecor ];
+              ++ optionals (enableX11) [ xorg.libX11 xorg.libXext xorg.libXfixes xorg.libXi xorg.libXrender xorg.libXrandr ]
+              ++ optionals (enableWayland) [ wayland libxkbcommon libdecor ];
           };
           bins = {};
         in {
@@ -115,7 +120,7 @@
 
         _linux_extra = let
           runtime = runtimeForTarget system;
-          ld_string = nlib.makeLibraryPath (runtime.libs ++ customRuntimeLibs);
+          ld_string = makeLibraryPath (runtime.libs ++ customRuntimeLibs);
         in ''
           export ZIG_BTRFS_WORKAROUND=1
           export ${runtime.env.LIBRARY_PATH}="${ld_string}:''${LD_LIBRARY_PATH:-}"
@@ -123,18 +128,18 @@
 
         _darwin_extra = let
           runtime = runtimeForTarget system;
-          ld_string = nlib.makeLibraryPath (runtime.libs ++ customRuntimeLibs);
+          ld_string = makeLibraryPath (runtime.libs ++ customRuntimeLibs);
         in ''
           export ${runtime.env.LIBRARY_PATH}="${ld_string}:''${DYLD_LIBRARY_PATH:-}"
         '';
 
         _deps = [ zig ] ++ customRuntimeDeps;
         _extraApp = customAppHook
-          + nlib.optionalString (pkgs.stdenv.isLinux) _linux_extra
-          + nlib.optionalString (pkgs.stdenv.isDarwin) _darwin_extra;
+          + optionalString (pkgs.stdenv.isLinux) _linux_extra
+          + optionalString (pkgs.stdenv.isDarwin) _darwin_extra;
         _extraShell = customDevShellHook
-          + nlib.optionalString (pkgs.stdenv.isLinux) _linux_extra
-          + nlib.optionalString (pkgs.stdenv.isDarwin) _darwin_extra;
+          + optionalString (pkgs.stdenv.isLinux) _linux_extra
+          + optionalString (pkgs.stdenv.isDarwin) _darwin_extra;
       in rec {
         #! Inherit given pkgs and zig version
         inherit pkgs zig zon2json zon2json-lock zon2nix zig-hook;
