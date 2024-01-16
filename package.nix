@@ -51,7 +51,8 @@ let
 in stdenvNoCC.mkDerivation (
   (removeAttrs attrs [ "stdenvNoCC" ]) // {
     zigBuildFlags = (attrs.zigBuildFlags or default-flags) ++ [ "-Dtarget=${target-triple}" ] ++ stdenv-flags;
-    nativeBuildInputs = [ zig.hook makeWrapper ]
+    nativeBuildInputs = [ zig.hook ]
+      ++ optionals (!zigDisableWrap) ([ makeWrapper ] ++ (runtime.env.wrapperBuildInputs or []))
       ++ (runtime.env.nativeBuildInputs or [])
       ++ (attrs.nativeBuildInputs or []);
     postPatch = optionalString (pathExists zigBuildZonLock) ''

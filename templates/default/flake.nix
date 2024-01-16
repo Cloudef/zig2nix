@@ -12,32 +12,37 @@
       # Check the flake.nix in zig2nix project for more options:
       # <https://github.com/Cloudef/zig2nix/blob/master/flake.nix>
       env = zig2nix.outputs.zig-env.${system} {};
+      doubles = env.pkgs.lib.systems.doubles.all ++ [ "aarch64-ios" ];
     in with builtins; with env.pkgs.lib; rec {
       # nix build .#target.{nix-target}
       # e.g. nix build .#target.x86_64-linux
-      packages.target = genAttrs systems.doubles.all (target: env.packageForTarget target ({
+      packages.target = genAttrs doubles (target: env.packageForTarget target ({
         src = ./.;
         nativeBuildInputs = with env.pkgs; [];
         buildInputs = with env.pkgsForTarget target; [];
+
+        # Smaller binaries and avoids shipping glibc.
+        zigPreferMusl = true;
+
+        # This disables LD_LIBRARY_PATH mangling, binary patching etc...
+        # The package won't be usable inside nix.
+        zigDisableWrap = true;
       } // optionalAttrs (!pathExists ./build.zig.zon) {
         pname = "my-zig-project";
         version = "0.0.0";
       }));
 
       # nix build .
-      packages.default = packages.target.${system};
+      packages.default = packages.target.${system}.override {
+        # Prefer nix friendly settings.
+        zigPreferMusl = false;
+        zigDisableWrap = false;
+      };
 
       # For bundling with nix bundle for running outside of nix
       # example: https://github.com/ralismark/nix-appimage
-      apps.bundle.target = genAttrs systems.doubles.all (target: let
-        pkg = packages.target.${target}.override {
-          # This disables LD_LIBRARY_PATH mangling.
-          # vulkan-loader, x11, wayland, etc... won't be included in the bundle.
-          zigDisableWrap = true;
-
-          # Smaller binaries and avoids shipping glibc.
-          zigPreferMusl = true;
-        };
+      apps.bundle.target = genAttrs doubles (target: let
+        pkg = packages.target.${target};
       in {
         type = "app";
         program = "${pkg}/bin/default";

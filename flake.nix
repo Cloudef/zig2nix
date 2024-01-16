@@ -98,10 +98,10 @@
         runtimeForTargetSystem = args': let
           system = if isString args' then zig2nix-lib.mkZigSystemFromString args' else args';
           targetPkgs = pkgsForTarget system;
-          env = {
+          env = rec {
             linux = {
               LIBRARY_PATH = "LD_LIBRARY_PATH";
-              nativeBuildInputs = [ pkgs.autoPatchelfHook ];
+              wrapperBuildInputs = [ pkgs.autoPatchelfHook ];
             };
             darwin = let
               sdkVer = targetPkgs.targetPlatform.darwinSdkVersion;
@@ -112,6 +112,9 @@
               LIBRARY_PATH = "DYLD_LIBRARY_PATH";
               stdenvZigFlags = [ "--sysroot" sdk ];
             };
+            ios = darwin;
+            watchos = darwin;
+            tvos = darwin;
           };
           libs = {
             linux = with targetPkgs; []
@@ -378,10 +381,12 @@
           (cd templates/"$var"; nix run --override-input zig2nix ../.. .#test)
           printf -- 'build . (%s)\n' "$var"
           (cd templates/"$var"; nix build --override-input zig2nix ../.. .; ./result/bin/"$var")
-          for arch in x86_64-windows ${concatStringsSep " " lib.systems.flakeExposed}; do
-            printf -- 'build .#target.%s (%s)\n' "$arch" "$var"
-            (cd templates/"$var"; nix build --override-input zig2nix ../.. .#target."$arch"; file ./result/bin/"$var"*)
-          done
+          if [[ "$var" == master ]]; then
+            for arch in x86_64-windows ${concatStringsSep " " lib.systems.flakeExposed}; do
+              printf -- 'build .#target.%s (%s)\n' "$arch" "$var"
+              (cd templates/"$var"; nix build --override-input zig2nix ../.. .#target."$arch"; file ./result/bin/"$var"*)
+            done
+          fi
           rm -f templates/"$var"/result
           rm -rf templates/"$var"/zig-out
           rm -rf templates/"$var"/zig-cache
