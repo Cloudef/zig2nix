@@ -30,7 +30,7 @@ let
         cp -r lib/* $out/lib
         install -Dm755  zig $out/bin/zig
         install -m644 LICENSE $out/LICENSE
-      '' + lib.optionalString (installDocs) ''
+      '' + optionalString (installDocs) ''
         mkdir -p $out/doc
         if [[ -d docs ]]; then
           cp -r docs $out/doc
@@ -51,7 +51,7 @@ let
         };
       };
 
-      meta = with lib; {
+      meta = {
         homepage = "https://ziglang.org/";
         description = "General-purpose programming language and toolchain for maintaining robust, optimal, and reusable software";
         license = licenses.mit;
