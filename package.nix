@@ -1,7 +1,8 @@
-{ zig, zon2nix, zig2nix-lib, runtimeForTargetSystem, stdenvNoCC, lib, runCommandLocal, makeWrapper, callPackage }:
+{ zig, zon2nix, zig2nix-lib, runtimeForTargetSystem, lib, runCommandLocal, makeWrapper, callPackage }:
 
 {
   src
+  , stdenvNoCC
   # Specify target for zig compiler, defaults to stdenv.targetPlatform.
   , zigTarget ? null
   # By default if zigTarget is specified, nixpkgs stdenv compatible environment is not used.
@@ -48,7 +49,7 @@ let
       [ "-Drelease-safe=true" ];
   stdenv-flags = optionals (zigInheritStdenv) (runtime.env.stdenvZigFlags or []);
 in stdenvNoCC.mkDerivation (
-  attrs // {
+  (removeAttrs attrs [ "stdenvNoCC" ]) // {
     zigBuildFlags = (attrs.zigBuildFlags or default-flags) ++ [ "-Dtarget=${target-triple}" ] ++ stdenv-flags;
     nativeBuildInputs = [ zig.hook makeWrapper ]
       ++ (runtime.env.nativeBuildInputs or [])

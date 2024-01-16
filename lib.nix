@@ -30,6 +30,10 @@ rec {
             "4" = elemAt parts 3;
          }.${toString (length parts)} or (throw "zig target string has invalid number of hyphen-separated components");
 
+         nixCpu = {
+            x86 = "i686";
+         }.${cpu} or cpu;
+
          nixKernel = {
             freestanding = "none";
          }.${versionlessKernel} or versionlessKernel;
@@ -39,7 +43,7 @@ rec {
          }.${abi} or abi;
 
          system = systems.parse.mkSystemFromSkeleton {
-            inherit cpu;
+            cpu = nixCpu;
             kernel = nixKernel;
             abi = nixAbi;
          };
@@ -51,6 +55,22 @@ rec {
       };
 
       nix = let
+         zigCpu = {
+            # TODO: zig probably should be aware of the variant
+            armv5tel = "arm";
+            armv6m = "arm";
+            armv6l = "arm";
+            armv7a = "arm";
+            armv7r = "arm";
+            armv7m = "arm";
+            armv7l = "arm";
+            armv8a = "arm";
+            armv8r = "arm";
+            armv8m = "arm";
+            i386 = "x86";
+            i686 = "x86";
+         }.${res.value.cpu.name} or res.value.cpu.name;
+
          zigKernel = {
             none = "freestanding";
             darwin = "macos";
@@ -61,7 +81,7 @@ rec {
          }.${res.value.abi.name} or res.value.abi.name;
       in res.value // {
          zig = {
-            cpu = res.value.cpu.name;
+            cpu = zigCpu;
             kernel = zigKernel;
             versionlessKernel = zigKernel;
             kernelVersion = null;

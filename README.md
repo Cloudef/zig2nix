@@ -72,7 +72,7 @@ Below is auto-generated dump of important outputs in this flake.
 #: Helper function for building and running Zig projects.
 zig-env = {
   # Overrideable nixpkgs.
-  pkgs ? _pkgs,
+  nixpkgs ? self.inputs.nixpkgs,
   # Zig version to use.
   zig ? zigv.default,
   # Additional runtime deps to inject into the helpers.
@@ -97,8 +97,12 @@ zig-env = {
 #! --- Outputs of zig-env {} function.
 #!     access: (zig-env {}).thing
 
+#! Returns pkgs from nixpkgs for target string or system.
+#! Useful for cross-compiling.
+pkgsForTarget = args': let
+
 #! Inherit given pkgs and zig version
-inherit pkgs zig zon2json zon2json-lock zon2nix zig-hook;
+inherit pkgs pkgsForTarget zig zon2json zon2json-lock zon2nix zig-hook;
 
 #! Tools for bridging zig and nix
 lib = zig2nix-lib;
@@ -131,25 +135,31 @@ shell = pkgs.mkShell {
   shellHook = _extraShell;
 };
 
-#: Packages zig project.
-#: NOTE: If your project has build.zig.zon you must first generate build.zig.zon2json-lock using zon2json-lock.
-#:       It is recommended to commit the build.zig.zon2json-lock to your repo.
-#:
-#: Additional attributes:
-#:    zigTarget: Specify target for zig compiler, defaults to stdenv.targetPlatform.
-#:    zigInheritStdenv:
-#:       By default if zigTarget is specified, nixpkgs stdenv compatible environment is not used.
-#:       Set this to true, if you want to specify zigTarget, but still use the derived stdenv compatible environment.
-#:    zigPreferMusl: Prefer musl libc without specifying the target.
-#:    zigDisableWrap: makeWrapper will not be used. Might be useful if distributing outside nix.
-#:    zigWrapperArgs: Additional arguments to makeWrapper.
-#:    zigBuildZon: Path to build.zig.zon file, defaults to build.zig.zon.
-#:    zigBuildZonLock: Path to build.zig.zon2json-lock file, defaults to build.zig.zon2json-lock.
-#:
-#: <https://github.com/NixOS/nixpkgs/blob/master/doc/hooks/zig.section.md>
-package = pkgs.callPackage (pkgs.callPackage ./package.nix {
+#: Package for specific target supported by nix.
+#: You can still compile to other platforms by using package and specifying zigTarget.
+#: When compiling to non-nix supported targets, you can't rely on pkgsForTarget, but rather have to provide all the pkgs yourself.
+#: NOTE: Even though target is supported by nix, cross-compiling to it might not be, in that case you should get an error.
+packageForTarget = target: (pkgsForTarget target).callPackage (pkgs.callPackage ./package.nix {
   inherit zig zon2nix zig2nix-lib runtimeForTargetSystem;
 };
+
+#! Packages zig project.
+#! NOTE: If your project has build.zig.zon you must first generate build.zig.zon2json-lock using zon2json-lock.
+#!       It is recommended to commit the build.zig.zon2json-lock to your repo.
+#!
+#! Additional attributes:
+#!    zigTarget: Specify target for zig compiler, defaults to stdenv.targetPlatform of given target.
+#!    zigInheritStdenv:
+#!       By default if zigTarget is specified, nixpkgs stdenv compatible environment is not used.
+#!       Set this to true, if you want to specify zigTarget, but still use the derived stdenv compatible environment.
+#!    zigPreferMusl: Prefer musl libc without specifying the target.
+#!    zigDisableWrap: makeWrapper will not be used. Might be useful if distributing outside nix.
+#!    zigWrapperArgs: Additional arguments to makeWrapper.
+#!    zigBuildZon: Path to build.zig.zon file, defaults to build.zig.zon.
+#!    zigBuildZonLock: Path to build.zig.zon2json-lock file, defaults to build.zig.zon2json-lock.
+#!
+#! <https://github.com/NixOS/nixpkgs/blob/master/doc/hooks/zig.section.md>
+package = packageForTarget system;
 
 #! --- Architecture dependent flake outputs.
 #!     access: `zig2nix.outputs.thing.${system}`

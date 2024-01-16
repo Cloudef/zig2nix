@@ -12,19 +12,25 @@
       # Check the flake.nix in zig2nix project for more options:
       # <https://github.com/Cloudef/zig2nix/blob/master/flake.nix>
       env = zig2nix.outputs.zig-env.${system} { zig = zig2nix.outputs.packages.${system}.zig.master; };
-    in rec {
-      # nix build .
-      packages.default = with env.pkgs.lib; env.package ({
+    in with builtins; with env.pkgs.lib; rec {
+      # nix build .#target.{nix-target}
+      # e.g. nix build .#target.x86_64-linux
+      packages.target = genAttrs systems.doubles.all (target: env.packageForTarget target ({
         src = ./.;
-      } // optionalAttrs (!builtins.pathExists ./build.zig.zon) {
+        nativeBuildInputs = with env.pkgs; [];
+        buildInputs = with env.pkgsForTarget target; [];
+      } // optionalAttrs (!pathExists ./build.zig.zon) {
         pname = "my-zig-project";
         version = "0.0.0";
-      });
+      }));
+
+      # nix build .
+      packages.default = packages.target.${system};
 
       # For bundling with nix bundle for running outside of nix
       # example: https://github.com/ralismark/nix-appimage
-      apps.bundle = let
-        pkg = packages.default.override {
+      apps.bundle.target = genAttrs systems.doubles.all (target: let
+        pkg = packages.target.${target}.override {
           # This disables LD_LIBRARY_PATH mangling.
           # vulkan-loader, x11, wayland, etc... won't be included in the bundle.
           zigDisableWrap = true;
@@ -35,10 +41,16 @@
       in {
         type = "app";
         program = "${pkg}/bin/master";
-      };
+      });
+
+      # default bundle
+      apps.bundle.default = apps.bundle.target.${system};
 
       # nix run .
       apps.default = env.app [] "zig build run -- \"$@\"";
+
+      # nix run .#build
+      apps.build = env.app [] "zig build \"$@\"";
 
       # nix run .#test
       apps.test = env.app [] "zig build test -- \"$@\"";
