@@ -18,6 +18,7 @@
       # e.g. nix build .#target.x86_64-linux
       packages.target = genAttrs doubles (target: env.packageForTarget target ({
         src = ./.;
+
         nativeBuildInputs = with env.pkgs; [];
         buildInputs = with env.pkgsForTarget target; [];
 
