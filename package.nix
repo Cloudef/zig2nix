@@ -30,31 +30,43 @@ let
     platform = stdenvNoCC.targetPlatform;
     musl = zigPreferMusl;
   };
+
   target-triple = zig2nix-lib.zigTripleFromSystem target-system;
+
   zon = zig2nix-lib.fromZON zigBuildZon;
   deps = runCommandLocal "deps" {} ''${zon2nix}/bin/zon2nix "${zigBuildZonLock}" > $out'';
+
   runtime = runtimeForTargetSystem target-system;
+
   wrapper-args = zigWrapperArgs
     ++ optionals (length runtime.bins > 0) [ "--prefix" "PATH" ":" (makeBinPath runtime.bins) ]
     ++ optionals (length runtime.libs > 0) [ "--prefix" runtime.env.LIBRARY_PATH ":" (makeLibraryPath runtime.libs) ];
+
   attrs = optionalAttrs (pathExists zigBuildZon && !userAttrs ? name) {
     pname = zon.name;
   } // optionalAttrs (pathExists zigBuildZon && !userAttrs ? version) {
     version = zon.version;
   } // userAttrs;
+
   default-flags =
     if versionAtLeast zig.version "0.11" then
       [ "-Doptimize=ReleaseSafe" ]
     else
       [ "-Drelease-safe=true" ];
+
   stdenv-flags = optionals (zigInheritStdenv) (runtime.env.stdenvZigFlags or []);
 in stdenvNoCC.mkDerivation (
   (removeAttrs attrs [ "stdenvNoCC" ]) // {
-    zigBuildFlags = (attrs.zigBuildFlags or default-flags) ++ [ "-Dtarget=${target-triple}" ] ++ stdenv-flags;
+    zigBuildFlags =
+      (attrs.zigBuildFlags or default-flags)
+      ++ [ "-Dtarget=${target-triple}" ]
+      ++ stdenv-flags;
+
     nativeBuildInputs = [ zig.hook ]
       ++ optionals (!zigDisableWrap) ([ makeWrapper ] ++ (runtime.env.wrapperBuildInputs or []))
       ++ (runtime.env.nativeBuildInputs or [])
       ++ (attrs.nativeBuildInputs or []);
+
     postPatch = optionalString (pathExists zigBuildZonLock) ''
       ln -s ${callPackage "${deps}" {
         inherit zig;
@@ -62,6 +74,7 @@ in stdenvNoCC.mkDerivation (
       }} "$ZIG_GLOBAL_CACHE_DIR"/p
       ${attrs.postPatch or ""}
       '';
+
     postFixup = optionalString (!zigDisableWrap && length wrapper-args > 0) ''
       for bin in $out/bin/*; do
         wrapProgram $bin ${concatStringsSep " " wrapper-args}
