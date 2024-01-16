@@ -14,10 +14,11 @@
 
       zig2nix-lib-base = pkgs.callPackage ./lib.nix {};
 
-      # Use our own zig hook, but reuse the setup-hook.sh.
+      # Use our own zig hook.
       # The nixpkgs one forces flags which can't be overridden.
       # Also -target is recommended over use of -Dcpu=baseline.
       # https://ziggit.dev/t/exe-files-not-interchangeable-among-identical-linux-systems/2708/6
+      # I would've reused the setup-hook.sh, but it breaks when cross-compiling.
       zig-hook = { makeSetupHook, zig }: makeSetupHook {
         name = "zig-hook";
         propagatedBuildInputs = [ zig ];
