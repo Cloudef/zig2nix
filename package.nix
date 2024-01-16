@@ -1,4 +1,4 @@
-{ zig, zon2nix, zig2nix-lib, runtimeForTarget, stdenvNoCC, lib, runCommandLocal, makeWrapper, callPackage }:
+{ zig, zon2nix, zig2nix-lib, runtimeForTargetSystem, stdenvNoCC, lib, runCommandLocal, makeWrapper, callPackage }:
 
 {
   src
@@ -21,14 +21,15 @@ with builtins;
 with lib;
 
 let
-  target = zig2nix-lib.resolveTarget {
-    zig = zigTarget;
+  target-system = zig2nix-lib.resolveTargetSystem {
+    target = zigTarget;
     platform = stdenvNoCC.targetPlatform;
     musl = zigPreferMusl;
   };
+  target-triple = zig2nix-lib.zigTripleFromSystem target-system;
   zon = zig2nix-lib.fromZON zigBuildZon;
   deps = runCommandLocal "deps" {} ''${zon2nix}/bin/zon2nix "${zigBuildZonLock}" > $out'';
-  runtime = runtimeForTarget target;
+  runtime = runtimeForTargetSystem target-system;
   wrapper-args = zigWrapperArgs
     ++ optionals (length runtime.bins > 0) [ "--prefix" "PATH" ":" (makeBinPath runtime.bins) ]
     ++ optionals (length runtime.libs > 0) [ "--prefix" runtime.env.LIBRARY_PATH ":" (makeLibraryPath runtime.libs) ];
@@ -45,7 +46,7 @@ let
   default-target-flags = optionals (zigTarget == null) (runtime.env.defaultTargetFlags or []);
 in stdenvNoCC.mkDerivation (
   attrs // {
-    zigBuildFlags = (attrs.zigBuildFlags or default-flags) ++ [ "-Dtarget=${target}" ] ++ default-target-flags;
+    zigBuildFlags = (attrs.zigBuildFlags or default-flags) ++ [ "-Dtarget=${target-triple}" ] ++ default-target-flags;
     nativeBuildInputs = [ zig.hook makeWrapper ]
       ++ (runtime.env.nativeBuildInputs or [])
       ++ (attrs.nativeBuildInputs or []);
