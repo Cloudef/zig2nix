@@ -4,6 +4,9 @@
   src
   # Specify target for zig compiler, defaults to stdenv.targetPlatform.
   , zigTarget ? null
+  # By default if zigTarget is specified, nixpkgs stdenv compatible environment is not used.
+  # Set this to true, if you want to specify zigTarget, but still use the derived stdenv compatible environment.
+  , zigInheritStdenv ? zigTarget == null
   # Prefer musl libc without specifying the target.
   , zigPreferMusl ? false
   # makeWrapper will not be used. Might be useful if distributing outside nix.
@@ -43,10 +46,10 @@ let
       [ "-Doptimize=ReleaseSafe" ]
     else
       [ "-Drelease-safe=true" ];
-  default-target-flags = optionals (zigTarget == null) (runtime.env.defaultTargetFlags or []);
+  stdenv-flags = optionals (zigInheritStdenv) (runtime.env.stdenvZigFlags or []);
 in stdenvNoCC.mkDerivation (
   attrs // {
-    zigBuildFlags = (attrs.zigBuildFlags or default-flags) ++ [ "-Dtarget=${target-triple}" ] ++ default-target-flags;
+    zigBuildFlags = (attrs.zigBuildFlags or default-flags) ++ [ "-Dtarget=${target-triple}" ] ++ stdenv-flags;
     nativeBuildInputs = [ zig.hook makeWrapper ]
       ++ (runtime.env.nativeBuildInputs or [])
       ++ (attrs.nativeBuildInputs or []);

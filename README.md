@@ -137,6 +137,9 @@ shell = pkgs.mkShell {
 #:
 #: Additional attributes:
 #:    zigTarget: Specify target for zig compiler, defaults to stdenv.targetPlatform.
+#:    zigInheritStdenv:
+#:       By default if zigTarget is specified, nixpkgs stdenv compatible environment is not used.
+#:       Set this to true, if you want to specify zigTarget, but still use the derived stdenv compatible environment.
 #:    zigPreferMusl: Prefer musl libc without specifying the target.
 #:    zigDisableWrap: makeWrapper will not be used. Might be useful if distributing outside nix.
 #:    zigWrapperArgs: Additional arguments to makeWrapper.
@@ -145,7 +148,7 @@ shell = pkgs.mkShell {
 #:
 #: <https://github.com/NixOS/nixpkgs/blob/master/doc/hooks/zig.section.md>
 package = pkgs.callPackage (pkgs.callPackage ./package.nix {
-  inherit zig zon2nix zig2nix-lib runtimeForTarget;
+  inherit zig zon2nix zig2nix-lib runtimeForTargetSystem;
 };
 
 #! --- Architecture dependent flake outputs.
