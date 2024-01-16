@@ -34,7 +34,7 @@
 
       # Converts zon files to json
       zon2json = let
-        target = zig2nix-lib.resolveTarget { nix = system; musl = true; };
+        target = zig2nix-lib.resolveTargetTriple { target = system; musl = true; };
       in _pkgs.callPackage tools/zon2json/default.nix {
         zig = zigv.master;
         zigBuildFlags = [ "-Dtarget=${target}" ];
@@ -84,8 +84,9 @@
         #!     access: (zig-env {}).thing
 
         # Solving platform specific spaghetti below
-        runtimeForTarget = target: let
-          system = zig2nix-lib.mkZigSystemFromString target;
+        # args' can be either target string or system
+        runtimeForTargetSystem = args': let
+          system = if isString args' then zig2nix-lib.mkZigSystemFromString args' else args';
           double = systems.parse.doubleFromSystem system;
           targetPkgs = nixpkgs.outputs.legacyPackages.${double};
           env = {
@@ -94,8 +95,9 @@
               nativeBuildInputs = [ pkgs.autoPatchelfHook ];
             };
             darwin = let
-             sdk =
-                if (versionAtLeast targetPkgs.targetPlatform.darwinSdkVersion "10.13") then targetPkgs.darwin.apple_sdk.MacOSX-SDK
+              sdkVer = targetPkgs.targetPlatform.darwinSdkVersion;
+              sdk =
+                if (versionAtLeast sdkVer "10.13") then targetPkgs.darwin.apple_sdk.MacOSX-SDK
                 else warn "zig only supports macOS 10.13+, forcing SDK 11.0" targetPkgs.darwin.apple_sdk_11_0.MacOSX-SDK;
             in {
               LIBRARY_PATH = "DYLD_LIBRARY_PATH";
@@ -119,7 +121,7 @@
         };
 
         _linux_extra = let
-          runtime = runtimeForTarget system;
+          runtime = runtimeForTargetSystem system;
           ld_string = makeLibraryPath (runtime.libs ++ customRuntimeLibs);
         in ''
           export ZIG_BTRFS_WORKAROUND=1
@@ -127,7 +129,7 @@
         '';
 
         _darwin_extra = let
-          runtime = runtimeForTarget system;
+          runtime = runtimeForTargetSystem system;
           ld_string = makeLibraryPath (runtime.libs ++ customRuntimeLibs);
         in ''
           export ${runtime.env.LIBRARY_PATH}="${ld_string}:''${DYLD_LIBRARY_PATH:-}"
@@ -199,7 +201,7 @@
         #:
         #: <https://github.com/NixOS/nixpkgs/blob/master/doc/hooks/zig.section.md>
         package = pkgs.callPackage (pkgs.callPackage ./package.nix {
-          inherit zig zon2nix zig2nix-lib runtimeForTarget;
+          inherit zig zon2nix zig2nix-lib runtimeForTargetSystem;
         });
       };
 
