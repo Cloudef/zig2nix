@@ -99,15 +99,15 @@ zig-env = {
 
 #! Returns crossPkgs from nixpkgs for target string or system.
 #! This will always cross-compile the package.
-pkgsForTarget = args': let
- target-system = if isString args' then zig2nix-lib.mkZigSystemFromString args' else args';
+pkgsForTarget = with zig2nix-lib; args': let
+ target-system = if isString args' then mkZigSystemFromString args' else args';
  crossPkgs = import nixpkgs { localSystem = system; crossSystem = { config = systems.parse.tripleFromSystem target-system; }; };
 in crossPkgs;
 
 #! Returns pkgs from nixpkgs for target string or system.
 #! This does not cross-compile and you'll get a error if package does not exist in binary cache.
-binaryPkgsForTarget = args': let
- target-system = if isString args' then zig2nix-lib.mkZigSystemFromString args' else args';
+binaryPkgsForTarget = with zig2nix-lib; args': let
+ target-system = if isString args' then mkZigSystemFromString args' else args';
  binaryPkgs = import nixpkgs { localSystem = { config = systems.parse.tripleFromSystem target-system; }; };
 in binaryPkgs;
 
@@ -139,28 +139,35 @@ app-bare = deps: script: app-bare-no-root deps ''
 
 #! Flake app helper (without root dir restriction).
 app-no-root = deps: script: app-bare-no-root (deps ++ _deps) ''
- ${_extraApp}
+ ${runtime.app}
  ${script}
 '';
 
 #! Flake app helper.
 app = deps: script: app-bare (deps ++ _deps) ''
- ${_extraApp}
+ ${runtime.app}
  ${script}
 '';
 
 #! Creates dev shell.
-shell = pkgs.mkShell {
- buildInputs = _deps;
- shellHook = _extraShell;
-};
+mkShell = pkgs.callPackage ({
+ nativeBuildInputs ? [],
+ ...
+ } @attrs: pkgs.mkShell (attrs // {
+ nativeBuildInputs = optionals (attrs ? nativeBuildInputs) attrs.nativeBuildInputs ++ _deps;
+ shellHook = ''
+  ${runtime.shell}
+  ${attrs.shellHook or ""}
+ '';
+}));
 
 #! Package for specific target supported by nix.
 #! You can still compile to other platforms by using package and specifying zigTarget.
 #! When compiling to non-nix supported targets, you can't rely on pkgsForTarget, but rather have to provide all the pkgs yourself.
 #! NOTE: Even though target is supported by nix, cross-compiling to it might not be, in that case you should get an error.
-packageForTarget = target: (pkgsForTarget target).callPackage (pkgs.callPackage ./package.nix {
- inherit zig zon2nix zig2nix-lib runtimeForTargetSystem;
+packageForTarget = target: (pkgsForTarget target).callPackage (pkgs.callPackage ./src/package.nix {
+ inherit zig runtimeForTargetSystem;
+ inherit (zig2nix-lib) resolveTargetSystem zigTripleFromSystem fromZON deriveLockFile;
 });
 
 #! Packages zig project.
@@ -275,18 +282,7 @@ overlays.default = overlays.zig.default;
 templates.default = rec {
  path = ./templates/default;
  description = "Default Zig project template";
- welcomeText = ''
-  # ${description}
-  - Zig: https://ziglang.org/
-  
-  ## Build & Run
-  
-  ---
-  nix run .
-  ---
-  
-  See flake.nix for more options.
- '';
+ welcomeText = welcome-template description;
 };
 
 #! Master project template
@@ -294,17 +290,6 @@ templates.default = rec {
 templates.master = rec {
  path = ./templates/master;
  description = "Master Zig project template";
- welcomeText = ''
-  # ${description}
-  - Zig: https://ziglang.org/
-  
-  ## Build & Run
-  
-  ---
-  nix run .
-  ---
-  
-  See flake.nix for more options.
- '';
+ welcomeText = welcome-template description;
 };
 ```
