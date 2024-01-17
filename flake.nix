@@ -421,7 +421,7 @@
     };
 
     #! Master project template
-    #! nix flake init -t templates
+    #! nix flake init -t templates#master
     templates.master = rec {
       path = ./templates/master;
       description = "Master Zig project template";
