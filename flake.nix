@@ -162,6 +162,11 @@
           '';
         }));
 
+        #! Print external dependencies of zig project
+        showExternalDeps = app-no-root [] ''
+          zig build --build-runner ${./src/build_runner.zig} "$@"
+          '';
+
         #! Package for specific target supported by nix.
         #! You can still compile to other platforms by using package and specifying zigTarget.
         #! When compiling to non-nix supported targets, you can't rely on pkgsForTarget, but rather have to provide all the pkgs yourself.
@@ -215,6 +220,11 @@
       #! Default zig package.
       #! Latest released zig.
       packages.default = zigv.default;
+
+      #! Print external dependencies of zig project
+      #! nix run#deps."zig-version"
+      #! example: nix run#deps.master
+      apps.deps = mapAttrs (k: v: (zig-env {zig = v;}).showExternalDeps) zigv;
 
       #! Run a version of a Zig compiler inside a `zig-env`.
       #! nix run#zig."zig-version"

@@ -64,6 +64,9 @@
       # nix run .#docs
       apps.docs = env.app [] "zig build docs -- \"$@\"";
 
+      # nix run .#deps
+      apps.deps = env.showExternalDeps;
+
       # nix run .#zon2json
       apps.zon2json = env.app [env.zon2json] "zon2json \"$@\"";
 
