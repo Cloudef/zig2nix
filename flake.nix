@@ -57,7 +57,7 @@
         fromZON = path: fromJSON (readFile (pkgs.runCommandLocal "readZon" {} ''${zon2json}/bin/zon2json "${path}" > "$out"''));
       };
 
-      #: Helper function for building and running Zig projects.
+      #:! Helper function for building and running Zig projects.
       zig-env = {
         # Overrideable nixpkgs.
         nixpkgs ? self.inputs.nixpkgs,
@@ -169,7 +169,7 @@
         #! Tools for bridging zig and nix
         lib = zig2nix-lib;
 
-        #: Flake app helper (Without zig-env and root dir restriction).
+        #! Flake app helper (Without zig-env and root dir restriction).
         app-bare-no-root = deps: script: {
           type = "app";
           program = toString (pkgs.writeShellApplication {
@@ -201,16 +201,16 @@
           ${script}
           '';
 
-        #: Creates dev shell.
+        #! Creates dev shell.
         shell = pkgs.mkShell {
           buildInputs = _deps;
           shellHook = _extraShell;
         };
 
-        #: Package for specific target supported by nix.
-        #: You can still compile to other platforms by using package and specifying zigTarget.
-        #: When compiling to non-nix supported targets, you can't rely on pkgsForTarget, but rather have to provide all the pkgs yourself.
-        #: NOTE: Even though target is supported by nix, cross-compiling to it might not be, in that case you should get an error.
+        #! Package for specific target supported by nix.
+        #! You can still compile to other platforms by using package and specifying zigTarget.
+        #! When compiling to non-nix supported targets, you can't rely on pkgsForTarget, but rather have to provide all the pkgs yourself.
+        #! NOTE: Even though target is supported by nix, cross-compiling to it might not be, in that case you should get an error.
         packageForTarget = target: (pkgsForTarget target).callPackage (pkgs.callPackage ./package.nix {
           inherit zig zon2nix zig2nix-lib runtimeForTargetSystem;
         });
@@ -482,7 +482,7 @@
       Below is auto-generated dump of important outputs in this flake.
 
       ```nix
-      $(awk -f doc.awk flake.nix | sed "s/```/---/g;s/\(app-bare.*\)${"''"}$/\1/")
+      $(awk -f doc.awk flake.nix | sed "s/```/---/g")
       ```
       EOF
       '');
@@ -504,13 +504,13 @@
       #! --- Generic flake outputs.
       #!     access: `zig2nix.outputs.thing`
 
-      #: Overlay for overriding Zig with specific version.
+      #! Overlay for overriding Zig with specific version.
       overlays.zig = mapAttrs (k: v: (final: prev: {
         zig = v;
         inherit (outputs.packages) zon2json zon2json-lock zon2nix;
       })) outputs.packages.${prev.system}.zig;
 
-      #: mitchellh/zig-overlay compatible overlay.
+      #! mitchellh/zig-overlay compatible overlay.
       overlays.zig-overlay = final: prev: {
         zigpkgs = outputs.packages.${prev.system}.zig;
         inherit (outputs.packages) zon2json zon2json-lock zon2nix;
@@ -519,8 +519,8 @@
       #! Default overlay
       overlays.default = overlays.zig.default;
 
-      #: Default project template
-      #: nix flake init -t templates
+      #! Default project template
+      #! nix flake init -t templates
       templates.default = rec {
         path = ./templates/default;
         description = "Default Zig project template";
@@ -538,8 +538,8 @@
           '';
       };
 
-      #: Master project template
-      #: nix flake init -t templates
+      #! Master project template
+      #! nix flake init -t templates
       templates.master = rec {
         path = ./templates/master;
         description = "Master Zig project template";

@@ -69,30 +69,30 @@ Below is auto-generated dump of important outputs in this flake.
 ```nix
 #! Structures.
 
-#: Helper function for building and running Zig projects.
+#:! Helper function for building and running Zig projects.
 zig-env = {
-  # Overrideable nixpkgs.
-  nixpkgs ? self.inputs.nixpkgs,
-  # Zig version to use.
-  zig ? zigv.default,
-  # Additional runtime deps to inject into the helpers.
-  customRuntimeDeps ? [],
-  # Additional runtime libs to inject to the helpers.
-  # Gets included in LD_LIBRARY_PATH and DYLD_LIBRARY_PATH.
-  customRuntimeLibs ? [],
-  # Custom prelude in the flake app helper.
-  customAppHook ? "",
-  # Custom prelude in the flake shell helper.
-  customDevShellHook ? "",
-  # Enable Vulkan support.
-  enableVulkan ? false,
-  # Enable OpenGL support.
-  enableOpenGL ? false,
-  # Enable Wayland support.
-  enableWayland ? false,
-  # Enable X11 support.
-  enableX11 ? false,
-}: {};
+ # Overrideable nixpkgs.
+ nixpkgs ? self.inputs.nixpkgs,
+ # Zig version to use.
+ zig ? zigv.default,
+ # Additional runtime deps to inject into the helpers.
+ customRuntimeDeps ? [],
+ # Additional runtime libs to inject to the helpers.
+ # Gets included in LD_LIBRARY_PATH and DYLD_LIBRARY_PATH.
+ customRuntimeLibs ? [],
+ # Custom prelude in the flake app helper.
+ customAppHook ? "",
+ # Custom prelude in the flake shell helper.
+ customDevShellHook ? "",
+ # Enable Vulkan support.
+ enableVulkan ? false,
+ # Enable OpenGL support.
+ enableOpenGL ? false,
+ # Enable Wayland support.
+ enableWayland ? false,
+ # Enable X11 support.
+ enableX11 ? false,
+}: { ... };
 
 #! --- Outputs of zig-env {} function.
 #!     access: (zig-env {}).thing
@@ -100,10 +100,16 @@ zig-env = {
 #! Returns crossPkgs from nixpkgs for target string or system.
 #! This will always cross-compile the package.
 pkgsForTarget = args': let
+ target-system = if isString args' then zig2nix-lib.mkZigSystemFromString args' else args';
+ crossPkgs = import nixpkgs { localSystem = system; crossSystem = { config = systems.parse.tripleFromSystem target-system; }; };
+in crossPkgs;
 
 #! Returns pkgs from nixpkgs for target string or system.
 #! This does not cross-compile and you'll get a error if package does not exist in binary cache.
 binaryPkgsForTarget = args': let
+ target-system = if isString args' then zig2nix-lib.mkZigSystemFromString args' else args';
+ binaryPkgs = import nixpkgs { localSystem = { config = systems.parse.tripleFromSystem target-system; }; };
+in binaryPkgs;
 
 #! Inherit given pkgs and zig version
 inherit pkgs pkgsForTarget binaryPkgsForTarget zig zon2json zon2json-lock zon2nix zig-hook;
@@ -111,41 +117,51 @@ inherit pkgs pkgsForTarget binaryPkgsForTarget zig zon2json zon2json-lock zon2ni
 #! Tools for bridging zig and nix
 lib = zig2nix-lib;
 
-#: Flake app helper (Without zig-env and root dir restriction).
+#! Flake app helper (Without zig-env and root dir restriction).
 app-bare-no-root = deps: script: {
-  type = "app";
-  program = toString (pkgs.writeShellApplication {
+ type = "app";
+ program = toString (pkgs.writeShellApplication {
   name = "app";
   runtimeInputs = [] ++ deps;
   text = ''
-  # shellcheck disable=SC2059
-  error() { printf -- "error: $1\n" "''${@:2}" 1>&2; exit 1; }
-  ${script}
+   # shellcheck disable=SC2059
+   error() { printf -- "error: $1\n" "''${@:2}" 1>&2; exit 1; }
+   ${script}
   '';
+ }) + "/bin/app";
 };
 
 #! Flake app helper (Without zig-env).
-app-bare = deps: script: app-bare-no-root deps 
+app-bare = deps: script: app-bare-no-root deps ''
+ [[ -f ./flake.nix ]] || error 'Run this from the project root'
+ ${script}
+'';
 
 #! Flake app helper (without root dir restriction).
-app-no-root = deps: script: app-bare-no-root (deps ++ _deps) 
+app-no-root = deps: script: app-bare-no-root (deps ++ _deps) ''
+ ${_extraApp}
+ ${script}
+'';
 
 #! Flake app helper.
-app = deps: script: app-bare (deps ++ _deps) 
+app = deps: script: app-bare (deps ++ _deps) ''
+ ${_extraApp}
+ ${script}
+'';
 
-#: Creates dev shell.
+#! Creates dev shell.
 shell = pkgs.mkShell {
-  buildInputs = _deps;
-  shellHook = _extraShell;
+ buildInputs = _deps;
+ shellHook = _extraShell;
 };
 
-#: Package for specific target supported by nix.
-#: You can still compile to other platforms by using package and specifying zigTarget.
-#: When compiling to non-nix supported targets, you can't rely on pkgsForTarget, but rather have to provide all the pkgs yourself.
-#: NOTE: Even though target is supported by nix, cross-compiling to it might not be, in that case you should get an error.
+#! Package for specific target supported by nix.
+#! You can still compile to other platforms by using package and specifying zigTarget.
+#! When compiling to non-nix supported targets, you can't rely on pkgsForTarget, but rather have to provide all the pkgs yourself.
+#! NOTE: Even though target is supported by nix, cross-compiling to it might not be, in that case you should get an error.
 packageForTarget = target: (pkgsForTarget target).callPackage (pkgs.callPackage ./package.nix {
-  inherit zig zon2nix zig2nix-lib runtimeForTargetSystem;
-};
+ inherit zig zon2nix zig2nix-lib runtimeForTargetSystem;
+});
 
 #! Packages zig project.
 #! NOTE: If your project has build.zig.zon you must first generate build.zig.zon2json-lock using zon2json-lock.
@@ -239,27 +255,27 @@ devShells.x11 = devShells.zig-x11.default;
 #! --- Generic flake outputs.
 #!     access: `zig2nix.outputs.thing`
 
-#: Overlay for overriding Zig with specific version.
+#! Overlay for overriding Zig with specific version.
 overlays.zig = mapAttrs (k: v: (final: prev: {
-  zig = v;
-  inherit (outputs.packages) zon2json zon2json-lock zon2nix;
-};
+ zig = v;
+ inherit (outputs.packages) zon2json zon2json-lock zon2nix;
+})) outputs.packages.${prev.system}.zig;
 
-#: mitchellh/zig-overlay compatible overlay.
+#! mitchellh/zig-overlay compatible overlay.
 overlays.zig-overlay = final: prev: {
-  zigpkgs = outputs.packages.${prev.system}.zig;
-  inherit (outputs.packages) zon2json zon2json-lock zon2nix;
+ zigpkgs = outputs.packages.${prev.system}.zig;
+ inherit (outputs.packages) zon2json zon2json-lock zon2nix;
 };
 
 #! Default overlay
 overlays.default = overlays.zig.default;
 
-#: Default project template
-#: nix flake init -t templates
+#! Default project template
+#! nix flake init -t templates
 templates.default = rec {
-  path = ./templates/default;
-  description = "Default Zig project template";
-  welcomeText = ''
+ path = ./templates/default;
+ description = "Default Zig project template";
+ welcomeText = ''
   # ${description}
   - Zig: https://ziglang.org/
   
@@ -270,15 +286,15 @@ templates.default = rec {
   ---
   
   See flake.nix for more options.
-  '';
+ '';
 };
 
-#: Master project template
-#: nix flake init -t templates
+#! Master project template
+#! nix flake init -t templates
 templates.master = rec {
-  path = ./templates/master;
-  description = "Master Zig project template";
-  welcomeText = ''
+ path = ./templates/master;
+ description = "Master Zig project template";
+ welcomeText = ''
   # ${description}
   - Zig: https://ziglang.org/
   
@@ -289,6 +305,6 @@ templates.master = rec {
   ---
   
   See flake.nix for more options.
-  '';
+ '';
 };
 ```

@@ -1,42 +1,54 @@
-/#!/ {
-    gsub(/^[ \t]+/, "", $0)
-    print($0);
-    P = 1;
-    next;
+IN_SCRIPT == 0 && /#!/ {
+    PRINT = 1;
+    if (SCOLON > 0) {
+        print("");
+        SCOLON = 0;
+        INDENT = 0;
+    }
 }
 
-P == 1 {
-    gsub(/^[ \t]+/, "", $0)
+IN_SCRIPT == 0 && /#:!/ {
+    PRINT = 1;
+    COLON = 1;
+}
+
+IN_SCRIPT == 0 && COLON == 1 && /}:/ {
+    PRINT = 0;
+    COLON = 0;
+    SCOLON = 0;
+    INDENT = 0;
+    print("}: { ... };\n");
+}
+
+{ COMMENT = 0 };
+
+/#/ { COMMENT = 1 };
+
+PRINT == 1 && COMMENT == 0 && IN_SCRIPT == 0 && /(=|with|inherit)/ { SCOLON += 1; }
+
+INDENT > 0 && COMMENT == 0 && IN_SCRIPT == 0 && /}[);: ]+/ && ! /[ ]+{/ { INDENT -= 1; }
+INDENT > 0 && COMMENT == 0 && IN_SCRIPT == 0 && /^[ ]*in[ ]+/ { INDENT -= 1; }
+SCOLON > 0 && COMMENT == 0 && IN_SCRIPT == 1 && /'';/ { INDENT -= 1; IN_SCRIPT = 0; }
+
+PRINT == 1 {
+    gsub(/^[ \t]+/, "", $0);
+    for (i = 0; i < INDENT; i++) printf(" ");
     print($0);
-    if (length($0) > 0) {
+}
+
+SCOLON > 0 && COMMENT == 0 && IN_SCRIPT == 0 && /[ ]+{/ && ! /}[);: ]+/ { INDENT += 1; }A
+SCOLON > 0 && COMMENT == 0 && IN_SCRIPT == 0 && /[ ]+let/ { INDENT += 1; }
+SCOLON > 0 && COMMENT == 0 && IN_SCRIPT == 0 && /''$/ { INDENT += 1; IN_SCRIPT = 1; }
+
+SCOLON > 0 && COMMENT == 0 && IN_SCRIPT == 0 && /;/ {
+    SCOLON -= 1;
+    if (SCOLON == 0) {
+        PRINT = 0;
+        INDENT = 0;
         print("");
     }
-    P = 0;
 }
 
-/#:/ {
-    PP = 1;
+PRINT == 1 && SCOLON == 0 && IN_SCRIPT == 0 && /^\s*$/ {
+    PRINT = 0;
 }
-
-PP == 1 && /^[ \t]*}.*[:;]/ {
-    gsub(/^[ \t]+/, "", $0);
-    if (substr($0, 0, 2) == "}:") {
-        print("}: {};\n");
-    } else {
-        print("};\n");
-    }
-    PP = 0
-    INDENT -= (INDENT > 0);
-}
-
-PP == 1 {
-    gsub(/^[ \t]+/, "", $0);
-    if (INDENT) {
-        print(" ", $0);
-    } else {
-        print($0);
-    }
-}
-
-PP == 1 && /{/ { INDENT += 1; }
-INDENT > 0 && /}/ { INDENT -= 1; }
