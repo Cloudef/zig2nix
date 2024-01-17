@@ -18,5 +18,5 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
       - run: |
           nix run .#update-templates
-          nix run .#test
+          nix run .#test.all
           nix run .#readme

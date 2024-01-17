@@ -12,7 +12,7 @@
 
       #! Structures.
 
-      zig2nix-lib-base = pkgs.callPackage ./lib.nix {};
+      zig2nix-lib-base = pkgs.callPackage ./src/lib.nix {};
 
       # Use our own zig hook.
       # The nixpkgs one forces flags which can't be overridden.
@@ -24,18 +24,18 @@
         propagatedBuildInputs = [ zig ];
         substitutions.zig_default_flags = [];
         passthru = { inherit zig; };
-      } ./setup-hook.sh;
+      } ./src/setup-hook.sh;
 
       # Zig versions.
       # <https://ziglang.org/download/index.json>
-      zigv = pkgs.callPackage ./versions.nix {
-        zigSystem = zig2nix-lib.zigDoubleFromString system;
+      zigv = with zig2nix-lib-base; pkgs.callPackage ./versions.nix {
+        zigSystem = zigDoubleFromString system;
         zigHook = zig-hook;
       };
 
       # Converts zon files to json
-      zon2json = let
-        target = zig2nix-lib.resolveTargetTriple { target = system; musl = true; };
+      zon2json = with zig2nix-lib-base; let
+        target = resolveTargetTriple { target = system; musl = true; };
       in pkgs.callPackage tools/zon2json/default.nix {
         zig = zigv.master;
         zigBuildFlags = [ "-Dtarget=${target}" ];
@@ -53,8 +53,9 @@
       };
 
       # Tools for bridging zig and nix
-      zig2nix-lib = zig2nix-lib-base // {
-        fromZON = path: fromJSON (readFile (pkgs.runCommandLocal "readZon" {} ''${zon2json}/bin/zon2json "${path}" > "$out"''));
+      zig2nix-lib = with pkgs; zig2nix-lib-base // {
+        fromZON = path: fromJSON (readFile (runCommandLocal "fromZON" {} ''${zon2json}/bin/zon2json "${path}" > "$out"''));
+        deriveLockFile = path: callPackage (runCommandLocal "deriveLockFile" {} ''${zon2nix}/bin/zon2nix ${path} > $out'');
       };
 
       #:! Helper function for building and running Zig projects.
@@ -89,83 +90,27 @@
 
         #! Returns crossPkgs from nixpkgs for target string or system.
         #! This will always cross-compile the package.
-        pkgsForTarget = args': let
-          target-system = if isString args' then zig2nix-lib.mkZigSystemFromString args' else args';
+        pkgsForTarget = with zig2nix-lib; args': let
+          target-system = if isString args' then mkZigSystemFromString args' else args';
           crossPkgs = import nixpkgs { localSystem = system; crossSystem = { config = systems.parse.tripleFromSystem target-system; }; };
         in crossPkgs;
 
         #! Returns pkgs from nixpkgs for target string or system.
         #! This does not cross-compile and you'll get a error if package does not exist in binary cache.
-        binaryPkgsForTarget = args': let
-          target-system = if isString args' then zig2nix-lib.mkZigSystemFromString args' else args';
+        binaryPkgsForTarget = with zig2nix-lib; args': let
+          target-system = if isString args' then mkZigSystemFromString args' else args';
           binaryPkgs = import nixpkgs { localSystem = { config = systems.parse.tripleFromSystem target-system; }; };
         in binaryPkgs;
 
-        # Solving platform specific spaghetti below
-        # args' can be either target string or system
-        runtimeForTargetSystem = args': let
-          system = if isString args' then zig2nix-lib.mkZigSystemFromString args' else args';
-          targetPkgs = pkgsForTarget system;
-          env = rec {
-            linux = {
-              LIBRARY_PATH = "LD_LIBRARY_PATH";
-              wrapperBuildInputs = [ pkgs.autoPatchelfHook ];
-            };
-            darwin = let
-              sdkVer = targetPkgs.targetPlatform.darwinSdkVersion;
-              sdk =
-                if (versionAtLeast sdkVer "10.13") then targetPkgs.darwin.apple_sdk.MacOSX-SDK
-                else warn "zig only supports macOS 10.13+, forcing SDK 11.0" targetPkgs.darwin.apple_sdk_11_0.MacOSX-SDK;
-            in {
-              LIBRARY_PATH = "DYLD_LIBRARY_PATH";
-              stdenvZigFlags = [ "--sysroot" sdk ];
-            };
-            ios = darwin;
-            watchos = darwin;
-            tvos = darwin;
-          };
-          libs = {
-            linux = with targetPkgs; []
-              ++ optionals (enableVulkan) [ vulkan-loader ]
-              ++ optionals (enableOpenGL) [ libGL ]
-              # Some common runtime libs used by x11 apps, for example: https://www.glfw.org/docs/3.3/compat.html
-              # You can always include more if you need with customRuntimeLibs.
-              ++ optionals (enableX11) [ xorg.libX11 xorg.libXext xorg.libXfixes xorg.libXi xorg.libXrender xorg.libXrandr ]
-              ++ optionals (enableWayland) [ wayland libxkbcommon libdecor ];
-          };
-          bins = {};
-        in {
-          env = env.${system.kernel.name} or {};
-          libs = libs.${system.kernel.name} or [];
-          bins = bins.${system.kernel.name} or [];
+        # Solving platform specific spaghetti
+        runtimeForTargetSystem = pkgs.callPackage ./src/runtime.nix {
+          inherit (zig2nix-lib) mkZigSystemFromString;
+          inherit binaryPkgsForTarget customAppHook customDevShellHook customRuntimeLibs;
+          inherit enableVulkan enableOpenGL enableWayland enableX11;
         };
 
-        _linux_extra = let
-          runtime = runtimeForTargetSystem system;
-          ld_string = makeLibraryPath (runtime.libs ++ customRuntimeLibs);
-          pc_string = makeSearchPathOutput "dev" "lib/pkgconfig" (runtime.libs ++ customRuntimeLibs);
-        in ''
-          export ZIG_BTRFS_WORKAROUND=1
-          export ${runtime.env.LIBRARY_PATH}="${ld_string}:''${LD_LIBRARY_PATH:-}"
-          export PKG_CONFIG_PATH="${pc_string}:''${PKG_CONFIG_PATH:-}"
-        '';
-
-        _darwin_extra = let
-          runtime = runtimeForTargetSystem system;
-          ld_string = makeLibraryPath (runtime.libs ++ customRuntimeLibs);
-          pc_string = makeSearchPathOutput "dev" "lib/pkgconfig" (runtime.libs ++ customRuntimeLibs);
-        in ''
-          export ${runtime.env.LIBRARY_PATH}="${ld_string}:''${DYLD_LIBRARY_PATH:-}"
-          export PKG_CONFIG_PATH="${pc_string}:''${PKG_CONFIG_PATH:-}"
-        '';
-
+        runtime = runtimeForTargetSystem system;
         _deps = [ zig ] ++ customRuntimeDeps;
-        _extraApp = customAppHook
-          + optionalString (pkgs.stdenv.isLinux) _linux_extra
-          + optionalString (pkgs.stdenv.isDarwin) _darwin_extra;
-        _extraShell = customDevShellHook
-          + optionalString (pkgs.stdenv.isLinux) _linux_extra
-          + optionalString (pkgs.stdenv.isDarwin) _darwin_extra;
       in rec {
         #! Inherit given pkgs and zig version
         inherit pkgs pkgsForTarget binaryPkgsForTarget zig zon2json zon2json-lock zon2nix zig-hook;
@@ -195,13 +140,13 @@
 
         #! Flake app helper (without root dir restriction).
         app-no-root = deps: script: app-bare-no-root (deps ++ _deps) ''
-          ${_extraApp}
+          ${runtime.app}
           ${script}
           '';
 
         #! Flake app helper.
         app = deps: script: app-bare (deps ++ _deps) ''
-          ${_extraApp}
+          ${runtime.app}
           ${script}
           '';
 
@@ -212,7 +157,7 @@
         } @attrs: pkgs.mkShell (attrs // {
           nativeBuildInputs = optionals (attrs ? nativeBuildInputs) attrs.nativeBuildInputs ++ _deps;
           shellHook = ''
-            ${_extraShell}
+            ${runtime.shell}
             ${attrs.shellHook or ""}
           '';
         }));
@@ -221,8 +166,9 @@
         #! You can still compile to other platforms by using package and specifying zigTarget.
         #! When compiling to non-nix supported targets, you can't rely on pkgsForTarget, but rather have to provide all the pkgs yourself.
         #! NOTE: Even though target is supported by nix, cross-compiling to it might not be, in that case you should get an error.
-        packageForTarget = target: (pkgsForTarget target).callPackage (pkgs.callPackage ./package.nix {
-          inherit zig zon2nix zig2nix-lib runtimeForTargetSystem;
+        packageForTarget = target: (pkgsForTarget target).callPackage (pkgs.callPackage ./src/package.nix {
+          inherit zig runtimeForTargetSystem;
+          inherit (zig2nix-lib) resolveTargetSystem zigTripleFromSystem fromZON deriveLockFile;
         });
 
         #! Packages zig project.
@@ -245,7 +191,7 @@
       };
 
       # Default zig env used by this flake
-      env = zig-env {};
+      env = zig-env { zig = zigv.master; };
       app = env.app-bare;
     in rec {
       #! --- Architecture dependent flake outputs.
@@ -348,75 +294,12 @@
         (cd templates/master; ${packages.zig.master}/bin/zig init)
         '';
 
-      # nix run .#test-zon2json-lock
-      apps.test-zon2json-lock = app [ zon2json-lock ] ''
-        nix store add-file tools/fixtures/file-url-test.tar.gz
-        for f in tools/fixtures/*.zig.zon; do
-          echo "testing (zon2json-lock): $f"
-          if ! cmp <(zon2json-lock "$f" -) "''${f}2json-lock"; then
-            error "unexpected output"
-          fi
-        done
-        '';
-
-      # nix run .#test-zon2nix
-      apps.test-zon2nix = with env.pkgs; with env.pkgs.lib; let
-        fixtures = filter (f: hasSuffix ".zig.zon2json-lock" f) (attrNames (readDir ./tools/fixtures));
-        drvs = map (f: {
-          lck = f;
-          out = callPackage (runCommandLocal "deps" {} ''${zon2nix}/bin/zon2nix ${./tools/fixtures/${f}} > $out'') {
-            zig = zigv.master;
-          };
-        }) fixtures;
-        test = drv: ''
-          echo "testing (zon2nix): ${drv.lck}"
-          if [[ -s "${./tools/fixtures/${drv.lck}}" ]]; then
-            for d in ${drv.out}/*; do
-              test -d "$d" || error 'is not a directory: %s' "$d"
-              if [[ $(wc -l < <(find "$d/" -mindepth 1 -maxdepth 1 -type f)) == 0 ]]; then
-                error "does not contain any regular files: %s" "$d"
-              fi
-              zhash="$(basename "$d")"
-              if ! ${jq}/bin/jq -er --arg k "$zhash" '."\($k)"' ${./tools/fixtures/${drv.lck}} > /dev/null; then
-                error 'missing zhash: %s' "$zhash"
-              fi
-            done
-          else
-            test "$(find ${drv.out}/ -mindepth 1 -maxdepth 1 | wc -l)" = 0 || error 'output not empty: %s' '${drv.out}'
-          fi
-          echo "  ${drv.out}"
-          '';
-      in app [ findutils coreutils ] (concatStringsSep "\n" (map test drvs));
-
-      # nix run .#test-templates
-      apps.test-templates = with env.pkgs; app [ file ] ''
-        for var in default master; do
-          printf -- 'run . (%s)\n' "$var"
-          (cd templates/"$var"; nix run --override-input zig2nix ../.. .)
-          printf -- 'run .#bundle.default (%s)\n' "$var"
-          (cd templates/"$var"; nix run --override-input zig2nix ../.. .#bundle.default)
-          printf -- 'run .#test (%s)\n' "$var"
-          (cd templates/"$var"; nix run --override-input zig2nix ../.. .#test)
-          printf -- 'build . (%s)\n' "$var"
-          (cd templates/"$var"; nix build --override-input zig2nix ../.. .; ./result/bin/"$var")
-          if [[ "$var" == master ]]; then
-            for arch in x86_64-windows ${concatStringsSep " " lib.systems.flakeExposed}; do
-              printf -- 'build .#target.%s (%s)\n' "$arch" "$var"
-              (cd templates/"$var"; nix build --override-input zig2nix ../.. .#target."$arch"; file ./result/bin/"$var"*)
-            done
-          fi
-          rm -f templates/"$var"/result
-          rm -rf templates/"$var"/zig-out
-          rm -rf templates/"$var"/zig-cache
-        done
-        '';
-
-      # nix run .#test
-      apps.test = app [] ''
-        nix run .#test-zon2json-lock
-        nix run .#test-zon2nix
-        nix run .#test-templates
-        '';
+      apps.test = env.pkgs.callPackage src/test.nix {
+        inherit app zon2json-lock;
+        inherit (zig2nix-lib) deriveLockFile;
+        inherit (env) zig;
+        envPackage = env.package;
+      };
 
       # nix run .#readme
       apps.readme = let
@@ -496,75 +379,53 @@
       ```
       EOF
       '');
-
-      # for env.package testing
-      packages.test = env.package { src = ./tools/zon2json; };
-
-      # for debugging
-      apps.repl = flake-utils.lib.mkApp {
-        drv = env.pkgs.writeShellScriptBin "repl" ''
-          confnix=$(mktemp)
-          echo "builtins.getFlake (toString $(git rev-parse --show-toplevel))" >$confnix
-          trap "rm $confnix" EXIT
-          nix repl $confnix
-          '';
-      };
     }));
+
+    welcome-template = description: ''
+      # ${description}
+      - Zig: https://ziglang.org/
+
+      ## Build & Run
+
+      ```
+      nix run .
+      ```
+
+      See flake.nix for more options.
+      '';
   in outputs // rec {
-      #! --- Generic flake outputs.
-      #!     access: `zig2nix.outputs.thing`
+    #! --- Generic flake outputs.
+    #!     access: `zig2nix.outputs.thing`
 
-      #! Overlay for overriding Zig with specific version.
-      overlays.zig = mapAttrs (k: v: (final: prev: {
-        zig = v;
-        inherit (outputs.packages) zon2json zon2json-lock zon2nix;
-      })) outputs.packages.${prev.system}.zig;
+    #! Overlay for overriding Zig with specific version.
+    overlays.zig = mapAttrs (k: v: (final: prev: {
+      zig = v;
+      inherit (outputs.packages) zon2json zon2json-lock zon2nix;
+    })) outputs.packages.${prev.system}.zig;
 
-      #! mitchellh/zig-overlay compatible overlay.
-      overlays.zig-overlay = final: prev: {
-        zigpkgs = outputs.packages.${prev.system}.zig;
-        inherit (outputs.packages) zon2json zon2json-lock zon2nix;
-      };
-
-      #! Default overlay
-      overlays.default = overlays.zig.default;
-
-      #! Default project template
-      #! nix flake init -t templates
-      templates.default = rec {
-        path = ./templates/default;
-        description = "Default Zig project template";
-        welcomeText = ''
-          # ${description}
-          - Zig: https://ziglang.org/
-
-          ## Build & Run
-
-          ```
-          nix run .
-          ```
-
-          See flake.nix for more options.
-          '';
-      };
-
-      #! Master project template
-      #! nix flake init -t templates
-      templates.master = rec {
-        path = ./templates/master;
-        description = "Master Zig project template";
-        welcomeText = ''
-          # ${description}
-          - Zig: https://ziglang.org/
-
-          ## Build & Run
-
-          ```
-          nix run .
-          ```
-
-          See flake.nix for more options.
-          '';
-      };
+    #! mitchellh/zig-overlay compatible overlay.
+    overlays.zig-overlay = final: prev: {
+      zigpkgs = outputs.packages.${prev.system}.zig;
+      inherit (outputs.packages) zon2json zon2json-lock zon2nix;
     };
+
+    #! Default overlay
+    overlays.default = overlays.zig.default;
+
+    #! Default project template
+    #! nix flake init -t templates
+    templates.default = rec {
+      path = ./templates/default;
+      description = "Default Zig project template";
+      welcomeText = welcome-template description;
+    };
+
+    #! Master project template
+    #! nix flake init -t templates
+    templates.master = rec {
+      path = ./templates/master;
+      description = "Master Zig project template";
+      welcomeText = welcome-template description;
+    };
+  };
 }

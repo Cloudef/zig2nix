@@ -1,4 +1,15 @@
-{ zig, zon2nix, zig2nix-lib, runtimeForTargetSystem, lib, runCommandLocal, makeWrapper, callPackage }:
+{
+  lib
+  , zig
+  , resolveTargetSystem
+  , zigTripleFromSystem
+  , fromZON
+  , deriveLockFile
+  , runtimeForTargetSystem
+  , runCommandLocal
+  , makeWrapper
+  , callPackage
+}:
 
 {
   src
@@ -25,17 +36,14 @@ with builtins;
 with lib;
 
 let
-  target-system = zig2nix-lib.resolveTargetSystem {
+  target-system = resolveTargetSystem {
     target = zigTarget;
     platform = stdenvNoCC.targetPlatform;
     musl = zigPreferMusl;
   };
 
-  target-triple = zig2nix-lib.zigTripleFromSystem target-system;
-
-  zon = zig2nix-lib.fromZON zigBuildZon;
-  deps = runCommandLocal "deps" {} ''${zon2nix}/bin/zon2nix "${zigBuildZonLock}" > $out'';
-
+  target-triple = zigTripleFromSystem target-system;
+  zon = fromZON zigBuildZon;
   runtime = runtimeForTargetSystem target-system;
 
   wrapper-args = zigWrapperArgs
@@ -47,6 +55,11 @@ let
   } // optionalAttrs (pathExists zigBuildZon && !userAttrs ? version) {
     version = zon.version;
   } // userAttrs;
+
+  deps = deriveLockFile zigBuildZonLock {
+    inherit zig;
+    name = "${attrs.pname or attrs.name}-dependencies";
+  };
 
   default-flags =
     if versionAtLeast zig.version "0.11" then
@@ -68,10 +81,7 @@ in stdenvNoCC.mkDerivation (
       ++ (attrs.nativeBuildInputs or []);
 
     postPatch = optionalString (pathExists zigBuildZonLock) ''
-      ln -s ${callPackage "${deps}" {
-        inherit zig;
-        name = "${attrs.pname or attrs.name}-dependencies";
-      }} "$ZIG_GLOBAL_CACHE_DIR"/p
+      ln -s ${deps} "$ZIG_GLOBAL_CACHE_DIR"/p
       ${attrs.postPatch or ""}
       '';
 
