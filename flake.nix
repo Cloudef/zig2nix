@@ -202,10 +202,16 @@
           '';
 
         #! Creates dev shell.
-        shell = pkgs.mkShell {
-          buildInputs = _deps;
-          shellHook = _extraShell;
-        };
+        mkShell = pkgs.callPackage ({
+          nativeBuildInputs ? [],
+          ...
+        } @attrs: pkgs.mkShell (attrs // {
+          nativeBuildInputs = optionals (attrs ? nativeBuildInputs) attrs.nativeBuildInputs ++ _deps;
+          shellHook = ''
+            ${_extraShell}
+            ${attrs.shellHook or ""}
+          '';
+        }));
 
         #! Package for specific target supported by nix.
         #! You can still compile to other platforms by using package and specifying zigTarget.

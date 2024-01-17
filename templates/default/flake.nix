@@ -74,6 +74,6 @@
       apps.zon2nix = env.app [env.zon2nix] "zon2nix \"$@\"";
 
       # nix develop
-      devShells.default = env.shell;
+      devShells.default = env.mkShell {};
     }));
 }
