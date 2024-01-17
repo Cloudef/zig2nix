@@ -143,16 +143,20 @@
         _linux_extra = let
           runtime = runtimeForTargetSystem system;
           ld_string = makeLibraryPath (runtime.libs ++ customRuntimeLibs);
+          pc_string = makeSearchPathOutput "dev" "lib/pkgconfig" (runtime.libs ++ customRuntimeLibs);
         in ''
           export ZIG_BTRFS_WORKAROUND=1
           export ${runtime.env.LIBRARY_PATH}="${ld_string}:''${LD_LIBRARY_PATH:-}"
+          export PKG_CONFIG_PATH="${pc_string}:''${PKG_CONFIG_PATH:-}"
         '';
 
         _darwin_extra = let
           runtime = runtimeForTargetSystem system;
           ld_string = makeLibraryPath (runtime.libs ++ customRuntimeLibs);
+          pc_string = makeSearchPathOutput "dev" "lib/pkgconfig" (runtime.libs ++ customRuntimeLibs);
         in ''
           export ${runtime.env.LIBRARY_PATH}="${ld_string}:''${DYLD_LIBRARY_PATH:-}"
+          export PKG_CONFIG_PATH="${pc_string}:''${PKG_CONFIG_PATH:-}"
         '';
 
         _deps = [ zig ] ++ customRuntimeDeps;
