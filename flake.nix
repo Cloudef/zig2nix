@@ -87,12 +87,19 @@
         # Use provided nixpkgs in here.
         pkgs = nixpkgs.outputs.legacyPackages.${system};
 
-        #! Returns pkgs from nixpkgs for target string or system.
-        #! Useful for cross-compiling.
+        #! Returns crossPkgs from nixpkgs for target string or system.
+        #! This will always cross-compile the package.
         pkgsForTarget = args': let
           target-system = if isString args' then zig2nix-lib.mkZigSystemFromString args' else args';
           crossPkgs = import nixpkgs { localSystem = system; crossSystem = { config = systems.parse.tripleFromSystem target-system; }; };
         in crossPkgs;
+
+        #! Returns pkgs from nixpkgs for target string or system.
+        #! This does not cross-compile and you'll get a error if package does not exist in binary cache.
+        binaryPkgsForTarget = args': let
+          target-system = if isString args' then zig2nix-lib.mkZigSystemFromString args' else args';
+          binaryPkgs = import nixpkgs { localSystem = { config = systems.parse.tripleFromSystem target-system; }; };
+        in binaryPkgs;
 
         # Solving platform specific spaghetti below
         # args' can be either target string or system
@@ -157,7 +164,7 @@
           + optionalString (pkgs.stdenv.isDarwin) _darwin_extra;
       in rec {
         #! Inherit given pkgs and zig version
-        inherit pkgs pkgsForTarget zig zon2json zon2json-lock zon2nix zig-hook;
+        inherit pkgs pkgsForTarget binaryPkgsForTarget zig zon2json zon2json-lock zon2nix zig-hook;
 
         #! Tools for bridging zig and nix
         lib = zig2nix-lib;

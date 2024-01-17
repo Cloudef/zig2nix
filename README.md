@@ -97,12 +97,16 @@ zig-env = {
 #! --- Outputs of zig-env {} function.
 #!     access: (zig-env {}).thing
 
-#! Returns pkgs from nixpkgs for target string or system.
-#! Useful for cross-compiling.
+#! Returns crossPkgs from nixpkgs for target string or system.
+#! This will always cross-compile the package.
 pkgsForTarget = args': let
 
+#! Returns pkgs from nixpkgs for target string or system.
+#! This does not cross-compile and you'll get a error if package does not exist in binary cache.
+binaryPkgsForTarget = args': let
+
 #! Inherit given pkgs and zig version
-inherit pkgs pkgsForTarget zig zon2json zon2json-lock zon2nix zig-hook;
+inherit pkgs pkgsForTarget binaryPkgsForTarget zig zon2json zon2json-lock zon2nix zig-hook;
 
 #! Tools for bridging zig and nix
 lib = zig2nix-lib;
