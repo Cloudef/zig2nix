@@ -134,8 +134,8 @@
         runtime = runtimeForTargetSystem system;
         _deps = [ zig ] ++ customRuntimeDeps;
       in rec {
-        #! Inherit given pkgs and zig version
-        inherit pkgs pkgsForTarget binaryPkgsForTarget zig zon2json zon2json-lock zon2nix zig-hook;
+        inherit pkgs pkgsForTarget crossPkgsForTarget binaryPkgsForTarget;
+        inherit zig zon2json zon2json-lock zon2nix zig-hook;
 
         #! Tools for bridging zig and nix
         lib = zig2nix-lib;
