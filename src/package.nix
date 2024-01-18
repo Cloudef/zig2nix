@@ -50,7 +50,7 @@ let
     ++ optionals (length runtime.bins > 0) [ "--prefix" "PATH" ":" (makeBinPath runtime.bins) ]
     ++ optionals (length runtime.libs > 0) [ "--prefix" runtime.env.LIBRARY_PATH ":" (makeLibraryPath runtime.libs) ];
 
-  attrs = optionalAttrs (pathExists zigBuildZon && !userAttrs ? name) {
+  attrs = optionalAttrs (pathExists zigBuildZon && !userAttrs ? name && !userAttrs ? pname) {
     pname = zon.name;
   } // optionalAttrs (pathExists zigBuildZon && !userAttrs ? version) {
     version = zon.version;
