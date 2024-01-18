@@ -1,7 +1,7 @@
 {
   lib
   , coreutils
-  , binaryPkgsForTarget
+  , pkgsForTarget
   , mkZigSystemFromString
   , autoPatchelfHook
   , customAppHook ? ""
@@ -20,7 +20,7 @@ args':
 
 let
   system = if isString args' then mkZigSystemFromString args' else args';
-  targetPkgs = binaryPkgsForTarget system;
+  targetPkgs = pkgsForTarget system;
 
   env = rec {
     linux = {

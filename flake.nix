@@ -88,24 +88,43 @@
         # Use provided nixpkgs in here.
         pkgs = nixpkgs.outputs.legacyPackages.${system};
 
+        #! Returns true if target is nix flake compatible.
+        #! <https://github.com/NixOS/nixpkgs/blob/master/lib/systems/flake-systems.nix>
+        isFlakeTarget = with zig2nix-lib; args': let
+          target-system = if isString args' then mkZigSystemFromString args' else args';
+        in any (s: (systems.elaborate s).config == (systems.parse.tripleFromSystem target-system)) systems.flakeExposed;
+
         #! Returns crossPkgs from nixpkgs for target string or system.
         #! This will always cross-compile the package.
-        pkgsForTarget = with zig2nix-lib; args': let
+        crossPkgsForTarget = with zig2nix-lib; args': let
           target-system = if isString args' then mkZigSystemFromString args' else args';
           crossPkgs = import nixpkgs { localSystem = system; crossSystem = { config = systems.parse.tripleFromSystem target-system; }; };
         in crossPkgs;
 
         #! Returns pkgs from nixpkgs for target string or system.
         #! This does not cross-compile and you'll get a error if package does not exist in binary cache.
+        #!
+        #! Currently just alias for crossPkgsForTarget due to:
+        #!  error: a 'aarch64-linux' with features {} is required to build '...', but I am a 'x86_64-linux' with features {}
+        #!  It seems like this trick does not work anymore.
         binaryPkgsForTarget = with zig2nix-lib; args': let
           target-system = if isString args' then mkZigSystemFromString args' else args';
           binaryPkgs = import nixpkgs { localSystem = { config = systems.parse.tripleFromSystem target-system; }; };
-        in binaryPkgs;
+        in warn "binaryPkgsForTarget does not work currently" crossPkgsForTarget args'; # binaryPkgs;
+
+        #! Returns either binaryPkgs or crossPkgs depending if the target is flake target or not.
+        pkgsForTarget = with zig2nix-lib; args': let
+          target-system = if isString args' then mkZigSystemFromString args' else args';
+        in if isFlakeTarget args' then binaryPkgsForTarget args'
+          else (
+            warn "pkgsForTarget: cross-compiling for ${systems.parse.tripleFromSystem target-system}"
+            crossPkgsForTarget args'
+          );
 
         # Solving platform specific spaghetti
         runtimeForTargetSystem = pkgs.callPackage ./src/runtime.nix {
           inherit (zig2nix-lib) mkZigSystemFromString;
-          inherit binaryPkgsForTarget customAppHook customDevShellHook customRuntimeLibs;
+          inherit pkgsForTarget customAppHook customDevShellHook customRuntimeLibs;
           inherit enableVulkan enableOpenGL enableWayland enableX11;
         };
 
