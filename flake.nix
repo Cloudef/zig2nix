@@ -112,9 +112,7 @@
           target-system = if isString args' then mkZigSystemFromString args' else args';
           binaryPkgs = import nixpkgs { localSystem = { config = systems.parse.tripleFromSystem target-system; }; };
           this-system = (systems.elaborate system).config == systems.parse.tripleFromSystem target-system;
-        in
-          if this-system then pkgs
-          else warn "binaryPkgsForTarget does not work currently" crossPkgsForTarget args'; # binaryPkgs;
+        in if this-system then pkgs else binaryPkgs;
 
         #! Returns either binaryPkgs or crossPkgs depending if the target is flake target or not.
         pkgsForTarget = with zig2nix-lib; args': let
@@ -195,7 +193,7 @@
         #! You can still compile to other platforms by using package and specifying zigTarget.
         #! When compiling to non-nix supported targets, you can't rely on pkgsForTarget, but rather have to provide all the pkgs yourself.
         #! NOTE: Even though target is supported by nix, cross-compiling to it might not be, in that case you should get an error.
-        packageForTarget = target: (pkgsForTarget target).callPackage (pkgs.callPackage ./src/package.nix {
+        packageForTarget = target: (crossPkgsForTarget target).callPackage (pkgs.callPackage ./src/package.nix {
           inherit zig runtimeForTargetSystem;
           inherit (zig2nix-lib) resolveTargetSystem zigTripleFromSystem fromZON deriveLockFile;
         });
