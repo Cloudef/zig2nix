@@ -99,7 +99,8 @@
         crossPkgsForTarget = with zig2nix-lib; args': let
           target-system = if isString args' then mkZigSystemFromString args' else args';
           crossPkgs = import nixpkgs { localSystem = system; crossSystem = { config = systems.parse.tripleFromSystem target-system; }; };
-        in crossPkgs;
+          this-system = (systems.elaborate system).config == systems.parse.tripleFromSystem target-system;
+        in if this-system then pkgs else crossPkgs;
 
         #! Returns pkgs from nixpkgs for target string or system.
         #! This does not cross-compile and you'll get a error if package does not exist in binary cache.
@@ -110,12 +111,16 @@
         binaryPkgsForTarget = with zig2nix-lib; args': let
           target-system = if isString args' then mkZigSystemFromString args' else args';
           binaryPkgs = import nixpkgs { localSystem = { config = systems.parse.tripleFromSystem target-system; }; };
-        in warn "binaryPkgsForTarget does not work currently" crossPkgsForTarget args'; # binaryPkgs;
+          this-system = (systems.elaborate system).config == systems.parse.tripleFromSystem target-system;
+        in
+          if this-system then pkgs
+          else warn "binaryPkgsForTarget does not work currently" crossPkgsForTarget args'; # binaryPkgs;
 
         #! Returns either binaryPkgs or crossPkgs depending if the target is flake target or not.
         pkgsForTarget = with zig2nix-lib; args': let
           target-system = if isString args' then mkZigSystemFromString args' else args';
-        in if isFlakeTarget args' then binaryPkgsForTarget args'
+        in
+          if isFlakeTarget args' then binaryPkgsForTarget args'
           else (
             warn "pkgsForTarget: cross-compiling for ${systems.parse.tripleFromSystem target-system}"
             crossPkgsForTarget args'
