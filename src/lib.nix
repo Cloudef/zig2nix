@@ -15,7 +15,6 @@ rec {
          kernel = {
             "2" = elemAt parts 1;
             "3" = elemAt parts 1;
-            "4" = elemAt parts 2;
          }.${toString (length parts)} or (throw "zig target string has invalid number of hyphen-separated components");
 
          versionlessKernel = elemAt (splitString "." kernel) 0;
@@ -27,7 +26,6 @@ rec {
          abi = {
             "2" = "none";
             "3" = elemAt parts 2;
-            "4" = elemAt parts 3;
          }.${toString (length parts)} or (throw "zig target string has invalid number of hyphen-separated components");
 
          nixCpu = {
