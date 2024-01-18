@@ -114,10 +114,6 @@ in if this-system then pkgs else crossPkgs;
 
 #! Returns pkgs from nixpkgs for target string or system.
 #! This does not cross-compile and you'll get a error if package does not exist in binary cache.
-#!
-#! Currently just alias for crossPkgsForTarget due to:
-#!  error: a 'aarch64-linux' with features {} is required to build '...', but I am a 'x86_64-linux' with features {}
-#!  It seems like this trick does not work anymore.
 binaryPkgsForTarget = with zig2nix-lib; args': let
  target-system = if isString args' then mkZigSystemFromString args' else args';
  binaryPkgs = import nixpkgs { localSystem = { config = systems.parse.tripleFromSystem target-system; }; };
