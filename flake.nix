@@ -324,7 +324,7 @@
 
       apps.test = env.pkgs.callPackage src/test.nix {
         inherit app zon2json-lock;
-        inherit (zig2nix-lib) deriveLockFile;
+        inherit (zig2nix-lib) deriveLockFile resolveTargetSystem zigTripleFromSystem;
         inherit (env) zig;
         envPackage = env.package;
       };

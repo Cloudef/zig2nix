@@ -9,6 +9,8 @@
   , file
   , zig
   , deriveLockFile
+  , resolveTargetSystem
+  , zigTripleFromSystem
 }:
 
 with builtins;
@@ -82,7 +84,15 @@ with lib;
   in app [] "echo ${pkg}";
 
   # nix run .#test.all
-  all = app [] ''
+  all = let
+    resolved = resolveTargetSystem { target = "x86_64-linux-gnu"; musl = true; };
+    nix-triple = systems.parse.tripleFromSystem resolved;
+    zig-triple = zigTripleFromSystem resolved;
+  in app [] ''
+    # shellcheck disable=SC2268
+    test '${nix-triple}' = x86_64-unknown-linux-musl || error '${nix-triple} != x86_64-unknown-linux-musl'
+    # shellcheck disable=SC2268
+    test '${zig-triple}' = x86_64-linux-musl || error '${zig-triple} != x86_64-linux-musl'
     nix run .#test.zon2json-lock
     nix run .#test.zon2nix
     nix run .#test.templates

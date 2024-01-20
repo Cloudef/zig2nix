@@ -114,6 +114,9 @@ rec {
       abi = resolved.abi // {
          name = replaceStrings [ "gnu" "uclibc" ] [ "musl" "musl" ] resolved.abi.name;
       };
+      zig = resolved.zig // {
+         abi = replaceStrings [ "gnu" ] [ "musl" ] resolved.zig.abi;
+      };
    };
 
    resolveTargetTriple = args: zigTripleFromSystem (resolveTargetSystem args);
