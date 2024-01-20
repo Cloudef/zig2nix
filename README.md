@@ -8,7 +8,7 @@ https://ziglang.org/
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-* Zig master: `0.12.0-dev.2271+14efbbfd8 @ 2024-01-18`
+* Zig master: `0.12.0-dev.2284+9b714e019 @ 2024-01-19`
 * Zig default: `0.11.0 @ 2023-08-04`
 
 ## Zig project template
@@ -258,17 +258,17 @@ apps.default = apps.zig.default;
 #! Develop shell for building and running Zig projects.
 #! nix develop#zig."zig-version"
 #! example: nix develop#zig.master
-devShells.zig = mapAttrs (k: v: (zig-env {zig = v;}).shell) zigv;
+devShells.zig = mapAttrs (k: v: (zig-env {zig = v;}).mkShell {}) zigv;
 
 #! Develop shell for building and running Zig projects. (With Wayland support)
 #! nix develop#zig-wayland."zig-version"
 #! example: nix develop#zig-wayland.master
-devShells.zig-wayland = mapAttrs (k: v: (zig-env {zig = v; enableWayland = true;}).shell) zigv;
+devShells.zig-wayland = mapAttrs (k: v: (zig-env {zig = v; enableWayland = true;}).mkShell {}) zigv;
 
 #! Develop shell for building and running Zig projects. (With X11 support)
 #! nix develop#zig-x11."zig-version"
 #! example: nix develop#zig-x11.master
-devShells.zig-x11 = mapAttrs (k: v: (zig-env {zig = v; enableX11 = true;}).shell) zigv;
+devShells.zig-x11 = mapAttrs (k: v: (zig-env {zig = v; enableX11 = true;}).mkShell {}) zigv;
 
 #! Develop shell for building and running Zig projects.
 #! Uses latest released version of Zig.
