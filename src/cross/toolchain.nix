@@ -36,7 +36,7 @@ let
       export ZIG_GLOBAL_CACHE_DIR="$ZIG_LOCAL_CACHE_DIR"
       if [[ "$1" == cc ]] || [[ "$1" == c++ ]]; then
         if [[ ''${ZIG_TOOLCHAIN_DEBUG:-0} == 1 ]]; then
-          printf -- "zigtool: warning: %s\n" "$@" 1>&2
+          printf -- "zigtool: warning: %s\n" "$*" 1>&2
         fi
       fi
       exec zig "$@"
