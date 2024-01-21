@@ -11,6 +11,7 @@
   , enableOpenGL
   , enableWayland
   , enableX11
+  , buildPlatform
 }:
 
 with builtins;
@@ -25,7 +26,7 @@ let
   env = rec {
     linux = {
       LIBRARY_PATH = "LD_LIBRARY_PATH";
-      wrapperBuildInputs = [ autoPatchelfHook ];
+      wrapperBuildInputs = optionals (buildPlatform.isLinux) [ autoPatchelfHook ];
     };
 
     darwin = let
