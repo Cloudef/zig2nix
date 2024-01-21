@@ -423,7 +423,7 @@
       > This is very experimental, and many things may not compile.
 
       ```bash
-      nix build .#zigCrozz.x86_64-windows-gnu.zlib
+      nix build .#zigCross.x86_64-windows-gnu.zlib
       ```
 
       ## Crude documentation

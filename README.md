@@ -69,7 +69,7 @@ nix run .#zon2nix -- build.zig.zon2json-lock
 > This is very experimental, and many things may not compile.
 
 ```bash
-nix build .#zigCrozz.x86_64-windows-gnu.zlib
+nix build .#zigCross.x86_64-windows-gnu.zlib
 ```
 
 ## Crude documentation
