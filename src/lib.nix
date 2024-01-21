@@ -108,7 +108,7 @@ in rec {
           thumb = arm;
           powerpc = "musleabi";
           csky = "musleabi";
-        }.${nixCpu} or "gnu";
+        }.${nixCpu} or "musl";
       }.${res.value.abi.name} or res.value.abi.name;
 
       system = systems.parse.mkSystemFromSkeleton ({
