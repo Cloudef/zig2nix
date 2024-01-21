@@ -43,7 +43,7 @@ in init bootStages ++ [
       allowedRequisites = null;
       hasCC = true;
       cc = vanillaPackages.callPackage mkZigToolchain { inherit (old.cc) libc; };
-      preHook = zig-prehook old.preHook localSystem.config;
+      preHook = warn "local: ${localSystem.config}" (zig-prehook old.preHook localSystem.config);
       # Propagate everything to the next step as we do not need to bootstrap
       # We exclude packages that would break nixpkgs cross-compiling setup
       overrides = self: super: genAttrs (filter (a: ! any (b: hasPrefix b a) [
