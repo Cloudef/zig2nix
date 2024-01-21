@@ -92,22 +92,37 @@
         #! <https://github.com/NixOS/nixpkgs/blob/master/lib/systems/flake-systems.nix>
         isFlakeTarget = with zig2nix-lib; args': let
           target-system = if isString args' then mkZigSystemFromString args' else args';
-        in any (s: (systems.elaborate s).config == (systems.parse.tripleFromSystem target-system)) systems.flakeExposed;
+        in any (s: (systems.elaborate s).config == (nixTripleFromSystem target-system)) systems.flakeExposed;
 
         #! Returns crossPkgs from nixpkgs for target string or system.
         #! This will always cross-compile the package.
         crossPkgsForTarget = with zig2nix-lib; args': let
           target-system = if isString args' then mkZigSystemFromString args' else args';
-          crossPkgs = import nixpkgs { localSystem = system; crossSystem = { config = systems.parse.tripleFromSystem target-system; }; };
-          this-system = (systems.elaborate system).config == systems.parse.tripleFromSystem target-system;
+          crossPkgs = import nixpkgs { localSystem = system; crossSystem = { config = nixTripleFromSystem target-system; }; };
+          this-system = (systems.elaborate system).config == nixTripleFromSystem target-system;
         in if this-system then pkgs else crossPkgs;
+
+        #! Cross-compile nixpkgs using zig :)
+        #! NOTE: This is an experimental feature, expect it not faring well
+        zigCrossPkgsForTarget = with zig2nix-lib; args': let
+          target-system = if isString args' then mkZigSystemFromString args' else args';
+          crossPkgs = pkgs.callPackage ./src/cross {
+            inherit zig allNixZigSystems nixTripleFromSystem zigTripleFromString;
+            localSystem = system;
+            crossSystem = { config = nixTripleFromSystem target-system; };
+            zigPackage = (crossPkgsForTarget target-system).callPackage (pkgs.callPackage ./src/package.nix {
+              inherit zig runtimeForTargetSystem;
+              inherit (zig2nix-lib) resolveTargetSystem zigTripleFromSystem fromZON deriveLockFile;
+            });
+          };
+        in warn "zigCross: ${zigTripleFromSystem target-system}" crossPkgs;
 
         #! Returns pkgs from nixpkgs for target string or system.
         #! This does not cross-compile and you'll get a error if package does not exist in binary cache.
         binaryPkgsForTarget = with zig2nix-lib; args': let
           target-system = if isString args' then mkZigSystemFromString args' else args';
-          binaryPkgs = import nixpkgs { localSystem = { config = systems.parse.tripleFromSystem target-system; }; };
-          this-system = (systems.elaborate system).config == systems.parse.tripleFromSystem target-system;
+          binaryPkgs = import nixpkgs { localSystem = { config = nixTripleFromSystem target-system; }; };
+          this-system = (systems.elaborate system).config == nixTripleFromSystem target-system;
         in if this-system then pkgs else binaryPkgs;
 
         #! Returns either binaryPkgs or crossPkgs depending if the target is flake target or not.
@@ -116,7 +131,7 @@
         in
           if isFlakeTarget args' then binaryPkgsForTarget args'
           else (
-            warn "pkgsForTarget: cross-compiling for ${systems.parse.tripleFromSystem target-system}"
+            warn "pkgsForTarget: cross-compiling for ${nixTripleFromSystem target-system}"
             crossPkgsForTarget args'
           );
 
@@ -130,7 +145,7 @@
         runtime = runtimeForTargetSystem system;
         _deps = [ zig ] ++ customRuntimeDeps;
       in rec {
-        inherit pkgs pkgsForTarget crossPkgsForTarget binaryPkgsForTarget;
+        inherit pkgs pkgsForTarget crossPkgsForTarget zigCrossPkgsForTarget binaryPkgsForTarget;
         inherit zig zon2json zon2json-lock zon2nix zig-hook;
 
         #! Tools for bridging zig and nix
@@ -235,6 +250,9 @@
       #! zon2nix: Converts build.zig.zon and build.zig.zon2json-lock to nix deriviation
       packages.zon2nix = zon2nix;
 
+      #! Nixpkgs cross-compiled with zig
+      packages.zigCross = env.pkgs.lib.genAttrs env.lib.allNixZigTriples (t: env.zigCrossPkgsForTarget t);
+
       #! Default zig package.
       #! Latest released zig.
       packages.default = zigv.default;
@@ -324,7 +342,7 @@
 
       apps.test = env.pkgs.callPackage src/test.nix {
         inherit app zon2json-lock;
-        inherit (zig2nix-lib) deriveLockFile resolveTargetSystem zigTripleFromSystem;
+        inherit (zig2nix-lib) deriveLockFile resolveTargetSystem zigTripleFromSystem nixTripleFromSystem flakeZigTriples;
         inherit (env) zig;
         envPackage = env.package;
       };
@@ -347,7 +365,9 @@
       * Zig master: `${zigv.master.version} @ ${zigv.master.date}`
       * Zig default: `${zigv.default.version} @ ${zigv.default.date}`
 
-      ## Zig project template
+      ## Examples
+
+      ### Zig project template
 
       ```bash
       nix flake init -t github:Cloudef/zig2nix
@@ -355,7 +375,7 @@
       # for more options check the flake.nix file
       ```
 
-      ### With master version of Zig
+      #### With master version of Zig
 
       ```bash
       nix flake init -t github:Cloudef/zig2nix#master
@@ -363,25 +383,25 @@
       # for more options check the flake.nix file
       ```
 
-      ## Running zig compiler directly
+      ### Running zig compiler directly
 
       ```bash
       nix run github:Cloudef/zig2nix -- version
       ```
 
-      ## Shell for building and running a Zig project
+      ### Shell for building and running a Zig project
 
       ```bash
       nix develop github:Cloudef/zig2nix
       ```
 
-      ## Convert zon file to json
+      ### Convert zon file to json
 
       ```bash
       nix run .#zon2json -- build.zig.zon
       ```
 
-      ## Convert build.zig.zon to a build.zig.zon2json-lock
+      ### Convert build.zig.zon to a build.zig.zon2json-lock
 
       ```bash
       nix run .#zon2json-lock -- build.zig.zon
@@ -389,13 +409,21 @@
       nix run .#zon2json-lock -- build.zig.zon -
       ```
 
-      ## Convert build.zig.zon/2json-lock to a nix derivation
+      ### Convert build.zig.zon/2json-lock to a nix derivation
 
       ```bash
       # calls zon2json-lock if build.zig.zon2json-lock does not exist (requires network access)
       nix run .#zon2nix -- build.zig.zon
       # alternatively run against the lock file (no network access required)
       nix run .#zon2nix -- build.zig.zon2json-lock
+      ```
+
+      ### Cross-compile nixpkgs using zig
+
+      > This is very experimental, and many things may not compile.
+
+      ```bash
+      nix build .#zigCrozz.x86_64-windows-gnu.zlib
       ```
 
       ## Crude documentation

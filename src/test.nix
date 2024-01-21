@@ -11,6 +11,8 @@
   , deriveLockFile
   , resolveTargetSystem
   , zigTripleFromSystem
+  , nixTripleFromSystem
+  , flakeZigTriples
 }:
 
 with builtins;
@@ -59,17 +61,17 @@ with lib;
   templates = app [ file ] ''
     for var in default master; do
       printf -- 'run . (%s)\n' "$var"
-      (cd templates/"$var"; nix run --override-input zig2nix ../.. .)
+      (cd templates/"$var"; nix run -L --override-input zig2nix ../.. .)
       printf -- 'run .#bundle.default (%s)\n' "$var"
-      (cd templates/"$var"; nix run --override-input zig2nix ../.. .#bundle.default)
+      (cd templates/"$var"; nix run -L --override-input zig2nix ../.. .#bundle.default)
       printf -- 'run .#test (%s)\n' "$var"
-      (cd templates/"$var"; nix run --override-input zig2nix ../.. .#test)
+      (cd templates/"$var"; nix run -L --override-input zig2nix ../.. .#test)
       printf -- 'build . (%s)\n' "$var"
-      (cd templates/"$var"; nix build --override-input zig2nix ../.. .; ./result/bin/"$var")
+      (cd templates/"$var"; nix build -L --override-input zig2nix ../.. .; ./result/bin/"$var")
       if [[ "$var" == master ]]; then
-        for arch in x86_64-windows ${concatStringsSep " " lib.systems.flakeExposed}; do
+        for arch in x86_64-windows-gnu ${escapeShellArgs flakeZigTriples}; do
           printf -- 'build .#target.%s (%s)\n' "$arch" "$var"
-          (cd templates/"$var"; nix build --override-input zig2nix ../.. .#target."$arch"; file ./result/bin/"$var"*)
+          (cd templates/"$var"; nix build -L --override-input zig2nix ../.. .#target."$arch"; file ./result/bin/"$var"*)
         done
       fi
       rm -f templates/"$var"/result
@@ -83,20 +85,29 @@ with lib;
     pkg = envPackage { src = ../tools/zon2json; };
   in app [] "echo ${pkg}";
 
+  # nix run .#test.cross
+  cross = app [] ''
+    for target in x86_64-windows-gnu ${escapeShellArgs flakeZigTriples}; do
+      printf -- 'build .#zigCross.%s.zlib\n' "$target"
+      nix build -L .#zigCross.$target.zlib
+    done
+    '';
+
   # nix run .#test.all
   all = let
     resolved = resolveTargetSystem { target = "x86_64-linux-gnu"; musl = true; };
-    nix-triple = systems.parse.tripleFromSystem resolved;
+    nix-triple = nixTripleFromSystem resolved;
     zig-triple = zigTripleFromSystem resolved;
   in app [] ''
     # shellcheck disable=SC2268
     test '${nix-triple}' = x86_64-unknown-linux-musl || error '${nix-triple} != x86_64-unknown-linux-musl'
     # shellcheck disable=SC2268
     test '${zig-triple}' = x86_64-linux-musl || error '${zig-triple} != x86_64-linux-musl'
-    nix run .#test.zon2json-lock
-    nix run .#test.zon2nix
-    nix run .#test.templates
-    nix run .#test.package
+    nix run -L .#test.zon2json-lock
+    nix run -L .#test.zon2nix
+    nix run -L .#test.templates
+    nix run -L .#test.package
+    nix run -L .#test.cross
     '';
 
   # nix run .#test.repl
