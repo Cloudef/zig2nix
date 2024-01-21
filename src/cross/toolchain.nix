@@ -82,7 +82,7 @@ let
     text = ''
       shopt -s extglob
       args=()
-      has_input=0
+      has_output=0
       while [[ $# -gt 0 ]]; do
         case "$1" in
           -Wl,*)
@@ -119,8 +119,8 @@ let
             shift;;
           ${concatStringsSep "|" sys_excluded})
             shift;;
-          [^-]+)
-            has_input=1
+          -o)
+            has_output=1
             args+=("$1")
             shift;;
           *)
@@ -128,7 +128,7 @@ let
             shift;;
         esac
       done
-      if [[ $has_input == 0 ]]; then
+      if [[ $has_output == 0 ]]; then
         exec zigtool ${cmd} ${concatStringsSep " " pp_args} "''${args[@]}"
       else
         exec zigtool ${cmd} ${concatStringsSep " " (pp_args ++ cc_args)} "''${args[@]}"
