@@ -115,6 +115,8 @@ let
             shift;;
           -march=*|-mcpu=*|-mtune=*)
             shift;;
+          -static-libgcc)
+            shift;;
           ${concatStringsSep "|" sys_excluded})
             shift;;
           [^-]+)
