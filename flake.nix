@@ -102,22 +102,6 @@
           this-system = (systems.elaborate system).config == nixTripleFromSystem target-system;
         in if this-system then pkgs else crossPkgs;
 
-        #! Cross-compile nixpkgs using zig :)
-        #! NOTE: This is an experimental feature, expect it not faring well
-        zigCrossPkgsForTarget = with zig2nix-lib; args': let
-          target-system = if isString args' then mkZigSystemFromString args' else args';
-          crossPkgs = pkgs.callPackage ./src/cross {
-            inherit zig allTargetSystems nixTripleFromSystem zigTripleFromSystem mkZigSystemFromPlatform;
-            nixCrossPkgs = pkgsForTarget target-system;
-            localSystem = system;
-            crossSystem = { config = nixTripleFromSystem target-system; };
-            zigPackage = target: (crossPkgsForTarget target).callPackage (pkgs.callPackage ./src/package.nix {
-              inherit zig runtimeForTargetSystem;
-              inherit (zig2nix-lib) resolveTargetSystem zigTripleFromSystem fromZON deriveLockFile;
-            });
-          };
-        in warn "zigCross: ${zigTripleFromSystem target-system}" crossPkgs;
-
         #! Returns pkgs from nixpkgs for target string or system.
         #! This does not cross-compile and you'll get a error if package does not exist in binary cache.
         binaryPkgsForTarget = with zig2nix-lib; args': let
@@ -137,6 +121,24 @@
           inherit pkgsForTarget customAppHook customDevShellHook customRuntimeLibs;
           inherit enableVulkan enableOpenGL enableWayland enableX11;
         };
+
+        # Package a Zig project
+        zigPackage = target: (crossPkgsForTarget target).callPackage (pkgs.callPackage ./src/package.nix {
+          inherit zig runtimeForTargetSystem;
+          inherit (zig2nix-lib) resolveTargetSystem zigTripleFromSystem fromZON deriveLockFile;
+        });
+
+        #! Cross-compile nixpkgs using zig :)
+        #! NOTE: This is an experimental feature, expect it not faring well
+        zigCrossPkgsForTarget = with zig2nix-lib; args': let
+          target-system = if isString args' then mkZigSystemFromString args' else args';
+          crossPkgs = pkgs.callPackage ./src/cross {
+            inherit zig zigPackage allTargetSystems nixTripleFromSystem zigTripleFromSystem mkZigSystemFromPlatform;
+            nixCrossPkgs = pkgsForTarget target-system;
+            localSystem = system;
+            crossSystem = { config = nixTripleFromSystem target-system; };
+          };
+        in warn "zigCross: ${zigTripleFromSystem target-system}" crossPkgs;
 
         runtime = runtimeForTargetSystem system;
         _deps = [ zig ] ++ customRuntimeDeps;
@@ -200,10 +202,7 @@
         #! You can still compile to other platforms by using package and specifying zigTarget.
         #! When compiling to non-nix supported targets, you can't rely on pkgsForTarget, but rather have to provide all the pkgs yourself.
         #! NOTE: Even though target is supported by nix, cross-compiling to it might not be, in that case you should get an error.
-        packageForTarget = target: (crossPkgsForTarget target).callPackage (pkgs.callPackage ./src/package.nix {
-          inherit zig runtimeForTargetSystem;
-          inherit (zig2nix-lib) resolveTargetSystem zigTripleFromSystem fromZON deriveLockFile;
-        });
+        packageForTarget = zigPackage;
 
         #! Packages zig project.
         #! NOTE: If your project has build.zig.zon you must first generate build.zig.zon2json-lock using zon2json-lock.
