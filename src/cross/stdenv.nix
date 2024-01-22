@@ -1,7 +1,6 @@
 {
   path
   , mkZigToolchain
-  , zigTripleFromString
 }:
 
 {
@@ -17,10 +16,9 @@ with builtins;
 with lib;
 
 let
-  zig-prehook = prelude: target: ''
+  prehook = prelude: ''
     ${prelude}
     export NIX_CC_USE_RESPONSE_FILE=0
-    export ZIG_TOOLCHAIN_TARGET="${zigTripleFromString target}"
   '';
 
   bootStages = import "${path}/pkgs/stdenv" {
@@ -35,15 +33,17 @@ in init bootStages ++ [
 
   # First replace native compiler with zig
   # This gives us more deterministic environment
-  (vanillaPackages: {
+  (vanillaPackages: warn "local: ${localSystem.config}" {
     inherit config overlays;
     selfBuild = false;
     stdenv = (vanillaPackages.stdenv.override (old: {
       targetPlatform = crossSystem;
       allowedRequisites = null;
       hasCC = true;
-      cc = vanillaPackages.callPackage mkZigToolchain { inherit (old.cc) libc; };
-      preHook = warn "local: ${localSystem.config}" (zig-prehook old.preHook localSystem.config);
+      cc = vanillaPackages.callPackage mkZigToolchain {
+        inherit (old.cc) libc;
+      };
+      preHook = prehook old.preHook;
       # Propagate everything to the next step as we do not need to bootstrap
       # We exclude packages that would break nixpkgs cross-compiling setup
       overrides = self: super: genAttrs (filter (a: ! any (b: hasPrefix b a) [
@@ -76,8 +76,10 @@ in init bootStages ++ [
       overrides = _: _: {};
       allowedRequisites = null;
       hasCC = true;
-      cc = buildPackages.callPackage mkZigToolchain { inherit (old.cc) libc; };
-      preHook = zig-prehook old.preHook crossSystem.config;
+      cc = buildPackages.callPackage mkZigToolchain {
+        inherit (old.cc) libc;
+      };
+      preHook = prehook old.preHook;
 
       extraNativeBuildInputs = with buildPackages; old.extraNativeBuildInputs
       ++ optionals (hostPlatform.isLinux && !buildPlatform.isLinux) [ patchelf ]

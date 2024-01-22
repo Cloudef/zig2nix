@@ -14,6 +14,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .pic = true,
+            .link_libc = false,
         });
         b.installArtifact(lib);
         const unit_tests = b.addTest(.{

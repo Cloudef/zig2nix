@@ -12,7 +12,7 @@
   , resolveTargetSystem
   , zigTripleFromSystem
   , nixTripleFromSystem
-  , flakeZigTriples
+  , allFlakeTargetTriples
 }:
 
 with builtins;
@@ -69,7 +69,7 @@ with lib;
       printf -- 'build . (%s)\n' "$var"
       (cd templates/"$var"; nix build -L --override-input zig2nix ../.. .; ./result/bin/"$var")
       if [[ "$var" == master ]]; then
-        for arch in x86_64-windows-gnu ${escapeShellArgs flakeZigTriples}; do
+        for arch in x86_64-windows-gnu ${escapeShellArgs allFlakeTargetTriples}; do
           printf -- 'build .#target.%s (%s)\n' "$arch" "$var"
           (cd templates/"$var"; nix build -L --override-input zig2nix ../.. .#target."$arch"; file ./result/bin/"$var"*)
         done
@@ -87,7 +87,7 @@ with lib;
 
   # nix run .#test.cross
   cross = app [] ''
-    for target in x86_64-windows-gnu ${escapeShellArgs flakeZigTriples}; do
+    for target in x86_64-windows-gnu ${escapeShellArgs allFlakeTargetTriples}; do
       printf -- 'build .#zigCross.%s.zlib\n' "$target"
       nix build -L .#zigCross.$target.zlib
     done

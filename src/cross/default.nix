@@ -2,16 +2,15 @@
   lib
   , path
   , callPackage
-  , stdenv
   , localSystem
   , crossSystem
-  , writeShellScriptBin
-  , coreutils
   , zig
   , zigPackage
-  , allNixZigSystems
+  , allTargetSystems
   , nixTripleFromSystem
-  , zigTripleFromString
+  , zigTripleFromSystem
+  , mkZigSystemFromPlatform
+  , nixCrossPkgs
 }:
 
 with builtins;
@@ -21,8 +20,9 @@ warn "toolchain: ${crossSystem.config}"
 import path {
   inherit localSystem crossSystem;
   stdenvStages = callPackage ./stdenv.nix {
-    inherit zigTripleFromString;
-    mkZigToolchain = callPackage ./toolchain.nix { inherit zig zigPackage allNixZigSystems nixTripleFromSystem; };
+    mkZigToolchain = callPackage ./toolchain.nix {
+      inherit zig zigPackage allTargetSystems nixTripleFromSystem zigTripleFromSystem mkZigSystemFromPlatform;
+    };
   };
 
   overlays = [(self: super: {
@@ -34,19 +34,12 @@ import path {
     });
   })];
 
-  # TODO: check the fixes here
-  # TODO: test for every issue
   crossOverlays = [(self: super: {
-    # XXX: broken on aarch64 at least
-    gmp = super.gmp.overrideAttrs (old: {
-      configureFlags = old.configureFlags ++ [ "--disable-assembly" ];
-    });
-
-    # XXX: libsepol issue on darwin, should be fixed upstream instead
-    libsepol = super.libsepol.overrideAttrs (old: {
-      nativeBuildInputs = old.nativeBuildInputs ++ optionals (stdenv.isDarwin) [
-        (writeShellScriptBin "gln" ''${coreutils}/bin/ln "$@"'')
-      ];
-    });
+    # XXX: fails tests
+    libffi = nixCrossPkgs.libffi;
+    # XXX: undefined symbol: main
+    python3 = nixCrossPkgs.python3;
+    # XXX: libX11 fails preprocessor check
+    xorg = nixCrossPkgs.xorg;
   })];
 }

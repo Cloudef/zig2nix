@@ -16,7 +16,7 @@
     in with builtins; with env.lib; with env.pkgs.lib; rec {
       # nix build .#target.{zig-target}
       # e.g. nix build .#target.x86_64-linux-gnu
-      packages.target = genAttrs allNixZigTriples (target: env.packageForTarget target ({
+      packages.target = genAttrs allTargetTriples (target: env.packageForTarget target ({
         src = ./.;
 
         nativeBuildInputs = with env.pkgs; [];
@@ -42,7 +42,7 @@
 
       # For bundling with nix bundle for running outside of nix
       # example: https://github.com/ralismark/nix-appimage
-      apps.bundle.target = genAttrs allNixZigTriples (target: let
+      apps.bundle.target = genAttrs allTargetTriples (target: let
         pkg = packages.target.${target};
       in {
         type = "app";

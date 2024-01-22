@@ -107,10 +107,11 @@
         zigCrossPkgsForTarget = with zig2nix-lib; args': let
           target-system = if isString args' then mkZigSystemFromString args' else args';
           crossPkgs = pkgs.callPackage ./src/cross {
-            inherit zig allNixZigSystems nixTripleFromSystem zigTripleFromString;
+            inherit zig allTargetSystems nixTripleFromSystem zigTripleFromSystem mkZigSystemFromPlatform;
+            nixCrossPkgs = pkgsForTarget target-system;
             localSystem = system;
             crossSystem = { config = nixTripleFromSystem target-system; };
-            zigPackage = (crossPkgsForTarget target-system).callPackage (pkgs.callPackage ./src/package.nix {
+            zigPackage = target: (crossPkgsForTarget target).callPackage (pkgs.callPackage ./src/package.nix {
               inherit zig runtimeForTargetSystem;
               inherit (zig2nix-lib) resolveTargetSystem zigTripleFromSystem fromZON deriveLockFile;
             });
@@ -126,14 +127,9 @@
         in if this-system then pkgs else binaryPkgs;
 
         #! Returns either binaryPkgs or crossPkgs depending if the target is flake target or not.
-        pkgsForTarget = with zig2nix-lib; args': let
-          target-system = if isString args' then mkZigSystemFromString args' else args';
-        in
+        pkgsForTarget = args':
           if isFlakeTarget args' then binaryPkgsForTarget args'
-          else (
-            warn "pkgsForTarget: cross-compiling for ${nixTripleFromSystem target-system}"
-            crossPkgsForTarget args'
-          );
+          else crossPkgsForTarget args';
 
         # Solving platform specific spaghetti
         runtimeForTargetSystem = pkgs.callPackage ./src/runtime.nix {
@@ -251,7 +247,7 @@
       packages.zon2nix = zon2nix;
 
       #! Nixpkgs cross-compiled with zig
-      packages.zigCross = env.pkgs.lib.genAttrs env.lib.allNixZigTriples (t: env.zigCrossPkgsForTarget t);
+      packages.zigCross = env.pkgs.lib.genAttrs env.lib.allTargetTriples (t: env.zigCrossPkgsForTarget t);
 
       #! Default zig package.
       #! Latest released zig.
@@ -342,7 +338,7 @@
 
       apps.test = env.pkgs.callPackage src/test.nix {
         inherit app zon2json-lock;
-        inherit (zig2nix-lib) deriveLockFile resolveTargetSystem zigTripleFromSystem nixTripleFromSystem flakeZigTriples;
+        inherit (zig2nix-lib) deriveLockFile resolveTargetSystem zigTripleFromSystem nixTripleFromSystem allFlakeTargetTriples;
         inherit (env) zig;
         envPackage = env.package;
       };

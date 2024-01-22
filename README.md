@@ -127,10 +127,11 @@ in if this-system then pkgs else crossPkgs;
 zigCrossPkgsForTarget = with zig2nix-lib; args': let
  target-system = if isString args' then mkZigSystemFromString args' else args';
  crossPkgs = pkgs.callPackage ./src/cross {
-  inherit zig allNixZigSystems nixTripleFromSystem zigTripleFromString;
+  inherit zig allTargetSystems nixTripleFromSystem zigTripleFromSystem mkZigSystemFromPlatform;
+  nixCrossPkgs = pkgsForTarget target-system;
   localSystem = system;
   crossSystem = { config = nixTripleFromSystem target-system; };
-  zigPackage = (crossPkgsForTarget target-system).callPackage (pkgs.callPackage ./src/package.nix {
+  zigPackage = target: (crossPkgsForTarget target).callPackage (pkgs.callPackage ./src/package.nix {
    inherit zig runtimeForTargetSystem;
    inherit (zig2nix-lib) resolveTargetSystem zigTripleFromSystem fromZON deriveLockFile;
   });
@@ -146,14 +147,9 @@ binaryPkgsForTarget = with zig2nix-lib; args': let
 in if this-system then pkgs else binaryPkgs;
 
 #! Returns either binaryPkgs or crossPkgs depending if the target is flake target or not.
-pkgsForTarget = with zig2nix-lib; args': let
- target-system = if isString args' then mkZigSystemFromString args' else args';
- in
- if isFlakeTarget args' then binaryPkgsForTarget args'
- else (
- warn "pkgsForTarget: cross-compiling for ${nixTripleFromSystem target-system}"
- crossPkgsForTarget args'
- );
+pkgsForTarget = args':
+if isFlakeTarget args' then binaryPkgsForTarget args'
+else crossPkgsForTarget args';
 
 #! Tools for bridging zig and nix
 lib = zig2nix-lib;
@@ -253,7 +249,7 @@ packages.zon2json-lock = zon2json-lock;
 packages.zon2nix = zon2nix;
 
 #! Nixpkgs cross-compiled with zig
-packages.zigCross = env.pkgs.lib.genAttrs env.lib.allNixZigTriples (t: env.zigCrossPkgsForTarget t);
+packages.zigCross = env.pkgs.lib.genAttrs env.lib.allTargetTriples (t: env.zigCrossPkgsForTarget t);
 
 #! Default zig package.
 #! Latest released zig.

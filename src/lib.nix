@@ -2,158 +2,118 @@
 
 with builtins;
 with lib;
+with lib.attrsets;
 
 let
-  # Maintain list of doubles here that zigCross can't deal with
-  unsupported = [ "riscv64-linux" ];
-  flakeDoubles = subtractLists unsupported systems.flakeExposed;
-  # Here we can have unsupported doubles as well
-  # TODO: Use runCommandLocal and parse zig targets output
-  zigDoubles = systems.doubles.all ++ [ "aarch64-ios" "x86_64-ios" ];
-  allZigDoubles = zigDoubles ++ flakeDoubles;
-in rec {
-  mkZigSystemFromString = s: let
-    res = tryEval (systems.parse.mkSystemFromString s);
-  kind = if res.success then "nix" else "zig";
+  # only do simple conversion in this function
+  mk-triple = arch: kernel: vendor: abis: mergeAttrsList (map (abi: let
+    zig-arch = if isString arch then arch else arch.zig or (throw "invalid arch argument");
+
+    zig2nix-arch = {
+      x86 = "i686";
+      arm = "armv7a";
+    }.${zig-arch} or zig-arch;
+
+    nix-arch = if isString arch then zig2nix-arch else arch.nix or zig2nix-arch;
+
+    zig-kernel = if isString kernel then kernel else kernel.zig or (throw "invalid kernel argument");
+
+    zig2nix-kernel = {
+      macos = "darwin";
+      freestanding = "none";
+    }.${zig-kernel} or zig-kernel;
+
+    nix-kernel = if isString kernel then zig2nix-kernel else kernel.nix or zig2nix-kernel;
+
+    zig-abi = if isString abi then abi else abi.zig or (throw "invalid abi argument");
+    nix-abi = if isString abi then zig-abi else abi.nix or zig-abi;
+    opt-nix-abi = if nix-abi != "none" then "-${nix-abi}" else "";
+  in if vendor !=  null then {
+    "${zig-arch}-${zig-kernel}-${zig-abi}" = "${nix-arch}-${vendor}-${nix-kernel}${opt-nix-abi}";
+  } else {
+    "${zig-arch}-${zig-kernel}-${zig-abi}" = "${nix-arch}-${nix-kernel}-${nix-abi}";
+  }) abis);
+
+  from-archs = kernel: vendor: archs: abis: mergeAttrsList (map (arch: mk-triple arch kernel vendor abis) archs);
+
+  # nix unsupported archs: csky, armeb, thumb, gnux32, muslx32
+  # broken archs: arm, aarch64_be (windows, unsupported arch), m68k (InvalidLlvmTriple), sparc, s390x (support lib)
+  # broken platforms: ios, watchos, tvos, risv64-gnu (gnu/stubs-lp64d.h)
+  # broken abis: gnuabin32 (support lib)
+  zig2nix-target = {}
+  // from-archs "linux" "unknown" [ "riscv64" ] [ "musl" ]
+  // from-archs "linux" "unknown" [ "x86_64" ] [ "gnu" "musl" ]
+  // from-archs "linux" "unknown" [ "x86" ] [ "gnu" "musl" ]
+  // from-archs "linux" "unknown" [ "aarch64" "aarch64_be" ] [ "gnu" "musl" ]
+  // from-archs "linux" "unknown" [ "arm" ] [ "gnueabi" "gnueabihf" "musleabi" "musleabihf" ]
+  // from-archs "linux" "unknown" [ "mips64el" "mips64" ] [ "gnuabi64" "musl" ]
+  // from-archs "linux" "unknown" [ "mipsel" "mips" ] [ "gnueabi" "gnueabihf" "musl" ]
+  // from-archs "linux" "unknown" [ "powerpc64" ] [ { zig = "gnu"; nix = "gnuabielfv2"; } "musl" ]
+  // from-archs "linux" "unknown" [ "powerpc64le" ] [ "gnu" "musl" ]
+  // from-archs "linux" "unknown" [ "powerpc" ] [ "gnueabi" "gnueabihf" "musl" ]
+  # // from-archs "linux" "unknown" [ "csky" ] [ "gnueabi" "gnueabihf" ]
+  # // from-archs "linux" "unknown" [ "s390x" ] [ "gnu" "musl" ]
+  # // from-archs "linux" "unknown" [ "sparc" "sparc64" ] [ "gnu" ]
+  // from-archs "windows" "pc" [ "x86" "x86_64" "aarch64" ] [ "msvc" ]
+  # maps to autotools mingw target triples
+  // from-archs { zig = "windows"; nix = "w64"; } null [ "x86" "x86_64" "aarch64" ] [ { zig = "gnu"; nix = "mingw32"; } ]
+  // from-archs "macos" "apple" [ "x86_64" "aarch64" ] [ "none" ]
+  # // from-archs "ios" "apple" [ "x86_64" "aarch64" ] [ "none" ]
+  # // from-archs "watchos" "apple" [ "x86_64" "aarch64" ] [ "none" ]
+  # // from-archs "tvos" "apple" [ "x86_64" "aarch64" ] [ "none" ]
+  // from-archs "wasi" "unknown" [ "wasm32" ] [ "musl" ];
+
+  allTargetTriples = attrNames zig2nix-target;
+
+  nix2zig-target = mergeAttrsList (map (k: {
+    "${zig2nix-target.${k}}" = "${k}";
+  }) allTargetTriples) // {
+    # map flake targets
+    "armv5tel-unknown-linux-gnueabi" = "arm-linux-gnueabi";
+    "armv6l-unknown-linux-gnueabihf" = "arm-linux-gnueabihf";
+    "armv7l-unknown-linux-gnueabihf" = "arm-linux-gnueabihf";
+    "mipsel-unknown-linux-gnu" = "mipsel-linux-gnueabi";
+    "powerpc64le-unknown-linux-gnu" = "powerpc64le-linux-gnu";
+  };
+
+  broken = [ "riscv64-linux" ];
+  allFlakeTargetTriples = map (f: nix2zig-target.${(systems.elaborate f).config}) (subtractLists broken systems.flakeExposed);
+
+  normalized-target = s: let
+    n = concatStringsSep "-" (map (c: elemAt (splitString "." c) 0) (splitString "-" s));
+    elaborated = (systems.elaborate n).config;
+  in
+    if (zig2nix-target.${n} or null) != null then n
+    else if (nix2zig-target.${n} or null) != null then nix2zig-target.${n}
+    else nix2zig-target.${elaborated} or (throw "invalid target string ${s}");
+
+  zig-meta = s: let
+    n0 = concatStringsSep "-" (map (c: elemAt (splitString "." c) 0) (splitString "-" s));
+    n = if (zig2nix-target.${n0} or null) != null then s else normalized-target s;
+    parts = splitString "-" n;
+    meta = s: d: let
+      splitted = splitString "." s;
+    in {
+      base = elemAt splitted 0;
+      meta = if length splitted > 0 then elemAt splitted 1 else d;
+    };
   in {
-    zig = let
-      parts = splitString "-" s;
-
-      cpu = elemAt parts 0;
-
-      kernel = {
-        "3" = elemAt parts 1;
-      }.${toString (length parts)} or "unknown";
-
-      versionlessKernel = elemAt (splitString "." kernel) 0;
-
-      kernelVersion = let
-        splitted = splitString "." kernel;
+    cpu = elemAt parts 0;
+    kernel = elemAt parts 1;
+    abi = elemAt parts 2;
+    versionlessKernel = (meta kernel null).base;
+    kernelVersion = let
       default = {
         freebsd = "13";
       }.${versionlessKernel} or null;
-      in if length splitted > 1 then elemAt splitted 1 else default;
-
-      abi = {
-        "3" = elemAt parts 2;
-      }.${toString (length parts)} or (throw "zig target string has invalid number of hyphen-separated components");
-
-      nixCpu = {
-        # TODO: how should we get this info
-        x86 = "i686";
-        arm = "armv7a";
-      }.${cpu} or cpu;
-
-      nixKernel = {
-        freestanding = "none";
-        freebsd = "freebsd${kernelVersion}";
-      }.${versionlessKernel} or versionlessKernel;
-
-      nixAbi = {
-        none = "unknown";
-        gnux32 = throw "nix does not support gnux32";
-        muslx32 = throw "nix does not support muslx32";
-      }.${abi} or abi;
-
-      nixVendor = {
-        windows = if abi == "gnu" then "w64" else "pc";
-      }.${versionlessKernel} or null;
-
-      system = systems.parse.mkSystemFromSkeleton ({
-        cpu = nixCpu;
-        kernel = nixKernel;
-        abi = nixAbi;
-      } // optionalAttrs (nixVendor != null) {
-        vendor = nixVendor;
-      });
-    in system // {
-      zig = {
-        inherit cpu kernel versionlessKernel kernelVersion abi;
-        supportsStaticLinking = system.kernel.execFormat.name != "macho";
-      };
-    };
-
-    nix = let
-      nixCpu = {
-        # TODO: how should we get this info
-        arm = "armv7a";
-      }.${res.value.cpu.name} or res.value.cpu.name;
-
-      nixKernel = {
-        freebsd = "freebsd${toString res.value.kernel.version}";
-      }.${res.value.kernel.name} or res.value.kernel.name;
-
-      nixVendor = {
-        windows = if res.value.abi.name == "gnu" then "w64" else "pc";
-      }.${res.value.kernel.name} or null;
-
-      nixAbi = {
-        gnu = rec {
-          mips64el = "gnuabi64";
-          mips64 = mips64el;
-          mipsel = "gnueabi";
-          arm = "gnueabi";
-          armeb = arm;
-          thumb = arm;
-          powerpc = "gnueabi";
-          csky = "gnueabi";
-        }.${nixCpu} or "gnu";
-
-        musl = rec {
-          mips64el = "muslabi64";
-          mips64 = mips64el;
-          mipsel = "musleabi";
-          arm = "musleabi";
-          armeb = arm;
-          thumb = arm;
-          powerpc = "musleabi";
-          csky = "musleabi";
-        }.${nixCpu} or "musl";
-      }.${res.value.abi.name} or res.value.abi.name;
-
-      system = systems.parse.mkSystemFromSkeleton ({
-        cpu = nixCpu;
-        kernel = nixKernel;
-        abi = nixAbi;
-      } // optionalAttrs (nixVendor != null) {
-        vendor = nixVendor;
-      });
-
-      zigCpu = {
-        # TODO: zig probably should be aware of the variant
-        armv5tel = "arm";
-        armv6m = "arm";
-        armv6l = "arm";
-        armv7a = "arm";
-        armv7r = "arm";
-        armv7m = "arm";
-        armv7l = "arm";
-        armv8a = "arm";
-        armv8r = "arm";
-        armv8m = "arm";
-        i386 = "x86";
-        i686 = "x86";
-      }.${system.cpu.name} or system.cpu.name;
-
-      zigKernel = {
-        none = "freestanding";
-        darwin = "macos";
-      }.${system.kernel.name} or system.kernel.name;
-
-      zigAbi = {
-        unknown = "none";
-      }.${system.abi.name} or system.abi.name;
-    in system // {
-      zig = {
-        cpu = zigCpu;
-        kernel = zigKernel;
-        versionlessKernel = zigKernel;
-        kernelVersion = system.kernel.version or null;
-        abi = zigAbi;
-        supportsStaticLinking = system.kernel.execFormat.name != "macho";
-      };
-    };
-  }.${kind};
+    in (meta kernel default).meta;
+    supportStaticLinking = any (p: p == versionlessKernel) [ "macos" "ios" "watchos" "tvos" ];
+  };
+in rec {
+  mkZigSystemFromString = s: let
+    n = normalized-target s;
+    system = systems.parse.mkSystemFromString zig2nix-target.${n};
+  in system // { zig = zig-meta s; };
 
   mkZigSystemFromPlatform = p: let
     system = mkZigSystemFromString p.config;
@@ -165,69 +125,15 @@ in rec {
     in mkZigSystemFromString "${system.zig.cpu}-${system.zig.kernel}.${sdkVer}-${system.zig.abi}";
   }.${system.kernel.name} or system;
 
-  zigTriplesFromSystem = system: {
-    linux = (rec {
-      arm = [
-        "${system.zig.cpu}-${system.zig.kernel}-gnueabi"
-        "${system.zig.cpu}-${system.zig.kernel}-musleabi"
-        "${system.zig.cpu}-${system.zig.kernel}-gnueabihf"
-        "${system.zig.cpu}-${system.zig.kernel}-musleabihf"
-      ];
-      armeb = arm;
-      thumb = arm;
-
-      mips64el = [
-        "${system.zig.cpu}-${system.zig.kernel}-gnuabi64"
-        "${system.zig.cpu}-${system.zig.kernel}-gnuabin32"
-        "${system.zig.cpu}-${system.zig.kernel}-musl"
-      ];
-      mips64 = mips64el;
-
-      mipsel = [
-        "${system.zig.cpu}-${system.zig.kernel}-gnueabi"
-        "${system.zig.cpu}-${system.zig.kernel}-gnueabihf"
-        "${system.zig.cpu}-${system.zig.kernel}-musl"
-      ];
-      mips = mipsel;
-
-      powerpc = mipsel;
-
-      csky = [
-        "${system.zig.cpu}-${system.zig.kernel}-gnueabi"
-        "${system.zig.cpu}-${system.zig.kernel}-gnueabihf"
-      ];
-
-      x86_64 = [
-        "${system.zig.cpu}-${system.zig.kernel}-gnu"
-        # nix does not support gnux32
-        # "${system.zig.cpu}-${system.zig.kernel}-gnux32"
-        "${system.zig.cpu}-${system.zig.kernel}-musl"
-        # nix does not support muslx32
-        # "${system.zig.cpu}-${system.zig.kernel}-muslx32"
-      ];
-    }.${system.zig.cpu} or [
-      "${system.zig.cpu}-${system.zig.kernel}-gnu"
-      "${system.zig.cpu}-${system.zig.kernel}-musl"
-    ]) ++ [ "${system.zig.cpu}-${system.zig.kernel}-none" ];
-
-    windows = [
-      "${system.zig.cpu}-${system.zig.kernel}-msvc"
-      "${system.zig.cpu}-${system.zig.kernel}-gnu"
-    ];
-  }.${system.zig.kernel} or [(zigTripleFromSystem system)];
-
   zigTripleFromSystem = system: "${system.zig.cpu}-${system.zig.kernel}-${system.zig.abi}";
   zigDoubleFromSystem = system: "${system.zig.cpu}-${system.zig.kernel}";
-  zigTriplesFromString = s: zigTriplesFromSystem (mkZigSystemFromString s);
   zigTripleFromString = s: zigTripleFromSystem (mkZigSystemFromString s);
   zigDoubleFromString = s: zigDoubleFromSystem (mkZigSystemFromString s);
 
-  # Unfortunately we have to monkeypatch some triples still for autotools
-  nixTripleFromSystem = s: let
-    default = systems.parse.tripleFromSystem s;
-  in {
-    windows = if s.abi.name == "gnu" then "${s.cpu.name}-${s.vendor.name}-mingw32" else default;
-  }.${s.kernel.name} or default;
+  nixTripleFromSystem = s: zig2nix-target.${normalized-target (zigTripleFromSystem s)};
+  nixDoubleFromSystem = systems.parse.doubleFromSystem;
+  nixTripleFromString = s: zig2nix-target.${normalized-target s};
+  nixDoubleFromString = s: nixDoubleFromSystem (mkZigSystemFromString s);
 
    # helpers for resolving the final target and system for building a package from derivation attrs
   resolveTargetSystem = { target ? null, platform ? null, musl ? false }: let
@@ -246,7 +152,9 @@ in rec {
 
   resolveTargetTriple = args: zigTripleFromSystem (resolveTargetSystem args);
 
-  flakeZigTriples = map (d: zigTripleFromString d) flakeDoubles;
-  allNixZigTriples = flatten (map (d: zigTriplesFromString d) allZigDoubles);
-  allNixZigSystems = map (s: mkZigSystemFromString s) allNixZigTriples;
+  inherit allFlakeTargetTriples;
+  allFlakeTargetSystems = map (s: mkZigSystemFromString s) allFlakeTargetTriples;
+
+  inherit allTargetTriples;
+  allTargetSystems = map (s: mkZigSystemFromString s) allTargetTriples;
 }

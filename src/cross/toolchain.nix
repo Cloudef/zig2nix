@@ -8,8 +8,10 @@
   , llvm
   , zig
   , zigPackage
-  , allNixZigSystems
+  , allTargetSystems
   , nixTripleFromSystem
+  , zigTripleFromSystem
+  , mkZigSystemFromPlatform
 }:
 
 {
@@ -18,6 +20,8 @@
   , wrapCCWith
   , wrapBintoolsWith
   , libllvm
+  , buildPlatform
+  , targetPlatform
 }:
 
 with lib;
@@ -28,16 +32,11 @@ let
     name = "zigtool";
     runtimeInputs = [ zig ];
     text = ''
-      if [[ ! "''${ZIG_TOOLCHAIN_TARGET:-}" ]]; then
-        echo "ZIG_TOOLCHAIN_TARGET is not set, cannot continue" 1>&2
-        exit 42
-      fi
-      export ZIG_LOCAL_CACHE_DIR="$TMPDIR/zig-cache"
+      export ZIG_LOCAL_CACHE_DIR="$TMPDIR/zigtool-cache"
       export ZIG_GLOBAL_CACHE_DIR="$ZIG_LOCAL_CACHE_DIR"
-      if [[ "$1" == cc ]] || [[ "$1" == c++ ]]; then
-        if [[ ''${ZIG_TOOLCHAIN_DEBUG:-0} == 1 ]]; then
-          printf -- "zigtool: warning: %s\n" "$*" 1>&2
-        fi
+      ZIG_TOOLCHAIN_DEBUG=1
+      if [[ ''${ZIG_TOOLCHAIN_DEBUG:-0} == 1 ]]; then
+        printf -- "zigtool: warning: %s\n" "$*" 1>&2
       fi
       exec zig "$@"
       '';
@@ -57,25 +56,32 @@ let
   #        -Wl,-arch, -march, -mcpu, -mtune are not compatible
   #        https://github.com/ziglang/zig/issues/4911
   #        this does not matter as -target encodes the needed information anyways
-  zigcc = let
-    support = zigPackage { src = ./support; };
+  zigcc = target: let
+    support = zigPackage target {
+      zigTarget = target;
+      src = ./support;
+    };
 
-    pp_args = [
-      "-target" ''"$ZIG_TOOLCHAIN_TARGET"''
-      # This is quite unfortunate, but zig ships recent glibc headers, but links against older glibc stubs
-      # Thus compile fails as autotools detects we don't have arc4random but it's in the glibc headers
-      # and the project provides its own symbol, causing collision with the header
-      # https://github.com/spdk/spdk/issues/2637
-      "-DHAVE_ARC4RANDOM=1" "-DHAVE_ARC4RANDOM_UNIFORM=1" "-DHAVE_ARC4RANDOM_BUF=1"
-    ];
+    pp_args = [ "-target" ''${target}'' ];
+
+    # Does not support the -c compiler flag
+    multiple-objects-supported = !targetPlatform.isWindows && !targetPlatform.isDarwin;
+
+    libname = lib: if targetPlatform.isWindows then "${lib}.lib" else "lib${lib}.a";
 
     # Has to be separate as these will be treated as inputs otherwise ...
     cc_args = [
       # Symbol versioning hell ...
       "-Wl,--undefined-version"
+    ] ++ optionals (multiple-objects-supported) [
       # Provides arc4random family functions
-      "${support}/lib/libarc4random.a"
+      # This is quite unfortunate, but zig ships recent glibc headers, but links against older glibc stubs
+      # Thus compile fails as autotools detects we don't have arc4random but it's in the glibc headers
+      # and the project provides its own symbol, causing collision with the header
+      # https://github.com/spdk/spdk/issues/2637
+      "${support}/lib/${libname "arc4random"}"
     ];
+
   in cmd: writeShellApplication {
     name = "zig${cmd}";
     runtimeInputs = [ zigtool ];
@@ -159,6 +165,33 @@ let
       '';
   };
 
+  zigrc = writeShellApplication {
+    name = "zigrc";
+    runtimeInputs = [ zigtool ];
+    text = ''
+      shopt -s extglob
+      input=zigrc-failed-arg-parsing
+      outputs=()
+      args=()
+      while [[ $# -gt 0 ]]; do
+        case "$1" in
+          *.rc)
+            input="$1"
+            shift;;
+          -o)
+            outputs+=("$2")
+            shift;shift;;
+          --define)
+            args+=("/d" "$2")
+            shift;;
+          *)
+            shift;;
+        esac
+      done
+      exec zigtool rc "''${args[@]}" -- "$input" "''${outputs[@]}"
+      '';
+  };
+
   zigcmd = cmd: writeShellApplication {
     name = cmd;
     runtimeInputs = [ zigtool ];
@@ -181,40 +214,39 @@ let
     dontFixup = true;
 
     installPhase = let
-      triples = map (s: nixTripleFromSystem s) allNixZigSystems;
-      prefixes = map (t: t + "-") triples;
+      triples = map (s: { z = zigTripleFromSystem s; n = nixTripleFromSystem s; }) allTargetSystems;
+      local = zigTripleFromSystem (mkZigSystemFromPlatform buildPlatform);
+      tools-for-target = t: let
+        z = t.z or local;
+        p = if t != null then "${t.n}-" else "";
+      in ''
+        ln -sf ${llvm}/bin/llvm-install-name-tool $out/bin/${p}install_name_tool
+        ln -sf ${llvm}/bin/llvm-as $out/bin/${p}as
+        ln -sf ${llvm}/bin/llvm-dwp $out/bin/${p}dwp
+        ln -sf ${llvm}/bin/llvm-nm $out/bin/${p}nm
+        ln -sf ${llvm}/bin/llvm-objdump $out/bin/${p}objdump
+        ln -sf ${llvm}/bin/llvm-readelf $out/bin/${p}readelf
+        ln -sf ${llvm}/bin/llvm-size $out/bin/${p}size
+        ln -sf ${llvm}/bin/llvm-strip $out/bin/${p}strip
+        ln -sf ${zigcmd "ar"}/bin/ar $out/bin/${p}ar
+        ln -sf ${zigcmd "ranlib"}/bin/ranlib $out/bin/${p}ranlib
+        ln -sf ${zigcmd "dlltool"}/bin/dlltool $out/bin/${p}dlltool
+        ln -sf ${zigcmd "lib"}/bin/lib $out/bin/${p}lib
+        ln -sf ${zigcmd "objcopy"}/bin/objcopy $out/bin/${p}objcopy
+        ln -sf ${zigrc}/bin/zigrc $out/bin/${p}rc
+        ln -sf $out/bin/${p}rc $out/bin/${p}windres
+        ln -sf ${zigcc z "cc"}/bin/zigcc $out/bin/${p}clang
+        ln -sf ${zigcc z "c++"}/bin/zigc++ $out/bin/${p}clang++
+        ln -sf $out/bin/${p}clang $out/bin/${p}gcc
+        ln -sf $out/bin/${p}clang++ $out/bin/${p}g++
+        ln -sf $out/bin/${p}clang $out/bin/${p}cc
+        ln -sf $out/bin/${p}clang++ $out/bin/${p}c++
+        ln -sf ${zigld}/bin/zigld $out/bin/${p}ld
+        '';
     in ''
       mkdir -p $out/bin $out/lib
-
-      for prefix in "" ${escapeShellArgs prefixes}; do
-        ln -sf ${llvm}/bin/llvm-install-name-tool $out/bin/''${prefix}install_name_tool
-        ln -sf ${llvm}/bin/llvm-as $out/bin/''${prefix}as
-        ln -sf ${llvm}/bin/llvm-dwp $out/bin/''${prefix}dwp
-        ln -sf ${llvm}/bin/llvm-nm $out/bin/''${prefix}nm
-        ln -sf ${llvm}/bin/llvm-objdump $out/bin/''${prefix}objdump
-        ln -sf ${llvm}/bin/llvm-readelf $out/bin/''${prefix}readelf
-        ln -sf ${llvm}/bin/llvm-size $out/bin/''${prefix}size
-        ln -sf ${llvm}/bin/llvm-strip $out/bin/''${prefix}strip
-        ln -sf ${llvm}/bin/llvm-rc $out/bin/''${prefix}rc
-        ln -sf ${zigcmd "ar"}/bin/ar $out/bin/''${prefix}ar
-        ln -sf ${zigcmd "ranlib"}/bin/ranlib $out/bin/''${prefix}ranlib
-        ln -sf ${zigcmd "dlltool"}/bin/dlltool $out/bin/''${prefix}dlltool
-        ln -sf ${zigcmd "lib"}/bin/lib $out/bin/''${prefix}lib
-        ln -sf ${zigcmd "objcopy"}/bin/objcopy $out/bin/''${prefix}objcopy
-        ln -sf $out/bin/''${prefix}rc $out/bin/''${prefix}windres
-        ln -sf $out/bin/ld.lld $out/bin/ld
-        ln -sf $out/bin/ld $out/bin/''${prefix}ld
-        ln -sf $out/bin/clang $out/bin/''${prefix}cc
-        ln -sf $out/bin/clang++ $out/bin/''${prefix}c++
-        ln -sf $out/bin/clang $out/bin/''${prefix}clang
-        ln -sf $out/bin/clang++ $out/bin/''${prefix}clang++
-        ln -sf $out/bin/clang $out/bin/''${prefix}gcc
-        ln -sf $out/bin/clang++ $out/bin/''${prefix}g++
-      done
-
-      ln -sf ${zigcc "cc"}/bin/zigcc $out/bin/clang
-      ln -sf ${zigcc "c++"}/bin/zigc++ $out/bin/clang++
-      ln -sf ${zigld}/bin/zigld $out/bin/ld.lld
+      ${tools-for-target null}
+      ${concatStringsSep "\n" (map tools-for-target triples)}
       '';
   };
 in wrapCCWith {
