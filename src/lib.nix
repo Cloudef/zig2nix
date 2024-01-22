@@ -95,9 +95,9 @@ let
       splitted = splitString "." s;
     in {
       base = elemAt splitted 0;
-      meta = if length splitted > 0 then elemAt splitted 1 else d;
+      meta = if length splitted > 1 then elemAt splitted 1 else d;
     };
-  in {
+  in rec {
     cpu = elemAt parts 0;
     kernel = elemAt parts 1;
     abi = elemAt parts 2;
