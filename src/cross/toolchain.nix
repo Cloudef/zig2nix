@@ -3,6 +3,8 @@
   , writeShellApplication
   , writeText
   , emptyFile
+  , runCommandLocal
+  , symlinkJoin
   , coreutils
   , gnugrep
   , llvm
@@ -12,16 +14,8 @@
   , nixTripleFromSystem
   , zigTripleFromSystem
   , mkZigSystemFromPlatform
-}:
-
-{
-  libc
-  , stdenvNoCC
-  , wrapCCWith
-  , wrapBintoolsWith
-  , libllvm
+  , mkZigSystemFromString
   , buildPlatform
-  , targetPlatform
 }:
 
 with lib;
@@ -57,17 +51,16 @@ let
   #        https://github.com/ziglang/zig/issues/4911
   #        this does not matter as -target encodes the needed information anyways
   zigcc = target: let
-    support = zigPackage target {
-      zigTarget = target;
-      src = ./support;
-    };
+    support = zigPackage target { src = ./support; };
 
     pp_args = [ "-target" ''${target}'' ];
 
-    # Does not support the -c compiler flag
-    multiple-objects-supported = !targetPlatform.isWindows && !targetPlatform.isDarwin;
+    system = mkZigSystemFromString target;
 
-    libname = lib: if targetPlatform.isWindows then "${lib}.lib" else "lib${lib}.a";
+    # Does not support the -c compiler flag
+    multiple-objects-supported = system.zig.kernel != "windows" && system.kernel.name != "darwin";
+
+    libname = lib: if system.zig.kernel == "windows" then "${lib}.lib" else "lib${lib}.a";
 
     # Has to be separate as these will be treated as inputs otherwise ...
     cc_args = [
@@ -198,64 +191,73 @@ let
     text = ''exec zigtool ${cmd} "$@"'';
   };
 
-  toolchain-unwrapped = stdenvNoCC.mkDerivation {
-    pname = "zig-toolchain";
-    inherit (zig) version;
+  tools-for-target = t: let
+    local = zigTripleFromSystem (mkZigSystemFromPlatform buildPlatform);
+    z = t.z or local;
+    p = if t != null then "${t.n}-" else "";
+  in ''
+    ln -sf ${llvm}/bin/llvm-install-name-tool $out/bin/${p}install_name_tool
+    ln -sf ${llvm}/bin/llvm-as $out/bin/${p}as
+    ln -sf ${llvm}/bin/llvm-dwp $out/bin/${p}dwp
+    ln -sf ${llvm}/bin/llvm-nm $out/bin/${p}nm
+    ln -sf ${llvm}/bin/llvm-objdump $out/bin/${p}objdump
+    ln -sf ${llvm}/bin/llvm-readelf $out/bin/${p}readelf
+    ln -sf ${llvm}/bin/llvm-size $out/bin/${p}size
+    ln -sf ${llvm}/bin/llvm-strip $out/bin/${p}strip
+    ln -sf ${zigcmd "ar"}/bin/ar $out/bin/${p}ar
+    ln -sf ${zigcmd "ranlib"}/bin/ranlib $out/bin/${p}ranlib
+    ln -sf ${zigcmd "dlltool"}/bin/dlltool $out/bin/${p}dlltool
+    ln -sf ${zigcmd "lib"}/bin/lib $out/bin/${p}lib
+    ln -sf ${zigcmd "objcopy"}/bin/objcopy $out/bin/${p}objcopy
+    ln -sf ${zigrc}/bin/zigrc $out/bin/${p}rc
+    ln -sf $out/bin/${p}rc $out/bin/${p}windres
+    ln -sf ${zigcc z "cc"}/bin/zigcc $out/bin/${p}clang
+    ln -sf ${zigcc z "c++"}/bin/zigc++ $out/bin/${p}clang++
+    ln -sf $out/bin/${p}clang $out/bin/${p}gcc
+    ln -sf $out/bin/${p}clang++ $out/bin/${p}g++
+    ln -sf $out/bin/${p}clang $out/bin/${p}cc
+    ln -sf $out/bin/${p}clang++ $out/bin/${p}c++
+    ln -sf ${zigld}/bin/zigld $out/bin/${p}ld
+    '';
 
+  toolchain-universal = let
+    triples = map (s: { z = zigTripleFromSystem s; n = nixTripleFromSystem s; }) allTargetSystems;
+  in runCommandLocal "zig-toolchain-universal" {} ''
+    mkdir -p "$out/bin"
+    ${concatStringsSep "\n" (map tools-for-target triples)}
+    '';
+
+  toolchain-local = runCommandLocal "zig-toolchain-local" {} ''
+    mkdir -p "$out/bin"
+    ${tools-for-target null}
+    '';
+
+  toolchain-unwrapped = libllvm: symlinkJoin {
+    name = "zig-toolchain";
+    inherit (zig) version;
+    paths = [ toolchain-local toolchain-universal ];
     passthru = {
       isClang = true;
       isLLVM = true;
       inherit libllvm;
     };
-
-    dontUnpack = true;
-    dontConfigure = true;
-    dontBuild = true;
-    dontFixup = true;
-
-    installPhase = let
-      triples = map (s: { z = zigTripleFromSystem s; n = nixTripleFromSystem s; }) allTargetSystems;
-      local = zigTripleFromSystem (mkZigSystemFromPlatform buildPlatform);
-      tools-for-target = t: let
-        z = t.z or local;
-        p = if t != null then "${t.n}-" else "";
-      in ''
-        ln -sf ${llvm}/bin/llvm-install-name-tool $out/bin/${p}install_name_tool
-        ln -sf ${llvm}/bin/llvm-as $out/bin/${p}as
-        ln -sf ${llvm}/bin/llvm-dwp $out/bin/${p}dwp
-        ln -sf ${llvm}/bin/llvm-nm $out/bin/${p}nm
-        ln -sf ${llvm}/bin/llvm-objdump $out/bin/${p}objdump
-        ln -sf ${llvm}/bin/llvm-readelf $out/bin/${p}readelf
-        ln -sf ${llvm}/bin/llvm-size $out/bin/${p}size
-        ln -sf ${llvm}/bin/llvm-strip $out/bin/${p}strip
-        ln -sf ${zigcmd "ar"}/bin/ar $out/bin/${p}ar
-        ln -sf ${zigcmd "ranlib"}/bin/ranlib $out/bin/${p}ranlib
-        ln -sf ${zigcmd "dlltool"}/bin/dlltool $out/bin/${p}dlltool
-        ln -sf ${zigcmd "lib"}/bin/lib $out/bin/${p}lib
-        ln -sf ${zigcmd "objcopy"}/bin/objcopy $out/bin/${p}objcopy
-        ln -sf ${zigrc}/bin/zigrc $out/bin/${p}rc
-        ln -sf $out/bin/${p}rc $out/bin/${p}windres
-        ln -sf ${zigcc z "cc"}/bin/zigcc $out/bin/${p}clang
-        ln -sf ${zigcc z "c++"}/bin/zigc++ $out/bin/${p}clang++
-        ln -sf $out/bin/${p}clang $out/bin/${p}gcc
-        ln -sf $out/bin/${p}clang++ $out/bin/${p}g++
-        ln -sf $out/bin/${p}clang $out/bin/${p}cc
-        ln -sf $out/bin/${p}clang++ $out/bin/${p}c++
-        ln -sf ${zigld}/bin/zigld $out/bin/${p}ld
-        '';
-    in ''
-      mkdir -p $out/bin $out/lib
-      ${tools-for-target null}
-      ${concatStringsSep "\n" (map tools-for-target triples)}
-      '';
   };
-in wrapCCWith {
+in
+
+{
+  libc
+  , wrapCCWith
+  , wrapBintoolsWith
+  , libllvm
+}:
+
+wrapCCWith {
   inherit gnugrep coreutils libc;
-  cc = toolchain-unwrapped;
+  cc = toolchain-unwrapped libllvm;
   useCcForLibs = false;
   bintools = wrapBintoolsWith {
     inherit gnugrep coreutils libc;
-    bintools = toolchain-unwrapped;
+    bintools = toolchain-unwrapped libllvm;
     postLinkSignHook = emptyFile;
     signingUtils = writeText "sign" ''
       sign() {

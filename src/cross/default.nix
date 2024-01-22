@@ -10,6 +10,7 @@
   , nixTripleFromSystem
   , zigTripleFromSystem
   , mkZigSystemFromPlatform
+  , mkZigSystemFromString
   , nixCrossPkgs
 }:
 
@@ -21,7 +22,9 @@ import path {
   inherit localSystem crossSystem;
   stdenvStages = callPackage ./stdenv.nix {
     mkZigToolchain = callPackage ./toolchain.nix {
-      inherit zig zigPackage allTargetSystems nixTripleFromSystem zigTripleFromSystem mkZigSystemFromPlatform;
+      inherit zig zigPackage allTargetSystems;
+      inherit nixTripleFromSystem zigTripleFromSystem;
+      inherit mkZigSystemFromPlatform mkZigSystemFromString;
     };
   };
 

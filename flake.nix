@@ -133,7 +133,9 @@
         zigCrossPkgsForTarget = with zig2nix-lib; args': let
           target-system = if isString args' then mkZigSystemFromString args' else args';
           crossPkgs = pkgs.callPackage ./src/cross {
-            inherit zig zigPackage allTargetSystems nixTripleFromSystem zigTripleFromSystem mkZigSystemFromPlatform;
+            inherit zig zigPackage allTargetSystems;
+            inherit nixTripleFromSystem zigTripleFromSystem;
+            inherit mkZigSystemFromPlatform mkZigSystemFromString;
             nixCrossPkgs = pkgsForTarget target-system;
             localSystem = system;
             crossSystem = { config = nixTripleFromSystem target-system; };
