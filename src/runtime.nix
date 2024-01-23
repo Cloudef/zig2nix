@@ -11,6 +11,7 @@
   , enableOpenGL
   , enableWayland
   , enableX11
+  , enableAlsa
   , buildPlatform
 }:
 
@@ -49,8 +50,9 @@ let
       ++ optionals (enableOpenGL) [ libGL ]
       # Some common runtime libs used by x11 apps, for example: https://www.glfw.org/docs/3.3/compat.html
       # You can always include more if you need with customRuntimeLibs.
-      ++ optionals (enableX11) [ xorg.libX11 xorg.libXext xorg.libXfixes xorg.libXi xorg.libXrender xorg.libXrandr ]
-      ++ optionals (enableWayland) [ wayland libxkbcommon libdecor ];
+      ++ optionals (enableX11) [ xorg.libX11 xorg.libXext xorg.libXfixes xorg.libXi xorg.libXrender xorg.libXrandr xorg.libXinerama ]
+      ++ optionals (enableWayland) [ wayland libxkbcommon libdecor ]
+      ++ optionals (enableAlsa) [ alsa-libs ];
   };
 
   bins = {};
