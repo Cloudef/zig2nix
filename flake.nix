@@ -338,7 +338,7 @@
             # Minimal environment
             bare = shells-for {};
             # Environment for running multimedia programs
-            multimedia = multimedia-attrs;
+            multimedia = shells-for multimedia-attrs;
           };
         in {
           bin = shells-for v.bin;

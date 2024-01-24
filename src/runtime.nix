@@ -52,7 +52,7 @@ let
       # You can always include more if you need with customRuntimeLibs.
       ++ optionals (enableX11) [ xorg.libX11 xorg.libXext xorg.libXfixes xorg.libXi xorg.libXrender xorg.libXrandr xorg.libXinerama ]
       ++ optionals (enableWayland) [ wayland libxkbcommon libdecor ]
-      ++ optionals (enableAlsa) [ alsa-libs ];
+      ++ optionals (enableAlsa) [ alsa-lib ];
   };
 
   bins = {};
