@@ -8,7 +8,7 @@ https://ziglang.org/
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-* Zig master: `0.12.0-dev.2317+fdb4eb305 @ 2024-01-22`
+* Zig master: `0.12.0-dev.2334+aef1da163 @ 2024-01-24`
 * Zig default: `0.11.0 @ 2023-08-04`
 
 ## Examples
@@ -302,15 +302,15 @@ cross = env.pkgs.lib.genAttrs env.lib.allTargetTriples (t: env.zigCrossPkgsForTa
 packages.zigCross = packages.env.master.bin.cross;
 
 #! Run a version of a Zig compiler
-#! nix run#env."zig-version"."build"."type".zig
-#! example: nix run#env.master.src.bare.zig
-#! example: nix run#env.default.bin.multimedia.zig
+#! nix run .#env."zig-version"."build"."type".zig
+#! example: nix run .#env.master.src.bare.zig
+#! example: nix run .#env.default.bin.multimedia.zig
 zig = env.app-no-root [] ''zig "$@"'';
 
 #! Print external dependencies of zig project
-#! nix run#env."zig-version"."build"."type".showExternalDeps
-#! example: nix run#env.master.src.bare.showExternalDeps
-#! example: nix run#env.default.bin.multimedia.showExternalDeps
+#! nix run .#env."zig-version"."build"."type".showExternalDeps
+#! example: nix run .#env.master.src.bare.showExternalDeps
+#! example: nix run .#env.default.bin.multimedia.showExternalDeps
 inherit (env) showExternalDeps;
 
 #! Master zig
