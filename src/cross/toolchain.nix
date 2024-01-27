@@ -39,7 +39,7 @@ let
   # libs that should not be linked if using zig's builtin libcs
   sys_excluded = [
     "-lc" "-lm" "-latomic" "-liconv"
-    "CoreFoundation/CoreFoundation.tbd"
+    "*/CoreFoundation.tbd"
   ];
 
   # FIXME: some quirks here should be fixed upstream
@@ -106,7 +106,9 @@ let
                   ;;
               esac
             done <<<"$1,"
-            args+=("$wl")
+            if [[ "$wl" != "-Wl" ]]; then
+              args+=("$wl")
+            fi
             shift;;
           -target)
             shift;shift;;
