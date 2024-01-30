@@ -353,12 +353,32 @@
       devShells.default = devShells.env.default.bin.bare;
 
       # nix run .#update-versions
-      apps.update-versions = with pkgs; test-app [ curl jq ] ''
+      apps.update-versions = with pkgs; test-app [ curl jq coreutils ] ''
         tmpdir="$(mktemp -d)"
         trap 'rm -rf "$tmpdir"' EXIT
+        read -r rev _ < <(git ls-remote https://github.com/ziglang/zig.git HEAD)
+        url="https://github.com/ziglang/zig/archive/$rev.tar.gz"
+        curl -sSL "$url" -o "$tmpdir/git.tar.gz"
+        read -r size _ < <(wc -c "$tmpdir/git.tar.gz")
+        date="$(date +"%Y-%m-%d")"
+        cat <<EOF > "$tmpdir/git.json"
+        {
+          "git": {
+            "version": "git+''${rev:0:7}+$date",
+            "date": "$date",
+            "docs": "https://ziglang.org/documentation/master/",
+            "stdDocs": "https://ziglang.org/documentation/master/std/",
+            "src": {
+              "tarball": "$url",
+              "shasum": "$(nix hash file --type sha256 --base16 "$tmpdir/git.tar.gz")",
+              "size": "$size"
+            }
+          }
+        }
+        EOF
         curl -sSL https://ziglang.org/download/index.json |\
           jq 'with_entries(select(.key != "0.1.1" and .key != "0.2.0" and .key != "0.3.0" and .key != "0.4.0" and .key != "0.5.0" and .key != "0.6.0" and .key != "0.7.0" and .key != "0.7.1"))' > "$tmpdir"/versions.json
-        jq 'to_entries | {"default": ({"version": .[1].key} + .[1].value)}' "$tmpdir/versions.json" | cat "$tmpdir/versions.json" - | jq -s add
+        jq 'to_entries | {"default": ({"version": .[1].key} + .[1].value)}' "$tmpdir/versions.json" | cat "$tmpdir/git.json" - "$tmpdir/versions.json" | jq -s add
         '';
 
       # nix run .#update-templates
@@ -403,6 +423,7 @@
 
       [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+      * Zig git: `${zigv.git.src.version} @ ${zigv.git.src.date}`
       * Zig master: `${zigv.master.bin.version} @ ${zigv.master.bin.date}`
       * Zig default: `${zigv.default.bin.version} @ ${zigv.default.bin.date}`
 
