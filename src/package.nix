@@ -62,7 +62,7 @@ let
   };
 
   default-flags =
-    if versionAtLeast zig.version "0.11" then
+    if hasPrefix "git" zig.version || versionAtLeast zig.version "0.11" then
       [ "-Doptimize=ReleaseSafe" ]
     else
       [ "-Drelease-safe=true" ];
