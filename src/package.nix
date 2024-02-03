@@ -9,6 +9,7 @@
   , runCommandLocal
   , makeWrapper
   , callPackage
+  , removeReferencesTo
 }:
 
 {
@@ -75,7 +76,7 @@ in stdenvNoCC.mkDerivation (
       ++ [ "-Dtarget=${target-triple}" ]
       ++ stdenv-flags;
 
-    nativeBuildInputs = [ zig.hook ]
+    nativeBuildInputs = [ zig.hook removeReferencesTo ]
       ++ optionals (!zigDisableWrap) ([ makeWrapper ] ++ (runtime.env.wrapperBuildInputs or []))
       ++ (runtime.env.nativeBuildInputs or [])
       ++ (attrs.nativeBuildInputs or []);
@@ -89,7 +90,11 @@ in stdenvNoCC.mkDerivation (
       for bin in $out/bin/*; do
         wrapProgram $bin ${concatStringsSep " " wrapper-args}
       done
+      '' + ''
+      find "$out" -type f -exec remove-references-to -t ${zig} '{}' +
       ${attrs.postFixup or ""}
       '';
+
+    disallowedReferences = [ zig ];
   }
 )
