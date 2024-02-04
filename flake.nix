@@ -225,6 +225,12 @@
         #!
         #! <https://github.com/NixOS/nixpkgs/blob/master/doc/hooks/zig.section.md>
         package = packageForTarget system;
+
+        #! Bundle a package into a zip
+        bundle.zip = pkgs.callPackage ./src/bundle/zip.nix { inherit packageForTarget; };
+
+        #! Bundle a package for running in AWS lambda
+        bundle.aws.lambda = pkgs.callPackage ./src/bundle/lambda.nix { bundleZip = bundle.zip; };
       };
 
       # Default zig env used for tests and automation.
