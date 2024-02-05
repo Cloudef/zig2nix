@@ -6,9 +6,9 @@ pub fn build(b: *std.Build) void {
 
     const opts = b.addOptions();
     opts.addOption(?[]const u8, "entrypoint", b.option([]const u8, "entrypoint", "Execute the given hardcoded path"));
-    opts.addOption(bool, "runtime", b.option(bool, "runtime", "Detect linux distro and try setup a runtime for the entrypoint") orelse false);
+    opts.addOption(bool, "runtime", b.option(bool, "runtime", "Detect linux distro and try to setup a runtime for the entrypoint") orelse false);
     opts.addOption(bool, "namespace", b.option(bool, "namespace", "Setup user namespace with mounted /nix") orelse false);
-    opts.addOption(?[]const u8, "workdir", b.option([]const u8, "workdir", "Working directory for the namespace, defaults to cwd"));
+    opts.addOption(?[]const u8, "workdir", b.option([]const u8, "workdir", "Working directory for the namespace, defaults to entrypoint's directory"));
 
     const exe = b.addExecutable(.{
         .name = "loader",

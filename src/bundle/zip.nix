@@ -61,7 +61,8 @@ let
       done < ${refs} > $out
     '') == "${entrypoint}\n";
 
-  # when the bundle is not tightly-packed this is used to setup user namespace that mounts /nix for the process
+  # This is used to setup user namespace that mounts /nix for the process
+  # It can also try setup a compatible runtime for non-FHS distros
   # NOTE: this only works in linux
   loader = let
     entrypoint' = if packageAsRoot then "./${removePrefix (toString package) entrypoint}" else "./${entrypoint}";
