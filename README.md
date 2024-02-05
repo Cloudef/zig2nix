@@ -8,8 +8,8 @@ https://ziglang.org/
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-* Zig git: `git+a65bc8d+2024-02-04 @ 2024-02-04`
-* Zig master: `0.12.0-dev.2543+9eda6ccef @ 2024-02-03`
+* Zig git: `git+f5dbcd1+2024-02-05 @ 2024-02-05`
+* Zig master: `0.12.0-dev.2565+9bf97b849 @ 2024-02-05`
 * Zig default: `0.11.0 @ 2023-08-04`
 
 ## Examples
@@ -262,6 +262,13 @@ packageForTarget = zigPackage;
 #!
 #! <https://github.com/NixOS/nixpkgs/blob/master/doc/hooks/zig.section.md>
 package = packageForTarget system;
+
+#! Bundle a package into a zip
+bundle.zip = pkgs.callPackage ./src/bundle/zip.nix { inherit packageForTarget; };
+
+
+#! Bundle a package for running in AWS lambda
+bundle.aws.lambda = pkgs.callPackage ./src/bundle/lambda.nix { bundleZip = bundle.zip; };
 
 #! --- Architecture dependent flake outputs.
 #!     access: `zig2nix.outputs.thing.${system}`
