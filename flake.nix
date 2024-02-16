@@ -410,7 +410,7 @@
         inherit test-app zon2json-lock;
         inherit (zig2nix-lib) deriveLockFile resolveTargetSystem zigTripleFromSystem nixTripleFromSystem allFlakeTargetTriples;
         inherit (test-env) zig;
-        envPackage = test-env.package;
+        zig-env = test-env;
       };
 
       # nix run .#readme

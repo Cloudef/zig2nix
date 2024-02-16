@@ -22,6 +22,7 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(exe);
     exe.root_module.addOptions("options", opts);
+    exe.root_module.addImport("ztd", b.dependency("ztd", .{}).module("ztd"));
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());

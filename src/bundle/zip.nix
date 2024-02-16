@@ -65,7 +65,7 @@ let
   # It can also try setup a compatible runtime for non-FHS distros
   # NOTE: this only works in linux
   loader = let
-    entrypoint' = if packageAsRoot then "./${removePrefix (toString package) entrypoint}" else "./${entrypoint}";
+    entrypoint' = if packageAsRoot then ".${removePrefix (toString package) entrypoint}" else "${entrypoint}";
   in packageForTarget "${loaderArch}-linux-musl" {
     src = cleanSource ./loader;
     zigBuildFlags = [

@@ -4,8 +4,8 @@ const log = std.log.scoped(.loader);
 const runtime = @import("runtime.zig");
 const namespace = @import("namespace.zig");
 
-pub const std_options = struct {
-    pub const log_level = .debug;
+pub const std_options = .{
+    .log_level = .debug,
 };
 
 fn dynamicLinkerFromPath(allocator: std.mem.Allocator, path: []const u8) !?[]const u8 {
@@ -32,7 +32,7 @@ const Executor = struct {
                 const appdir = try std.fs.selfExeDirPathAlloc(allocator);
                 defer allocator.free(appdir);
                 try std.os.chdir(appdir);
-                break :blk try std.fs.realpathAlloc(allocator, entrypoint);
+                break :blk try allocator.dupe(u8, entrypoint);
             } else {
                 if (iter.next()) |exe| {
                     break :blk try std.fs.realpathAlloc(allocator, exe);

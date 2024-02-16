@@ -1,8 +1,7 @@
 const std = @import("std");
+const ztd = @import("ztd");
 const builtin = @import("builtin");
 const log = std.log.scoped(.runtime);
-const OsRelease = @import("OsRelease.zig");
-const setenv = @import("setenv.zig").setenv;
 
 // Only care about non-FHS distros
 const Distro = enum {
@@ -13,19 +12,20 @@ const Distro = enum {
 };
 
 // https://old.reddit.com/r/linuxquestions/comments/62g28n/deleted_by_user/dfmjht6/
-fn detectDistro() Distro {
+fn detectDistro(allocator: std.mem.Allocator) Distro {
     if (std.os.getenv("LOADER_DISTRO_OVERRIDE")) |env| {
         return std.meta.stringToEnum(Distro, env) orelse .other;
     }
 
     // This usually works, anything else is a fallback
-    if (OsRelease.init()) |distro| {
+    if (ztd.os.OsRelease.init(allocator)) |*distro| {
+        defer @constCast(distro).deinit(allocator);
         if (distro.id) |id| {
             log.info("detected linux distribution: {s}", .{distro.pretty_name orelse distro.name orelse id});
             if (std.meta.stringToEnum(Distro, id)) |d| return d;
             return .other;
         }
-    }
+    } else |_| {}
 
     if (std.fs.accessAbsolute("/run/current-system/nixos-version", .{ .mode = .read_only })) {
         log.info("detected linux distribution: {s}", .{@tagName(.nixos)});
@@ -147,7 +147,11 @@ const SonameIterator = struct {
     }
 };
 
-fn runCmd(allocator: std.mem.Allocator, cmd: []const u8) ![]const u8 {
+const RunCmdOptions = struct {
+    error_code_starts_from: i32 = 1,
+};
+
+fn runCmd(allocator: std.mem.Allocator, cmd: []const u8, opts: RunCmdOptions) ![]const u8 {
     const rr = std.process.Child.run(.{
         .allocator = allocator,
         .argv = &.{ "sh", "-c", cmd },
@@ -160,7 +164,7 @@ fn runCmd(allocator: std.mem.Allocator, cmd: []const u8) ![]const u8 {
     defer allocator.free(rr.stderr);
     switch (rr.term) {
         .Exited => |code| {
-            if (code != 0) {
+            if (code >= opts.error_code_starts_from) {
                 log.err("exit code ({d}): {s}", .{ code, cmd });
                 return error.RunCmdFailed;
             }
@@ -177,7 +181,7 @@ fn getSonames(allocator: std.mem.Allocator, grep: []const u8, path: []const u8) 
     // TODO: do this without grep
     const cmd = try std.fmt.allocPrint(allocator, "{s} -a --null-data -o '.*[.]so[.0-9]*$' {s}", .{ grep, path });
     defer allocator.free(cmd);
-    return runCmd(allocator, cmd);
+    return runCmd(allocator, cmd, .{ .error_code_starts_from = 2 });
 }
 
 fn setupLinux(allocator: std.mem.Allocator, bin: []const u8) !void {
@@ -195,7 +199,7 @@ fn setupLinux(allocator: std.mem.Allocator, bin: []const u8) !void {
 
     // NixOS, Guix and GoboLinux are to my knowledge the only non-FHS Linux distros
     // However GoboLinux apparently has FHS compatibility, so it probably works OOB?
-    switch (detectDistro()) {
+    switch (detectDistro(allocator)) {
         .nixos => {
             log.info("setting up a {s} runtime ...", .{@tagName(.nixos)});
 
@@ -251,7 +255,7 @@ fn setupLinux(allocator: std.mem.Allocator, bin: []const u8) !void {
                 .{ "libglfw", "glfw" },
             });
 
-            const store = try runCmd(allocator, "/run/current-system/sw/bin/nix-store -q --requisites /run/current-system");
+            const store = try runCmd(allocator, "/run/current-system/sw/bin/nix-store -q --requisites /run/current-system", .{});
             defer allocator.free(store);
 
             const grep = try StoreIterator.get(allocator, store, "-gnugrep-", "bin/grep");
@@ -312,7 +316,7 @@ fn setupLinux(allocator: std.mem.Allocator, bin: []const u8) !void {
     }
 
     if (ld_library_path.bytes.items.len != orig_ld_path_len) {
-        try setenv("LD_LIBRARY_PATH", ld_library_path.bytes.items);
+        try ztd.unsafe.setenv("LD_LIBRARY_PATH", ld_library_path.bytes.items);
         log.info("LD_LIBRARY_PATH={s}", .{ld_library_path.bytes.items});
     }
 }
