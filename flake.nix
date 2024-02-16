@@ -188,7 +188,7 @@
         mkShell = pkgs.callPackage ({
           nativeBuildInputs ? [],
           ...
-        } @attrs: pkgs.mkShell (attrs // {
+        } @attrs: pkgs.mkShellNoCC (attrs // {
           nativeBuildInputs = optionals (attrs ? nativeBuildInputs) attrs.nativeBuildInputs ++ _deps;
           shellHook = ''
             ${runtime.shell}
