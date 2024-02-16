@@ -17,7 +17,7 @@
       # nix build .#target.{zig-target}
       # e.g. nix build .#target.x86_64-linux-gnu
       packages.target = genAttrs allTargetTriples (target: env.packageForTarget target ({
-        src = ./.;
+        src = cleanSource ./.;
 
         nativeBuildInputs = with env.pkgs; [];
         buildInputs = with env.pkgsForTarget target; [];
