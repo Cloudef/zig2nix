@@ -36,8 +36,7 @@
       # Converts zon files to json
       zon2json = with zig2nix-lib-base; let
         target = resolveTargetTriple { target = system; musl = true; };
-      in pkgs.callPackage tools/zon2json/default.nix {
-        zig = zigv.master.bin;
+      in (pkgs.callPackage tools/zon2json/default.nix { zig = zigv.master.bin; }) {
         zigBuildFlags = [ "-Dtarget=${target}" ];
       };
 

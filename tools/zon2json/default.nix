@@ -1,11 +1,17 @@
 {
-  stdenvNoCC
+  lib
+  , stdenvNoCC
   , zig
-  , ...
-} @attrs:
+}:
+
+{ ... }@attrs:
+
+with builtins;
+with lib;
 
 stdenvNoCC.mkDerivation (attrs // {
   name = "zon2json";
-  src = ./.;
+  src = cleanSource ./.;
   nativeBuildInputs = [ zig.hook ];
+  meta.mainProgram = "zon2json";
 })
