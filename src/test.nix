@@ -82,7 +82,7 @@ with lib;
 
   # nix run .#test.package
   package = let
-    pkg = envPackage { src = ../tools/zon2json; };
+    pkg = zig-env.package { src = cleanSource ../tools/zon2json; };
   in test-app [] "echo ${pkg}";
 
   # nix run .#test.cross

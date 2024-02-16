@@ -67,7 +67,7 @@ let
   loader = let
     entrypoint' = if packageAsRoot then "./${removePrefix (toString package) entrypoint}" else "./${entrypoint}";
   in packageForTarget "${loaderArch}-linux-musl" {
-    src = ./loader;
+    src = cleanSource ./loader;
     zigBuildFlags = [
       "-Doptimize=ReleaseSmall"
       "-Dentrypoint=${entrypoint'}"

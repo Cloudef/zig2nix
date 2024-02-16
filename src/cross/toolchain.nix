@@ -51,7 +51,7 @@ let
   #        https://github.com/ziglang/zig/issues/4911
   #        this does not matter as -target encodes the needed information anyways
   zigcc = target: let
-    support = zigPackage target { src = ./support; };
+    support = zigPackage target { src = cleanSource ./support; };
 
     pp_args = [ "-target" ''${target}'' ];
 
