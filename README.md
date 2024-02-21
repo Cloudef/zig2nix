@@ -8,8 +8,8 @@ https://ziglang.org/
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-* Zig git: `git+57d6f78+2024-02-16 @ 2024-02-16`
-* Zig master: `0.12.0-dev.2757+bec851172 @ 2024-02-15`
+* Zig git: `git+955fd65+2024-02-21 @ 2024-02-21`
+* Zig master: `0.12.0-dev.2818+97290e0bf @ 2024-02-20`
 * Zig default: `0.11.0 @ 2023-08-04`
 
 ## Examples
@@ -226,7 +226,7 @@ app = deps: script: app-bare (deps ++ _deps) ''
 mkShell = pkgs.callPackage ({
  nativeBuildInputs ? [],
  ...
- } @attrs: pkgs.mkShell (attrs // {
+ } @attrs: pkgs.mkShellNoCC (attrs // {
  nativeBuildInputs = optionals (attrs ? nativeBuildInputs) attrs.nativeBuildInputs ++ _deps;
  shellHook = ''
   ${runtime.shell}
