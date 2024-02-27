@@ -22,7 +22,6 @@ with lib;
 {
   # nix run .#test.zon2json-lock
   zon2json-lock = test-app [ zon2json-lock ] ''
-    nix store add-file tools/fixtures/file-url-test.tar.gz
     for f in tools/fixtures/*.zig.zon; do
       echo "testing (zon2json-lock): $f"
       if ! cmp <(zon2json-lock "$f" -) "''${f}2json-lock"; then

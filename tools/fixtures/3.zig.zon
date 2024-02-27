@@ -7,10 +7,6 @@
         "build.zig.zon",
     },
     .dependencies = .{
-        .file = .{
-            .url = "file:///nix/store/xwaac58ji3kwkra5wmcfl6siszi82kpq-file-url-test.tar.gz",
-            .hash = "122026c10145ba87f30c8a88b78868bb8ae7b65968824357e132a162555b35857c68",
-        },
         .git = .{
             .url = "git+https://github.com/Cloudef/zig-router.git#7e7e5c4a35abbe23845eb8180c8b87984f069d19",
             .hash = "12206cd28db2c8a258ace966e466026fc9ca34821ecf48dc8139f8fbaf2285e32236",
