@@ -94,14 +94,20 @@ writeShellApplication {
           fi
 
           printf '{"%s":{"name":"%s","url":"%s","hash":"%s"}}\n' "$zhash" "$name" "$url" "$ahash"
+          touch "$tmpdir/$zhash.read"
 
           if [[ -f "$zig_cache/p/$zhash/build.zig.zon" ]]; then
             zon2json-recursive "$zig_cache/p/$zhash/build.zig.zon"
           fi
-
-          touch "$tmpdir/$zhash.read"
         fi
-      done < <(zon2json "$1" | jq -r '.dependencies | to_entries | .[] | select(.value.url != null) | .key, .value.url, .value.hash')
+      done < <(zon2json "$1" | jq -r '.dependencies | to_entries | .[] | select(.value.url != null) | .key, .value.url, .value.hash' 2>/dev/null)
+
+      # Go through path deps as well in case they have network deps
+      while read -r path_dep; do
+        if [[ -f "$path_dep/build.zig.zon" ]]; then
+          zon2json-recursive "$path_dep/build.zig.zon"
+        fi
+      done < <(zon2json "$1" | jq -r '.dependencies | to_entries | .[] | select(.value.path != null) | .value.path' 2>/dev/null)
     }
 
     if ! jq -e '.dependencies[] | select(.url != null) | length > 0' <(zon2json "$path") >/dev/null; then
