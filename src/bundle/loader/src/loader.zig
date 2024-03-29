@@ -31,14 +31,14 @@ const Executor = struct {
             if (comptime @import("options").entrypoint) |entrypoint| {
                 const appdir = try std.fs.selfExeDirPathAlloc(allocator);
                 defer allocator.free(appdir);
-                try std.os.chdir(appdir);
+                try std.posix.chdir(appdir);
                 break :blk try allocator.dupe(u8, entrypoint);
             } else {
                 if (iter.next()) |exe| {
                     break :blk try std.fs.realpathAlloc(allocator, exe);
                 } else {
                     std.log.err("usage: loader exe [args]", .{});
-                    std.os.exit(1);
+                    std.posix.exit(1);
                 }
             }
         };
@@ -122,6 +122,6 @@ pub fn main() !void {
         if (@errorReturnTrace()) |trace| {
             std.debug.dumpStackTrace(trace.*);
         }
-        std.os.exit(127);
+        std.posix.exit(127);
     };
 }

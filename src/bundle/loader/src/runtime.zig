@@ -13,7 +13,7 @@ const Distro = enum {
 
 // https://old.reddit.com/r/linuxquestions/comments/62g28n/deleted_by_user/dfmjht6/
 fn detectDistro(allocator: std.mem.Allocator) Distro {
-    if (std.os.getenv("LOADER_DISTRO_OVERRIDE")) |env| {
+    if (std.posix.getenv("LOADER_DISTRO_OVERRIDE")) |env| {
         return std.meta.stringToEnum(Distro, env) orelse .other;
     }
 
@@ -97,7 +97,7 @@ const SearchPathIterator = struct {
     paths: std.mem.TokenIterator(u8, .scalar),
 
     pub fn initEnv(env: []const u8) @This() {
-        return .{ .paths = std.mem.tokenizeScalar(u8, std.os.getenv(env) orelse "", ':') };
+        return .{ .paths = std.mem.tokenizeScalar(u8, std.posix.getenv(env) orelse "", ':') };
     }
 
     pub fn initPath(path: []const u8) @This() {
@@ -185,14 +185,14 @@ fn getSonames(allocator: std.mem.Allocator, grep: []const u8, path: []const u8) 
 }
 
 fn setupLinux(allocator: std.mem.Allocator, bin: []const u8) !void {
-    if (builtin.link_mode != .Static) {
+    if (builtin.link_mode != .static) {
         std.log.warn("the binary isn't statically linked, compatibility in different environments is worsened", .{});
     }
 
     var ld_library_path: SearchPath = .{};
     defer ld_library_path.deinit(allocator);
 
-    if (std.os.getenv("LD_LIBRARY_PATH")) |path0| if (path0.len > 0) {
+    if (std.posix.getenv("LD_LIBRARY_PATH")) |path0| if (path0.len > 0) {
         _ = try ld_library_path.append(allocator, path0);
     };
     const orig_ld_path_len = ld_library_path.bytes.items.len;

@@ -16,9 +16,9 @@ fn writeTo(path: []const u8, comptime format: []const u8, args: anytype) !void {
 }
 
 fn oserr(rc: usize) !void {
-    return switch (std.os.errno(rc)) {
+    return switch (std.posix.errno(rc)) {
         .SUCCESS => {},
-        else => |e| std.os.unexpectedErrno(e),
+        else => |e| std.posix.unexpectedErrno(e),
     };
 }
 
@@ -178,5 +178,5 @@ pub fn setup(allocator: std.mem.Allocator, workdir: []const u8, appdir: []const 
     const cwd = try std.fs.cwd().realpathAlloc(allocator, ".");
     defer allocator.free(cwd);
     try oserr(std.os.linux.chroot(mountroot));
-    try std.os.chdir(cwd);
+    try std.posix.chdir(cwd);
 }
