@@ -138,7 +138,7 @@ with lib;
     nix run -L .#test.templates
     nix run -L .#test.package
     nix run -L .#test.cross
-    # nix run -L .#test.bundle
+    nix run -L .#test.bundle
     '';
 
   # nix run .#test.repl
