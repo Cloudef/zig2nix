@@ -8,8 +8,8 @@ https://ziglang.org/
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-* Zig git: `git+b88ae8d+2024-04-03 @ 2024-04-03`
-* Zig master: `0.12.0-dev.3518+d2be725e4 @ 2024-04-01`
+* Zig git: `git+b88ae8d+2024-04-04 @ 2024-04-04`
+* Zig master: `0.12.0-dev.3522+b88ae8dbd @ 2024-04-03`
 * Zig default: `0.11.0 @ 2023-08-04`
 
 ## Examples
