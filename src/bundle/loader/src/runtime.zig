@@ -205,7 +205,7 @@ fn setupLinux(allocator: std.mem.Allocator, bin: []const u8) !void {
 
             // packages that match a soname don't have to be included
             // this list only includes common libs for doing multimedia stuff on linux
-            const map = std.comptime_string_map.ComptimeStringMap([]const u8, .{
+            const map = std.static_string_map.StaticStringMap([]const u8).initComptime(.{
                 .{ "libvulkan", "vulkan-loader" },
                 .{ "libGL", "libglvnd" },
                 .{ "libEGL", "libglvnd" },

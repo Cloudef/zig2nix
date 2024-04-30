@@ -394,7 +394,7 @@
         sed -i 's#@SED_ZIG_BIN@#default#' templates/default/flake.nix
         cp -f templates/gitignore templates/default/.gitignore
         cp -f .gitattributes templates/default/.gitattributes
-        (cd templates/default; ${packages.zig.default.bin}/bin/zig init || ${packages.zig.default.bin}/bin/zig init-exe)
+        (cd templates/default; ${packages.zig.default.bin}/bin/zig init)
 
         rm -rf templates/master
         mkdir -p templates/master
