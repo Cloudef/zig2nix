@@ -5,14 +5,14 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const mod = b.addModule("zon2json", .{
-        .root_source_file = .{ .path = "src/zon2json.zig" },
+        .root_source_file = b.path("src/zon2json.zig"),
         .target = target,
         .optimize = optimize,
     });
 
     const exe = b.addExecutable(.{
         .name = "zon2json",
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
         .single_threaded = true,
@@ -27,7 +27,7 @@ pub fn build(b: *std.Build) void {
     run_step.dependOn(&run_cmd.step);
 
     const unit_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/zon2json.zig" },
+        .root_source_file = b.path("src/zon2json.zig"),
         .target = target,
         .optimize = optimize,
         .single_threaded = true,

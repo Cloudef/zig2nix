@@ -10,7 +10,7 @@ pub fn build(b: *std.Build) void {
         const src = std.fmt.comptimePrint("src/{s}.zig", .{name});
         const lib = b.addStaticLibrary(.{
             .name = name,
-            .root_source_file = .{ .path = src },
+            .root_source_file = b.path(src),
             .target = target,
             .optimize = optimize,
             .pic = true,
@@ -18,7 +18,7 @@ pub fn build(b: *std.Build) void {
         });
         b.installArtifact(lib);
         const unit_tests = b.addTest(.{
-            .root_source_file = .{ .path = src },
+            .root_source_file = b.path(src),
             .target = target,
             .optimize = optimize,
         });

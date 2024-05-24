@@ -12,7 +12,7 @@ pub fn build(b: *std.Build) void {
 
     const exe = b.addExecutable(.{
         .name = "loader",
-        .root_source_file = .{ .path = "src/loader.zig" },
+        .root_source_file = b.path("src/loader.zig"),
         .target = target,
         .optimize = optimize,
         .link_libc = false,
