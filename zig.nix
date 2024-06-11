@@ -11,7 +11,7 @@
   , fetchurl
   , zig-shell-completions
   , cmake
-  , llvmPackages_17
+  , llvmPackages_18
   , libxml2
   , zlib
   , coreutils
@@ -32,7 +32,7 @@ let
     changelog = release.notes;
   };
 in {
-  src = with llvmPackages_17; stdenv.mkDerivation (finalAttrs: {
+  src = with llvmPackages_18; stdenv.mkDerivation (finalAttrs: {
     pname = "zig";
     inherit version;
 
