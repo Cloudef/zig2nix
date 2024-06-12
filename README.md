@@ -4,6 +4,8 @@ Flake for packaging, building and running Zig projects.
 
 https://ziglang.org/
 
+* Cachix: `cachix use zig2nix`
+
 ---
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
