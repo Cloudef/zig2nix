@@ -5,6 +5,8 @@ readonly zigDefaultFlagsArray=(@zig_default_flags@)
 function zigSetGlobalCacheDir {
     ZIG_GLOBAL_CACHE_DIR=$(mktemp -d)
     export ZIG_GLOBAL_CACHE_DIR
+    ZIG_LOCAL_CACHE_DIR="$ZIG_GLOBAL_CACHE_DIR"
+    export ZIG_LOCAL_CACHE_DIR
 }
 
 function zigBuildPhase {
