@@ -77,6 +77,7 @@ with lib;
       rm -f templates/"$var"/result
       rm -rf templates/"$var"/zig-out
       rm -rf templates/"$var"/zig-cache
+      rm -rf templates/"$var"/.zig-cache
     done
     '';
 
