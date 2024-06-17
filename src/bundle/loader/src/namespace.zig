@@ -59,7 +59,7 @@ fn replicatePath(allocator: std.mem.Allocator, src: [:0]const u8, dst: [:0]const
             try mount(src, dst, "none", std.os.linux.MS.BIND | std.os.linux.MS.REC, 0);
         },
         .sym_link => {
-            var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
+            var buf: [std.fs.max_path_bytes]u8 = undefined;
             const path = try std.fs.realpathAlloc(allocator, try std.fs.readLinkAbsolute(src, &buf));
             defer allocator.free(path);
             const sstat = std.fs.cwd().statFile(path) catch {
