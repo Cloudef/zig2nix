@@ -7,6 +7,8 @@ function zigSetGlobalCacheDir {
     export ZIG_GLOBAL_CACHE_DIR
     ZIG_LOCAL_CACHE_DIR="$ZIG_GLOBAL_CACHE_DIR"
     export ZIG_LOCAL_CACHE_DIR
+    TERM=dumb
+    export TERM
 }
 
 function zigBuildPhase {
