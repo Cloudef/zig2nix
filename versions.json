@@ -1,7 +1,7 @@
 {
   "git": {
-    "version": "git+3e9ab6a+2024-06-25",
-    "date": "2024-06-25",
+    "version": "git+3e9ab6a+2024-06-26",
+    "date": "2024-06-26",
     "docs": "https://ziglang.org/documentation/master/",
     "stdDocs": "https://ziglang.org/documentation/master/std/",
     "src": {
