@@ -144,7 +144,7 @@
         in warn "zigCross: ${zigTripleFromSystem target-system}" crossPkgs;
 
         runtime = runtimeForTargetSystem system;
-        _deps = [ zig pkgs.pkg-config ] ++ customRuntimeDeps;
+        _deps = [ zig ] ++ customRuntimeDeps ++ runtime.build-bins;
       in rec {
         inherit pkgs pkgsForTarget crossPkgsForTarget zigCrossPkgsForTarget binaryPkgsForTarget;
         inherit zig zon2json zon2json-lock zon2nix zig-hook;

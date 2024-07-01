@@ -13,6 +13,7 @@
   , enableX11
   , enableAlsa
   , buildPlatform
+  , pkgs
 }:
 
 with builtins;
@@ -55,6 +56,11 @@ let
       ++ optionals (enableAlsa) [ alsa-lib ];
   };
 
+  build-bins = {
+    linux = with pkgs; []
+      ++ optionals (enableWayland) [ wayland-scanner ];
+  };
+
   bins = {};
 
   hook-for = kernel: let
@@ -86,6 +92,7 @@ in {
   env = env.${system.kernel.name} or {};
   libs = libs.${system.kernel.name} or [];
   bins = bins.${system.kernel.name} or [];
+  build-bins = (build-bins.${system.kernel.name} or []) ++ [ pkgs.pkg-config ];
   app = ''
     ${customAppHook}
     ${shell.${system.kernel.name} or ""}
