@@ -50,7 +50,7 @@ let
       ++ optionals (enableOpenGL) [ libGL ]
       # Some common runtime libs used by x11 apps, for example: https://www.glfw.org/docs/3.3/compat.html
       # You can always include more if you need with customRuntimeLibs.
-      ++ optionals (enableX11) [ xorg.libX11 xorg.libXext xorg.libXfixes xorg.libXi xorg.libXrender xorg.libXrandr xorg.libXinerama ]
+      ++ optionals (enableX11) [ xorg.libX11 xorg.libXext xorg.libXfixes xorg.libXi xorg.libXrender xorg.libXrandr xorg.libXinerama xorg.libXcursor xorg.xorgproto ]
       ++ optionals (enableWayland) [ wayland libxkbcommon libdecor ]
       ++ optionals (enableAlsa) [ alsa-lib ];
   };
@@ -60,7 +60,8 @@ let
   hook-for = kernel: let
     _libs = (libs.${kernel} or []) ++ customRuntimeLibs;
     ld_string = makeLibraryPath _libs;
-    pc_string = makeSearchPathOutput "dev" "lib/pkgconfig" _libs;
+    # xorgproto puts its pc file in share/pkgconfig for whatever reason
+    pc_string = (makeSearchPathOutput "dev" "lib/pkgconfig" _libs) + (makeSearchPathOutput "dev" "share/pkgconfig" _libs);
   in ''
     export ${env.${kernel}.LIBRARY_PATH}="${ld_string}:''${${env.${kernel}.LIBRARY_PATH}:-}"
     export PKG_CONFIG_PATH="${pc_string}:''${PKG_CONFIG_PATH:-}"
