@@ -29,7 +29,8 @@ writeShellApplication {
       url_part="''${1##git+}"
       case "$1" in
         *#*)
-          url="''${url_part%\#*}"
+          url_w_query="''${url_part%\#*}"
+          url="''${url_w_query%\?*}"
           rev="''${url_part##*\#}"
           printf -- "%s\n%s" "$url" "$rev"
           ;;
@@ -37,6 +38,19 @@ writeShellApplication {
           printf -- "%s\n%s" "$url_part" "HEAD"
           ;;
       esac
+    }
+
+    git-prefetch() {
+      IFS=$'\n' read -rd "" git_url git_rev < <(split_git_url "$1") || true
+      if [[ "$git_rev" =~ ^[a-fA-F0-9]{40}$ ]]; then
+        nix-prefetch-git --out "$tmpdir/$zhash.git" \
+          --url "$git_url" --rev "$git_rev" \
+          --no-deepClone --quiet
+      else
+        nix-prefetch-git --out "$tmpdir/$zhash.git" \
+          --url "$git_url" --rev "refs/heads/$git_rev" \
+          --no-deepClone --quiet
+      fi
     }
 
     zon2json-recursive() {
@@ -74,10 +88,7 @@ writeShellApplication {
             printf -- 'fetching (nix hash): %s\n' "$url" 1>&2
             case "$url" in
               git+http://*|git+https://*)
-                IFS=$'\n' read -rd "" git_url git_rev < <(split_git_url "$url") || true
-                ahash="$(nix-prefetch-git --out "$tmpdir/$zhash.git" \
-                          --url "$git_url" --rev "$git_rev" \
-                          --no-deepClone --quiet | jq -er '.hash')"
+                ahash="$(git-prefetch "$url" | jq -er '.hash')"
                 rm -rf "$tmpdir/$zhash.git"
                 ;;
               file://*|http://*|https://*)

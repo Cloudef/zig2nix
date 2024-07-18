@@ -47,11 +47,13 @@ writeShellApplication {
 
       fetchGitZig = { name, url, hash }: let
         parts = splitString "#" url;
-        base = elemAt parts 0;
-        rev = elemAt parts 1;
+        url_base = elemAt parts 0;
+        url_without_query = elemAt (splitString "?" url_base) 0;
+        rev_base = elemAt parts 1;
+        rev = if match "^[a-fA-F0-9]{40}$" rev_base != null then rev_base else "refs/heads/''${rev_base}";
       in fetchgit {
         inherit name rev hash;
-        url = base;
+        url = url_without_query;
         deepClone = false;
       };
 
