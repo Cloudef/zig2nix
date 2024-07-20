@@ -253,8 +253,8 @@
 
       #! Prints available zig versions
       apps.versions = with pkgs; test-app [ coreutils jq ] ''
-        printf 'master\ndefault\n'
-        jq -r 'delpaths([["master"],["default"]]) | keys_unsorted | sort_by(split(".") | map(tonumber)) | reverse | .[]' ${./versions.json}
+        printf 'git\nmaster\ndefault\n'
+        jq -r 'delpaths([["master"],["default"],["git"]]) | keys_unsorted | sort_by(split(".") | map(tonumber)) | reverse | .[]' ${./versions.json}
         '';
 
       #! Versioned Zig packages.
