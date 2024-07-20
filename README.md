@@ -10,8 +10,8 @@ https://ziglang.org/
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-* Zig git: `git+16604a9+2024-07-19 @ 2024-07-19`
-* Zig master: `0.14.0-dev.364+8ab70f80c @ 2024-07-18`
+* Zig git: `git+b7e48c6+2024-07-20 @ 2024-07-20`
+* Zig master: `0.14.0-dev.367+a57479afc @ 2024-07-19`
 * Zig default: `0.13.0 @ 2024-06-07`
 
 ## Examples
@@ -280,8 +280,8 @@ inherit zig-env zig2nix-lib zig-hook;
 
 #! Prints available zig versions
 apps.versions = with pkgs; test-app [ coreutils jq ] ''
- printf 'master\ndefault\n'
- jq -r 'delpaths([["master"],["default"]]) | keys_unsorted | sort_by(split(".") | map(tonumber)) | reverse | .[]' ${./versions.json}
+ printf 'git\nmaster\ndefault\n'
+ jq -r 'delpaths([["master"],["default"],["git"]]) | keys_unsorted | sort_by(split(".") | map(tonumber)) | reverse | .[]' ${./versions.json}
 '';
 
 
