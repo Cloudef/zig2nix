@@ -78,7 +78,7 @@ in stdenvNoCC.mkDerivation (
 
     nativeBuildInputs = [ zig.hook removeReferencesTo ]
       ++ optionals (!zigDisableWrap) ([ makeWrapper ] ++ (runtime.env.wrapperBuildInputs or []))
-      ++ (runtime.env.nativeBuildInputs or [])
+      ++ (runtime.build-bins or [])
       ++ (attrs.nativeBuildInputs or []);
 
     postPatch = optionalString (pathExists zigBuildZonLock) ''
