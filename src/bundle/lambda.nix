@@ -1,7 +1,7 @@
 {
   lib
   , runCommandLocal
-  , writeReferencesToFile
+  , writeClosure
   , emptyFile
   , file
   , findutils
@@ -59,7 +59,7 @@ in {
 
 let
   zipEntrypoint = if hasPrefix "provided." runtime then "bootstrap" else baseNameOf entrypoint;
-  refs = if includeReferences then writeReferencesToFile package else emptyFile;
+  refs = if includeReferences then writeClosure [ package ] else emptyFile;
   getPaths = dir: readFile (runCommandLocal "${name}-${dir}dirs" {} ''
     while read -r path; do
       ${findutils}/bin/find $path -type d -name "${dir}"

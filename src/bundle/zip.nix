@@ -2,7 +2,7 @@
   lib
   , stdenvNoCC
   , runCommandLocal
-  , writeReferencesToFile
+  , writeClosure
   , file
   , findutils
   , zip
@@ -52,7 +52,7 @@ in {
 }@userAttrs:
 
 let
-  refs = if includeReferences then writeReferencesToFile package
+  refs = if includeReferences then writeClosure [ package ]
          else (runCommandLocal "${name}-no-references" {} ''${findutils}/bin/find ${package} -type f > $out'');
 
   tightly-packed = !useLoader && readFile (runCommandLocal "is-${name}-tightly-packed" {} ''
