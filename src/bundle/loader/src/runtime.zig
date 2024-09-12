@@ -1,5 +1,6 @@
 const std = @import("std");
-const ztd = @import("ztd");
+const OsRelease = @import("OsRelease.zig");
+const unsafe = @import("unsafe.zig");
 const builtin = @import("builtin");
 const log = std.log.scoped(.runtime);
 
@@ -18,7 +19,7 @@ fn detectDistro(allocator: std.mem.Allocator) Distro {
     }
 
     // This usually works, anything else is a fallback
-    if (ztd.os.OsRelease.init(allocator)) |*distro| {
+    if (OsRelease.init(allocator)) |*distro| {
         defer @constCast(distro).deinit(allocator);
         if (distro.id) |id| {
             log.info("detected linux distribution: {s}", .{distro.pretty_name orelse distro.name orelse id});
@@ -316,7 +317,7 @@ fn setupLinux(allocator: std.mem.Allocator, bin: []const u8) !void {
     }
 
     if (ld_library_path.bytes.items.len != orig_ld_path_len) {
-        try ztd.unsafe.setenv("LD_LIBRARY_PATH", ld_library_path.bytes.items);
+        try unsafe.setenv("LD_LIBRARY_PATH", ld_library_path.bytes.items);
         log.info("LD_LIBRARY_PATH={s}", .{ld_library_path.bytes.items});
     }
 }

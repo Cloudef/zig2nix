@@ -1,12 +1,7 @@
 .{
     .name = "loader",
     .version = "0.0.0",
-    .dependencies = .{
-        .ztd = .{
-            .url = "https://github.com/Cloudef/ztd/archive/7f6330007985c32aa78e2ded28c3870eebb34108.tar.gz",
-            .hash = "12206f2306786b155ee5fd8e307f6fb33b6a0c33071d0f111bd2edcf0201f5192a1d",
-        },
-    },
+    .dependencies = .{},
     .paths = .{
         "build.zig.zon",
         "build.zig",
