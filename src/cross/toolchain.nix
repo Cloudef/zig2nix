@@ -260,13 +260,6 @@ wrapCCWith {
   bintools = wrapBintoolsWith {
     inherit gnugrep coreutils libc;
     bintools = toolchain-unwrapped libllvm;
-    postLinkSignHook = emptyFile;
-    signingUtils = writeText "sign" ''
-      sign() {
-        echo "zigsign: !!! Not actually signing anything !!!"
-        printf 'zigsign: %s\n' "$1"
-      }
-      '';
   };
 
   # nix really wants us to use nixpkgs libc

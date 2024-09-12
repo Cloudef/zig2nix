@@ -38,7 +38,7 @@ let
 
   # nix unsupported archs: csky, armeb, thumb, gnux32, muslx32
   # broken archs: arm, aarch64_be (windows, unsupported arch), m68k (InvalidLlvmTriple), sparc, s390x (support lib)
-  # broken platforms: ios, watchos, tvos, risv64-gnu (gnu/stubs-lp64d.h)
+  # broken platforms: ios, watchos, tvos (no bundled sdk), risv64-gnu (gnu/stubs-lp64d.h)
   # broken abis: gnuabin32 (support lib)
   zig2nix-target = {}
   // from-archs "linux" "unknown" [ "riscv64" ] [ "musl" ]
@@ -61,7 +61,8 @@ let
   # // from-archs "ios" "apple" [ "x86_64" "aarch64" ] [ "none" ]
   # // from-archs "watchos" "apple" [ "x86_64" "aarch64" ] [ "none" ]
   # // from-archs "tvos" "apple" [ "x86_64" "aarch64" ] [ "none" ]
-  // from-archs "wasi" "unknown" [ "wasm32" ] [ "musl" ];
+  // from-archs "wasi" "unknown" [ "wasm32" ] [ "musl" ]
+  // from-archs "freebsd" "unknown" [ "x86_64" ] [ "none" ];
 
   allTargetTriples = attrNames zig2nix-target;
 
@@ -76,7 +77,8 @@ let
     "powerpc64le-unknown-linux-gnu" = "powerpc64le-linux-gnu";
   };
 
-  broken = [ "riscv64-linux" ];
+  # freebsd has no bundled libc yet
+  broken = [ "riscv64-linux" "x86_64-freebsd" "armv7l-linux" "armv6l-linux" ];
   allFlakeTargetTriples = map (f: nix2zig-target.${(systems.elaborate f).config}) (subtractLists broken systems.flakeExposed);
 
   normalized-target = s: let
