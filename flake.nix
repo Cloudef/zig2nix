@@ -36,13 +36,13 @@
       # Converts zon files to json
       zon2json = with zig2nix-lib-base; let
         target = resolveTargetTriple { target = system; musl = true; };
-      in (pkgs.callPackage tools/zon2json/default.nix { zig = zigv.master.bin; }) {
+      in (pkgs.callPackage tools/zon2json/default.nix { zig = zigv.default.bin; }) {
         zigBuildFlags = [ "-Dtarget=${target}" ];
       };
 
       # Converts build.zig.zon to a build.zig.zon2json lock file
       zon2json-lock = pkgs.callPackage tools/zon2json-lock.nix {
-        zig = zigv.master.bin;
+        zig = zigv.default.bin;
         inherit zon2json;
       };
 
