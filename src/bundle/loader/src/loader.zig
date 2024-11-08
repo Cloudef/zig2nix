@@ -4,7 +4,7 @@ const log = std.log.scoped(.loader);
 const runtime = @import("runtime.zig");
 const namespace = @import("namespace.zig");
 
-pub const std_options = .{
+pub const std_options: std.Options = .{
     .log_level = .debug,
 };
 
