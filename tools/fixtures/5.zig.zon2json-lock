@@ -11,7 +11,7 @@
   },
   "12200d1ce5f9733a9437415d85665ad5fbc85a4d27689fd337fecad8014acffe3aa5": {
     "name": "zg",
-    "url": "git+https://codeberg.org/dude_the_builder/zg?ref=master#689ab6b83d08c02724b99d199d650ff731250998",
+    "url": "git+https://codeberg.org/atman/zg.git?ref=master#689ab6b83d08c02724b99d199d650ff731250998",
     "hash": "sha256-mFfzEh/VqNN5rqm4bUg3mgFZZBvVCD6hzxychWXaUqA="
   },
   "12207b7a5b538ffb7fb18f954ae17d2f8490b6e3778a9e30564ad82c58ee8da52361": {
