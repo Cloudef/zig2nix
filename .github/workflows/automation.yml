@@ -21,7 +21,7 @@ jobs:
           nix run .#update-templates
           nix run .#test.all
           nix run .#readme > README.md
-      - uses: test-room-7/action-update-file@v1.8.0
+      - uses: test-room-7/action-update-file@v2.0.0
         with:
           branch: ${{ github.head_ref || github.ref_name }}
           file-path: |
