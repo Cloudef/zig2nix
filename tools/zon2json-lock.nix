@@ -115,8 +115,10 @@ writeShellApplication {
 
       # Go through path deps as well in case they have network deps
       while read -r path_dep; do
-        if [[ -f "$path_dep/build.zig.zon" ]]; then
-          zon2json-recursive "$path_dep/build.zig.zon"
+        directory=$(dirname "$1")
+        resolvedPath=$(realpath "$directory/$path_dep")
+        if [[ -f "$resolvedPath/build.zig.zon" ]]; then
+          zon2json-recursive "$resolvedPath/build.zig.zon"
         fi
       done < <(zon2json "$1" | jq -r '.dependencies | to_entries | .[] | select(.value.path != null) | .value.path' 2>/dev/null)
     }
