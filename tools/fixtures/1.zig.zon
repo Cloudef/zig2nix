@@ -7,23 +7,8 @@
         "build.zig.zon",
     },
     .dependencies = .{
-        .lambda = .{
-            .path = "./deps/zig-lambda-runtime",
-        },
-        .json = .{
-            .path = "./deps/json",
-        },
-        .sqlite = .{
-            .path = "./deps/zig-sqlite",
-        },
-        .ulid = .{
-            .path = "./deps/ulid-zig",
-        },
         .router = .{
-            .path = "./deps/zig-router",
-        },
-        .curl = .{
-            .path = "./deps/zig-curl",
+            .path = ".",
         },
         .linenoize = .{
             .url = "https://github.com/joachimschmidt557/linenoize/archive/a69e3764e32523c28717113da309bbee5dab66c4.tar.gz",

@@ -115,13 +115,14 @@ writeShellApplication {
 
       # Go through path deps as well in case they have network deps
       while read -r path_dep; do
-        if [[ -f "$path_dep/build.zig.zon" ]]; then
-          zon2json-recursive "$path_dep/build.zig.zon"
+        rpath="$(realpath "$(dirname "$1")/$path_dep")"
+        if [[ -f "$rpath/build.zig.zon" ]]; then
+          zon2json-recursive "$rpath/build.zig.zon"
         fi
       done < <(zon2json "$1" | jq -r '.dependencies | to_entries | .[] | select(.value.path != null) | .value.path' 2>/dev/null)
     }
 
-    if ! jq -e '.dependencies[] | select(.url != null) | length > 0' <(zon2json "$path") >/dev/null; then
+    if ! jq -e '.dependencies[] | select(.url != null or .path != null) | length > 0' <(zon2json "$path") >/dev/null; then
       printf -- '%s has no dependencies\n' "$path" 1>&2
       exit 0
     fi
