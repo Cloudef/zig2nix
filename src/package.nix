@@ -6,9 +6,7 @@
   , fromZON
   , deriveLockFile
   , runtimeForTargetSystem
-  , runCommandLocal
   , makeWrapper
-  , callPackage
   , removeReferencesTo
 }:
 
