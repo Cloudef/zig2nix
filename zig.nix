@@ -15,6 +15,8 @@
   , libxml2
   , zlib
   , coreutils
+  , bubblewrap
+  , writeScriptBin
 }:
 
 with builtins;
@@ -125,7 +127,18 @@ in {
       inherit (release) date notes stdDocs docs src;
       inherit (release.${zigSystem}) size;
       hook = callPackage zigHook {
-        zig = finalAttrs.finalPackage;
+        zig = if (stdenvNoCC.isLinux) then
+          # Wrap binary package zig on linux so /usr/bin/env can be found inside a sandbox
+          writeScriptBin "zig" ''
+            args=()
+            for d in /*; do
+              args+=("--dev-bind" "$d" "$d")
+            done
+            ${bubblewrap}/bin/bwrap "''${args[@]}" \
+              --bind ${coreutils} /usr \
+              -- ${finalAttrs.finalPackage}/bin/zig "$@"
+          ''
+        else finalAttrs.finalPackage;
       };
     };
 
