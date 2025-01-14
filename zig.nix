@@ -110,7 +110,7 @@ in {
     installPhase = ''
       mkdir -p $out/{bin,lib}
       cp -r lib/* $out/lib
-      install -Dm755  zig $out/bin/zig
+      install -Dm755 zig $out/bin/zig
       install -m644 LICENSE $out/LICENSE
       '' + optionalString (installDocs) ''
       mkdir -p $out/doc
