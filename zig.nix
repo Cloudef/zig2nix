@@ -11,7 +11,7 @@
   , fetchurl
   , zig-shell-completions
   , cmake
-  , llvmPackages_18
+  , llvmPackages_19
   , libxml2
   , zlib
   , coreutils
@@ -34,7 +34,7 @@ let
     changelog = release.notes;
   };
 in {
-  src = with llvmPackages_18; stdenv.mkDerivation (finalAttrs: {
+  src = with llvmPackages_19; stdenv.mkDerivation (finalAttrs: {
     pname = "zig";
     inherit version;
 
