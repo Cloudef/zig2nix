@@ -66,11 +66,7 @@ writeShellApplication {
             printf -- 'fetching (zig fetch): %s\n' "$url" 1>&2
             case "$url" in
               file://*)
-                # workaround bug: https://github.com/ziglang/zig/issues/18549
-                mkdir -p "$tmpdir/tmp"
-                fname="$(cd "$tmpdir/tmp"; curl -sSL "$url" -O; find . -mindepth 1 -maxdepth 1 -type f)"
-                zhash2="$(zig fetch "$tmpdir/tmp/$fname" || true)"
-                rm -rf "$tmpdir/tmp"
+                error 'unsupported url: %s' "$url"
                 ;;
               *)
                 zhash2="$(zig fetch "$url" || true)"

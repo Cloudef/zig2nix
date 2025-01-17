@@ -66,7 +66,6 @@ writeShellApplication {
           "git+https" = fetchGitZig { inherit name hash; url = "https://''${path}"; };
           http = fetchZig { inherit name hash; url = "http://''${path}"; };
           https = fetchZig { inherit name hash; url = "https://''${path}"; };
-          file = unpackZigArtifact { inherit name; artifact = /. + path; };
         };
       in fetcher.''${proto};
     in linkFarm name [
