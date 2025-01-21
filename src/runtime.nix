@@ -67,7 +67,10 @@ let
     _libs = (libs.${kernel} or []) ++ customRuntimeLibs;
     ld_string = makeLibraryPath _libs;
     # xorgproto puts its pc file in share/pkgconfig for whatever reason
-    pc_string = (makeSearchPathOutput "dev" "lib/pkgconfig" _libs) + (makeSearchPathOutput "dev" "share/pkgconfig" _libs);
+    pc_string = concatStringsSep ":" [
+      (makeSearchPathOutput "dev" "lib/pkgconfig" _libs)
+      (makeSearchPathOutput "dev" "share/pkgconfig" _libs)
+    ];
   in ''
     export ${env.${kernel}.LIBRARY_PATH}="${ld_string}:''${${env.${kernel}.LIBRARY_PATH}:-}"
     export PKG_CONFIG_PATH="${pc_string}:''${PKG_CONFIG_PATH:-}"
