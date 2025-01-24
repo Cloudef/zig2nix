@@ -21,7 +21,7 @@ writeShellApplication {
         error 'file does not exist: %s' "$path"
     fi
 
-    tmpdir="$(mktemp -d)"
+    tmpdir=$(realpath "$(mktemp -d)")
     trap 'rm -rf "$tmpdir"' EXIT
     read -r zig_cache < <(zig env | jq -er '.global_cache_dir')
 
