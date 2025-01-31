@@ -87,9 +87,9 @@ writeShellApplication {
                 ahash="$(git-prefetch "$url" | jq -er '.hash')"
                 rm -rf "$tmpdir/$zhash.git"
                 ;;
-              file://*|http://*|https://*)
+              http://*|https://*)
                 curl -sSL "$url" -o "$tmpdir/$zhash.artifact"
-                ahash="$(nix hash file "$tmpdir/$zhash.artifact")"
+                ahash="$(nix hash path --mode flat /dev/stdin < "$tmpdir/$zhash.artifact")"
                 rm -f "$tmpdir/$zhash.artifact"
                 ;;
               *)
