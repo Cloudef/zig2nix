@@ -7,11 +7,12 @@
   , coreutils
   , findutils
   , nix-prefetch-git
+  , nix
 }:
 
 writeShellApplication {
   name = "zon2json-lock";
-  runtimeInputs = [ zon2json jq zig curl findutils coreutils nix-prefetch-git ];
+  runtimeInputs = [ zon2json jq zig curl findutils coreutils nix-prefetch-git nix ];
   text = ''
     # shellcheck disable=SC2059
     error() { printf -- "error: $1\n" "''${@:2}" 1>&2; exit 1; }
@@ -89,7 +90,7 @@ writeShellApplication {
                 ;;
               http://*|https://*)
                 curl -sSL "$url" -o "$tmpdir/$zhash.artifact"
-                ahash="$(nix hash path --mode flat /dev/stdin < "$tmpdir/$zhash.artifact")"
+                ahash="$(cd "$tmpdir"; nix hash path --mode flat "$zhash.artifact")"
                 rm -f "$tmpdir/$zhash.artifact"
                 ;;
               *)
