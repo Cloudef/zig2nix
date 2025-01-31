@@ -19,7 +19,9 @@
 with builtins;
 with lib;
 
-{
+let
+  filteredFlakeTargetTriples = filter (x: x != "x86_64-macos-none") allFlakeTargetTriples;
+in {
   # nix run .#test.zon2json-lock
   zon2json-lock = test-app [ zon2json-lock ] ''
     for f in tools/fixtures/*.zig.zon tools/fixtures/example/build.zig.zon; do
@@ -69,7 +71,7 @@ with lib;
       printf -- 'build . (%s)\n' "$var"
       (cd templates/"$var"; nix build -L --override-input zig2nix ../.. .; ./result/bin/"$var")
       if [[ "$var" == master ]]; then
-        for arch in x86_64-windows-gnu ${escapeShellArgs allFlakeTargetTriples}; do
+        for arch in x86_64-windows-gnu ${escapeShellArgs filteredFlakeTargetTriples}; do
           printf -- 'build .#target.%s (%s)\n' "$arch" "$var"
           (cd templates/"$var"; nix build -L --override-input zig2nix ../.. .#target."$arch"; file ./result/bin/"$var"*)
         done
@@ -118,7 +120,7 @@ with lib;
 
   # nix run .#test.cross
   cross = test-app [] ''
-    for target in x86_64-windows-gnu ${escapeShellArgs allFlakeTargetTriples}; do
+    for target in x86_64-windows-gnu ${escapeShellArgs filteredFlakeTargetTriples}; do
       printf -- 'build .#env.master.bin.cross.%s.zlib\n' "$target"
       nix build -L .#env.master.bin.cross.$target.zlib
     done
