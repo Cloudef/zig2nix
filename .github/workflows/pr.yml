@@ -8,6 +8,10 @@ jobs:
   pr:
     runs-on: ${{ matrix.os }}
 
+    permissions:
+      id-token: write
+      contents: read
+
     strategy:
         matrix:
             os: [ubuntu-22.04, macos-latest]
@@ -15,7 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          determinate: true
+      - uses: DeterminateSystems/flakehub-cache-action@main
       - run: |
           nix run .#update-templates
           nix run .#test.all
