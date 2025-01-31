@@ -89,7 +89,7 @@ writeShellApplication {
                 ;;
               http://*|https://*)
                 curl -sSL "$url" -o "$tmpdir/$zhash.artifact"
-                ahash="$(nix hash file "$tmpdir/$zhash.artifact")"
+                ahash="$(cd "$tmpdir"; nix hash path --mode flat "$zhash.artifact")"
                 rm -f "$tmpdir/$zhash.artifact"
                 ;;
               *)
