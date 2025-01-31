@@ -7,28 +7,29 @@ on:
 
 jobs:
   automation:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     permissions:
       id-token: write
-      contents: read
+      contents: write
 
     steps:
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
         with:
           determinate: true
       - uses: DeterminateSystems/flakehub-cache-action@main
-      # - uses: cachix/cachix-action@master
-      #   with:
-      #     name: zig2nix
-      #     authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+      - uses: cachix/cachix-action@master
+        with:
+          name: zig2nix
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
       - run: |
           nix run .#update-versions > versions.json
           nix run .#update-templates
           nix run .#test.all
           nix run .#readme > README.md
-      - uses: test-room-7/action-update-file@v1.8.0
+      - uses: test-room-7/action-update-file@v2.0.0
         with:
           branch: ${{ github.head_ref || github.ref_name }}
           file-path: |
