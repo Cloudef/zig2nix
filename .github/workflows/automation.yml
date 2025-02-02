@@ -24,6 +24,7 @@ jobs:
         with:
           name: zig2nix
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          skipAddingSubstituter: true
       - run: |
           nix run .#update-versions > versions.json
           nix run .#update-templates
