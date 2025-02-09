@@ -31,14 +31,8 @@ let
       wrapperBuildInputs = optionals (buildPlatform.isLinux) [ autoPatchelfHook ];
     };
 
-    darwin = let
-      sdkVer = targetPkgs.targetPlatform.darwinSdkVersion;
-      sdk =
-        if (versionAtLeast sdkVer "10.13") then targetPkgs.darwin.apple_sdk.MacOSX-SDK
-        else warn "zig only supports macOS 10.13+, forcing SDK 11.0" targetPkgs.darwin.apple_sdk_11_0.MacOSX-SDK;
-    in {
+    darwin = {
       LIBRARY_PATH = "DYLD_LIBRARY_PATH";
-      stdenvZigFlags = [ "--sysroot" sdk ];
     };
     ios = darwin;
     watchos = darwin;
@@ -59,6 +53,10 @@ let
   build-bins = {
     linux = with pkgs; []
       ++ optionals (enableWayland) [ wayland-scanner ];
+    darwin = with pkgs; [ xcbuild ];
+    ios = darwin;
+    watchos = darwin;
+    tvos = darwin;
   };
 
   bins = {};
