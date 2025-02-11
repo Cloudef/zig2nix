@@ -1,13 +1,13 @@
 {
   "git": {
-    "version": "git+75df7e5+2025-02-10",
-    "date": "2025-02-10",
+    "version": "git+5433e04+2025-02-11",
+    "date": "2025-02-11",
     "docs": "https://ziglang.org/documentation/master/",
     "stdDocs": "https://ziglang.org/documentation/master/std/",
     "src": {
-      "tarball": "https://github.com/ziglang/zig/archive/75df7e502c05e7e6a9b00a5a28854ae4a1aa8ea6.tar.gz",
-      "shasum": "8438aed95e5fd51400b15ec2630182fbc5c2fbcb48a55207bd140762bdcbef71",
-      "size": "27266934"
+      "tarball": "https://github.com/ziglang/zig/archive/5433e0438ce464adea53e4849a80d3854b2a036d.tar.gz",
+      "shasum": "27bec6ebef5f60e1c05ec08b157416cf80dd34ae0dbea8d0600a8a0f90489850",
+      "size": "27266920"
     }
   },
   "default": {
