@@ -1,5 +1,5 @@
 .{
-    .name = "example",
+    .name = .example,
     .version = "0.0.1",
     .dependencies = .{
         .libxml2 = .{ .path = "../libxml2" },

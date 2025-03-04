@@ -1,5 +1,5 @@
 .{
-    .name = "1",
+    .name = .fixture1,
     .version = "0.0.1",
     .paths = .{
         "src",
@@ -10,13 +10,9 @@
         .router = .{
             .path = ".",
         },
-        .linenoize = .{
-            .url = "https://github.com/joachimschmidt557/linenoize/archive/a69e3764e32523c28717113da309bbee5dab66c4.tar.gz",
-            .hash = "122095273d370fe3a29c2cd98027bae899065db6d759f3eacf049c4941af113b099c",
-        },
         .getty = .{
             .url = "https://github.com/getty-zig/getty/archive/cb007b8ed148510de71ccc52143343b2e11413ff.tar.gz",
-            .hash = "1220300f52d7592914660ee3c8e461dc7c10bd45708eb32deb0e341b47c7921536dc",
+            .hash = "getty-0.4.0-AAAAAI4bCAAwD1LXWSkUZg7jyORh3HwQvUVwjrMt6w40",
         },
     },
 }

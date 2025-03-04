@@ -1,5 +1,5 @@
 .{
-    .name = "3",
+    .name = .libxml2,
     .version = "0.0.1",
     .paths = .{
         "src",
@@ -8,8 +8,8 @@
     },
     .dependencies = .{
         .git = .{
-            .url = "git+https://github.com/Cloudef/zig-router.git#7e7e5c4a35abbe23845eb8180c8b87984f069d19",
-            .hash = "12206cd28db2c8a258ace966e466026fc9ca34821ecf48dc8139f8fbaf2285e32236",
+            .url = "git+https://github.com/git/git.git#db91954e18654eeebc54c900f44c704002e1866d",
+            .hash = "N-V-__8AAG1trALqq4SJfLv7tvBkbOV2Ixb0sdeS0nB9jNsn",
         },
     },
 }

@@ -85,19 +85,24 @@ in {
 
   # nix run .#test.package
   package = let
-    pkg = zig-env.package { src = cleanSource ../tools/zon2json; };
+    pkg = zig-env.package {
+      name = "zon2json";
+      src = cleanSource ../tools/zon2json;
+    };
   in test-app [] "echo ${pkg}";
 
   # nix run .#test.bundle
   bundle = let
     zip1 = zig-env.bundle.zip {
       package = zig-env.package {
+        name = "zon2json";
         src = cleanSource ../tools/zon2json;
         meta.mainProgram = "zon2json";
       };
     };
     zip2 = zig-env.bundle.zip {
       package = zig-env.package {
+        name = "zon2json";
         src = cleanSource ../tools/zon2json;
         meta.mainProgram = "zon2json";
       };
@@ -105,6 +110,7 @@ in {
     };
     lambda = zig-env.bundle.aws.lambda {
       package = zig-env.packageForTarget "aarch64-linux-musl" {
+        name = "zon2json";
         src = cleanSource ../tools/zon2json;
         meta.mainProgram = "zon2json";
       };
@@ -112,8 +118,8 @@ in {
   in test-app [ libarchive ] ''
     tmpdir="$(mktemp -d)"
     trap 'chmod -R 755 "$tmpdir"; rm -rf "$tmpdir"' EXIT
-    (cd "$tmpdir"; bsdtar -xf ${zip1}; ./run ${../tools/zon2json/build.zig.zon}; echo)
-    (cd "$tmpdir"; bsdtar -xf ${zip2}; ./run ${../tools/zon2json/build.zig.zon}; echo)
+    (cd "$tmpdir"; bsdtar -xf ${zip1}; ./run ${../tools/fixtures/1.zig.zon}; echo)
+    (cd "$tmpdir"; bsdtar -xf ${zip2}; ./run ${../tools/fixtures/1.zig.zon}; echo)
     echo ${lambda} | grep provided.al2023-arm64.zip
     bsdtar -tf ${lambda} | grep bootstrap
     '';
