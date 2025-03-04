@@ -10,8 +10,8 @@ https://ziglang.org/
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-* Zig git: `git+6c3cbb0+2025-03-01 @ 2025-03-01`
-* Zig master: `0.14.0-dev.3427+dea72d15d @ 2025-02-28`
+* Zig git: `git+13757aa+2025-03-04 @ 2025-03-04`
+* Zig master: `0.14.0-dev.3456+00a8742bb @ 2025-03-03`
 * Zig default: `0.13.0 @ 2024-06-07`
 
 ## Examples
@@ -147,16 +147,22 @@ zig-env = {
 #! --- Outputs of zig-env {} function.
 #!     access: (zig-env {}).thing
 
+#! Tools for bridging zig and nix
+zon2json-lock = zon2json-lock-base { inherit zig; };
+zon2nix = zon2nix-base { inherit zon2json-lock; };
+lib = zig2nix-lib { inherit zon2json zon2nix; };
+
+
 #! Returns true if target is nix flake compatible.
 #! <https://github.com/NixOS/nixpkgs/blob/master/lib/systems/flake-systems.nix>
-isFlakeTarget = with zig2nix-lib; args': let
+isFlakeTarget = with lib; args': let
  target-system = if isString args' then mkZigSystemFromString args' else args';
 in any (s: (systems.elaborate s).config == (nixTripleFromSystem target-system)) systems.flakeExposed;
 
 
 #! Returns crossPkgs from nixpkgs for target string or system.
 #! This will always cross-compile the package.
-crossPkgsForTarget = with zig2nix-lib; args': let
+crossPkgsForTarget = with lib; args': let
  target-system = if isString args' then mkZigSystemFromString args' else args';
  crossPkgs = import nixpkgs { localSystem = system; crossSystem = { config = nixTripleFromSystem target-system; }; };
  this-system = (systems.elaborate system).config == nixTripleFromSystem target-system;
@@ -164,7 +170,7 @@ in if this-system then pkgs else crossPkgs;
 
 #! Returns pkgs from nixpkgs for target string or system.
 #! This does not cross-compile and you'll get a error if package does not exist in binary cache.
-binaryPkgsForTarget = with zig2nix-lib; args': let
+binaryPkgsForTarget = with lib; args': let
  target-system = if isString args' then mkZigSystemFromString args' else args';
  binaryPkgs = import nixpkgs { localSystem = { config = nixTripleFromSystem target-system; }; };
  this-system = (systems.elaborate system).config == nixTripleFromSystem target-system;
@@ -177,7 +183,7 @@ else crossPkgsForTarget args';
 
 #! Cross-compile nixpkgs using zig :)
 #! NOTE: This is an experimental feature, expect it not faring well
-zigCrossPkgsForTarget = with zig2nix-lib; args': let
+zigCrossPkgsForTarget = with lib; args': let
  target-system = if isString args' then mkZigSystemFromString args' else args';
  crossPkgs = pkgs.callPackage ./src/cross {
   inherit zig zigPackage allTargetSystems;
@@ -188,9 +194,6 @@ zigCrossPkgsForTarget = with zig2nix-lib; args': let
   crossSystem = { config = nixTripleFromSystem target-system; };
  };
 in warn "zigCross: ${zigTripleFromSystem target-system}" crossPkgs;
-
-#! Tools for bridging zig and nix
-lib = zig2nix-lib;
 
 #! Flake app helper (Without zig-env and root dir restriction).
 app-bare-no-root = deps: script: {
@@ -236,11 +239,6 @@ mkShell = pkgs.callPackage ({
  '';
 }));
 
-#! Print external dependencies of zig project
-showExternalDeps = app-no-root [] ''
- zig build --build-runner ${./src/build_runner.zig} "$@"
-'';
-
 #! Package for specific target supported by nix.
 #! You can still compile to other platforms by using package and specifying zigTarget.
 #! When compiling to non-nix supported targets, you can't rely on pkgsForTarget, but rather have to provide all the pkgs yourself.
@@ -276,7 +274,7 @@ bundle.aws.lambda = pkgs.callPackage ./src/bundle/lambda.nix { bundleZip = bundl
 #!     access: `zig2nix.outputs.thing.${system}`
 
 #! Helper functions for building and running Zig projects.
-inherit zig-env zig2nix-lib zig-hook;
+inherit zig-env zig-hook;
 
 #! Prints available zig versions
 apps.versions = with pkgs; test-app [ coreutils jq ] ''
@@ -286,10 +284,10 @@ apps.versions = with pkgs; test-app [ coreutils jq ] ''
 
 
 #! Versioned Zig packages.
-#! nix build .#zigv.master.bin
-#! nix build .#zigv.master.src
-#! nix run .#zigv.master.bin
-#! nix run .#zigv.master.src
+#! nix build .#zig.master.bin
+#! nix build .#zig.master.src
+#! nix run .#zig.master.bin
+#! nix run .#zig.master.src
 packages.zig = zigv;
 
 #! Default zig package.
@@ -300,10 +298,10 @@ packages.default = zigv.default.bin;
 packages.zon2json = zon2json;
 
 #! zon2json-lock: Converts build.zig.zon to a build.zig.zon2json lock file
-packages.zon2json-lock = zon2json-lock;
+packages.zon2json-lock = default-env.zon2json-lock;
 
 #! zon2nix: Converts build.zig.zon and build.zig.zon2json-lock to nix deriviation
-packages.zon2nix = zon2nix;
+packages.zon2nix = default-env.zon2nix;
 
 #! Nixpkgs cross-compiled with zig
 cross = env.pkgs.lib.genAttrs env.lib.allTargetTriples (t: env.zigCrossPkgsForTarget t);
@@ -317,11 +315,15 @@ packages.zigCross = packages.env.master.bin.cross;
 #! example: nix run .#env.default.bin.multimedia.zig
 zig = env.app-no-root [] ''zig "$@"'';
 
-#! Print external dependencies of zig project
-#! nix run .#env."zig-version"."build"."type".showExternalDeps
-#! example: nix run .#env.master.src.bare.showExternalDeps
-#! example: nix run .#env.default.bin.multimedia.showExternalDeps
-inherit (env) showExternalDeps;
+#! nix run .#env."zig-version"."build"."type".zon2json-lock
+#! example: nix run .#env.master.src.bare.zon2json-lock
+#! example: nix run .#env.default.bin.multimedia.zon2json-lock
+zon2json-lock = env.app-no-root [ env.zon2json-lock ] ''zon2json-lock "$@"'';
+
+#! nix run .#env."zig-version"."build"."type".zon2nix
+#! example: nix run .#env.master.src.bare.zon2nix
+#! example: nix run .#env.default.bin.multimedia.zon2nix
+zon2nix = env.app-no-root [ env.zon2nix ] ''zon2nix "$@"'';
 
 #! Master zig
 apps.master = apps.env.master.bin.bare.zig;
@@ -341,18 +343,21 @@ devShells.default = devShells.env.default.bin.bare;
 #! Overlay for overriding Zig with specific version (source).
 overlays.zig.src = mapAttrs (k: v: (final: prev: {
  zig = v.src;
+ # TODO: fix these to be for correct zig version
  inherit (outputs.packages) zon2json zon2json-lock zon2nix;
 })) outputs.packages.${prev.system}.zig;
 
 #! Overlay for overriding Zig with specific version (binary).
 overlays.zig.bin = mapAttrs (k: v: (final: prev: {
  zig = v.bin;
+ # TODO: fix these to be for correct zig version
  inherit (outputs.packages) zon2json zon2json-lock zon2nix;
 })) outputs.packages.${prev.system}.zig;
 
 #! mitchellh/zig-overlay compatible overlay.
 overlays.zig-overlay = final: prev: {
  zigpkgs = mapAttrs (k: v: v.bin) outputs.packages.${prev.system}.zig;
+ # TODO: fix these to be for correct zig version
  inherit (outputs.packages) zon2json zon2json-lock zon2nix;
 };
 
