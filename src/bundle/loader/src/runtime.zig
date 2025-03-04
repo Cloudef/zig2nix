@@ -1,6 +1,5 @@
 const std = @import("std");
 const OsRelease = @import("OsRelease.zig");
-const unsafe = @import("unsafe.zig");
 const builtin = @import("builtin");
 const log = std.log.scoped(.runtime);
 
@@ -185,7 +184,7 @@ fn getSonames(allocator: std.mem.Allocator, grep: []const u8, path: []const u8) 
     return runCmd(allocator, cmd, .{ .error_code_starts_from = 2 });
 }
 
-fn setupLinux(allocator: std.mem.Allocator, bin: []const u8) !void {
+fn setupLinux(allocator: std.mem.Allocator, bin: []const u8) !std.process.EnvMap {
     if (builtin.link_mode != .static) {
         std.log.warn("the binary isn't statically linked, compatibility in different environments is worsened", .{});
     }
@@ -316,15 +315,17 @@ fn setupLinux(allocator: std.mem.Allocator, bin: []const u8) !void {
         .gobolinux, .other => {},
     }
 
+    var env = std.process.EnvMap.init(allocator);
     if (ld_library_path.bytes.items.len != orig_ld_path_len) {
-        try unsafe.setenv("LD_LIBRARY_PATH", ld_library_path.bytes.items);
+        try env.put("LD_LIBRARY_PATH", try allocator.dupe(u8, ld_library_path.bytes.items));
         log.info("LD_LIBRARY_PATH={s}", .{ld_library_path.bytes.items});
     }
+    return env;
 }
 
-pub fn setup(allocator: std.mem.Allocator, bin: ?[]const u8) !void {
-    switch (builtin.os.tag) {
+pub fn setup(allocator: std.mem.Allocator, bin: ?[]const u8) !?std.process.EnvMap {
+    return switch (builtin.os.tag) {
         inline .linux => try setupLinux(allocator, bin orelse "/proc/self/exe"),
-        inline else => {},
-    }
+        inline else => null,
+    };
 }

@@ -127,9 +127,7 @@ pub fn setup(allocator: std.mem.Allocator, workdir: []const u8, appdir: []const 
 
     var clonens: usize = std.os.linux.CLONE.NEWNS;
     if (uid != 0) clonens |= std.os.linux.CLONE.NEWUSER;
-    if (std.os.linux.unshare(clonens) < 0) {
-        return error.UnshareFailed;
-    }
+    oserr(std.os.linux.unshare(clonens)) catch return error.UnshareFailed;
 
     if (uid != 0) {
         // UID/GID Mapping -----------------------------------------------------------

@@ -83,35 +83,40 @@ fn run(allocator: std.mem.Allocator) !void {
     var executor = try Executor.resolve(allocator);
     defer executor.deinit(allocator);
 
-    {
-        var arena = std.heap.ArenaAllocator.init(allocator);
-        defer arena.deinit();
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
 
-        if (comptime @import("options").runtime) {
-            runtime.setup(arena.allocator(), executor.exePath()) catch |err| {
-                log.warn("{}: runtime is incomplete and the program may not function properly", .{err});
-            };
-        }
+    var env: ?std.process.EnvMap = null;
+    defer if (env) |*e| e.deinit();
+    if (comptime @import("options").runtime) {
+        env = runtime.setup(arena.allocator(), executor.exePath()) catch |err| D: {
+            log.warn("{}: runtime is incomplete and the program may not function properly", .{err});
+            break :D null;
+        };
+    }
 
-        if (comptime @import("options").namespace) {
-            _ = arena.reset(.retain_capacity);
-            const appdir = try std.fs.selfExeDirPathAlloc(arena.allocator());
-            const workdir = blk: {
-                if (comptime @import("options").workdir) |dir| {
-                    break :blk dir;
-                } else {
-                    break :blk appdir;
-                }
-            };
-            namespace.setup(arena.allocator(), workdir, appdir) catch |err| {
-                log.err("Failed to setup an namespace, cannot continue.", .{});
-                return err;
-            };
-        }
+    if (comptime @import("options").namespace) {
+        _ = arena.reset(.retain_capacity);
+        const appdir = try std.fs.selfExeDirPathAlloc(arena.allocator());
+        const workdir = blk: {
+            if (comptime @import("options").workdir) |dir| {
+                break :blk dir;
+            } else {
+                break :blk appdir;
+            }
+        };
+        namespace.setup(arena.allocator(), workdir, appdir) catch |err| {
+            log.err("failed to setup an namespace, cannot continue.", .{});
+            return err;
+        };
     }
 
     log.info("executing: {s}", .{executor.exePath()});
-    return std.process.execv(allocator, executor.args);
+    if (env) |*e| {
+        return std.process.execve(allocator, executor.args, e);
+    } else {
+        return std.process.execv(allocator, executor.args);
+    }
 }
 
 pub fn main() !void {
