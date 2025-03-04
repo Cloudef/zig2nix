@@ -16,7 +16,7 @@ fn writeTo(path: []const u8, comptime format: []const u8, args: anytype) !void {
 }
 
 fn oserr(rc: usize) !void {
-    return switch (std.posix.errno(rc)) {
+    return switch (std.posix.system.E.init(rc)) {
         .SUCCESS => {},
         else => |e| std.posix.unexpectedErrno(e),
     };
