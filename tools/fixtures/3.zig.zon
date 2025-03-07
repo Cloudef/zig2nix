@@ -1,0 +1,18 @@
+.{
+    .name = .fixture3,
+    .version = "0.0.1",
+    .paths = .{
+        "src",
+        "build.zig",
+        "build.zig.zon",
+    },
+    .dependencies = .{
+        .router = .{
+            .path = ".",
+        },
+        .getty = .{
+            .url = "git+https://github.com/emscripten-core/emsdk.git#3.1.50",
+            .hash = "N-V-__8AALRTBQDo_pUJ8IQ-XiIyYwDKQVwnr7-7o5kvPDGE",
+        },
+    },
+}

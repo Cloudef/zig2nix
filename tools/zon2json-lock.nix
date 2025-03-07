@@ -47,10 +47,12 @@ writeShellApplication {
           --url "$git_url" --rev "$git_rev" \
           --no-deepClone --quiet
       else
+        read -r rev _ < <(git ls-remote --refs -tb "$git_url" "$git_rev")
         nix-prefetch-git --out "$tmpdir/$zhash.git" \
-          --url "$git_url" --rev "refs/heads/$git_rev" \
+          --url "$git_url" --rev "''$rev" \
           --no-deepClone --quiet
       fi
+      rm -rf "$tmpdir/$zhash.git"
     }
 
     zon2json-recursive() {
@@ -84,8 +86,7 @@ writeShellApplication {
             printf -- 'fetching (nix hash): %s\n' "$url" 1>&2
             case "$url" in
               git+http://*|git+https://*)
-                ahash="$(git-prefetch "$url" | jq -er '.hash')"
-                rm -rf "$tmpdir/$zhash.git"
+                read -r ahash rev < <(git-prefetch "$url" | jq -er '"\(.hash) \(.rev)"')
                 ;;
               http://*|https://*)
                 curl -sSL "$url" -o "$tmpdir/$zhash.artifact"
@@ -97,10 +98,14 @@ writeShellApplication {
                 ;;
             esac
           else
-            ahash="$(jq -er --arg k "$zhash" '."\($k)".hash' "''${path}2json-lock")"
+            read -r ahash rev < <(jq -er --arg k "$zhash" '."\($k)" | "\(.hash) \(.rev)"' "''${path}2json-lock")
           fi
 
-          printf '{"%s":{"name":"%s","url":"%s","hash":"%s"}}\n' "$zhash" "$name" "$url" "$ahash"
+          if [[ "$rev" != "null" ]]; then
+            printf '{"%s":{"name":"%s","url":"%s","hash":"%s","rev":"%s"}}\n' "$zhash" "$name" "$url" "$ahash" "$rev"
+          else
+            printf '{"%s":{"name":"%s","url":"%s","hash":"%s"}}\n' "$zhash" "$name" "$url" "$ahash"
+          fi
           touch "$tmpdir/$zhash.read"
 
           if [[ -f "$zig_cache/p/$zhash/build.zig.zon" ]]; then

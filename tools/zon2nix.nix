@@ -69,13 +69,12 @@ writeShellApplication {
           name,
           url,
           hash,
+          rev,
         }:
         let
           parts = splitString "#" url;
           url_base = elemAt parts 0;
           url_without_query = elemAt (splitString "?" url_base) 0;
-          rev_base = elemAt parts 1;
-          rev = if match "^[a-fA-F0-9]{40}$" rev_base != null then rev_base else "refs/heads/''${rev_base}";
         in
         fetchgit {
           inherit name rev hash;
@@ -88,6 +87,7 @@ writeShellApplication {
           name,
           url,
           hash,
+          rev ? null,
         }:
         let
           parts = splitString "://" url;
@@ -97,10 +97,12 @@ writeShellApplication {
             "git+http" = fetchGitZig {
               inherit name hash;
               url = "http://''${path}";
+              rev = rev;
             };
             "git+https" = fetchGitZig {
               inherit name hash;
               url = "https://''${path}";
+              rev = rev;
             };
             http = fetchZig {
               inherit name hash;
@@ -122,6 +124,7 @@ writeShellApplication {
       read -r name;
       read -r url;
       read -r ahash;
+      read -r rev;
     } do
       cat <<EOF
       {
@@ -130,10 +133,15 @@ writeShellApplication {
           name = "$name";
           url = "$url";
           hash = "$ahash";
+    EOF
+      if [[ "$rev" != "null" ]]; then
+          printf '      rev = "%s";\n' "$rev";
+      fi
+    cat <<EOF
         };
       }
     EOF
-    done < <(jq -r 'to_entries | .[] | .key, .value.name, .value.url, .value.hash' "$path")
+    done < <(jq -r 'to_entries | .[] | .key, .value.name, .value.url, .value.hash, .value.rev' "$path")
     printf ']\n'
     '';
 }
