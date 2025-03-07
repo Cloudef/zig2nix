@@ -2,6 +2,7 @@
   "N-V-__8AAG1trALqq4SJfLv7tvBkbOV2Ixb0sdeS0nB9jNsn": {
     "name": "git",
     "url": "git+https://github.com/git/git.git#db91954e18654eeebc54c900f44c704002e1866d",
-    "hash": "sha256-+6lKBx2NpCyS7zih4M/OOslBuTwkjFQNAYTF1arxuFQ="
+    "hash": "sha256-AmqqAZQh/FijlnkKChaqMks5rzGDhHZBW4WbH7tIz/U=",
+    "rev": "db91954e18654eeebc54c900f44c704002e1866d"
   }
 }

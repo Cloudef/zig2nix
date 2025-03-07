@@ -34,7 +34,7 @@ in {
 
   # nix run .#test.zon2nix
   zon2nix = let
-    fixtures = filter (f: hasSuffix ".zig.zon2json-lock" f) (attrNames (readDir ../tools/fixtures));
+    fixtures = filter (f: hasSuffix ".zig.zon2json-lock" f) (attrNames (readDir ../tools/fixtures)) ++ [ "example/build.zig.zon2json-lock"];
     drvs = map (f: {
       lck = f;
       out = deriveLockFile (../tools/fixtures + "/${f}") { inherit zig; };

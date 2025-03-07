@@ -45,12 +45,12 @@ writeShellApplication {
       if [[ "$git_rev" =~ ^[a-fA-F0-9]{40}$ ]]; then
         nix-prefetch-git --out "$tmpdir/$zhash.git" \
           --url "$git_url" --rev "$git_rev" \
-          --no-deepClone --quiet
+          --no-deepClone --fetch-submodules --quiet
       else
         read -r rev _ < <(git ls-remote --refs -tb "$git_url" "$git_rev")
         nix-prefetch-git --out "$tmpdir/$zhash.git" \
-          --url "$git_url" --rev "''$rev" \
-          --no-deepClone --quiet
+          --url "$git_url" --rev "$rev" \
+          --no-deepClone --fetch-submodules --quiet
       fi
       rm -rf "$tmpdir/$zhash.git"
     }

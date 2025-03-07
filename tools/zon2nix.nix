@@ -69,7 +69,7 @@ writeShellApplication {
           name,
           url,
           hash,
-          rev,
+          rev ? throw "rev is required, remove and regenerate the zon2json-lock file",
         }:
         let
           parts = splitString "#" url;
@@ -77,7 +77,7 @@ writeShellApplication {
           url_without_query = elemAt (splitString "?" url_base) 0;
         in
         fetchgit {
-          inherit name rev hash;
+          inherit name hash rev;
           url = url_without_query;
           deepClone = false;
         };
@@ -87,23 +87,19 @@ writeShellApplication {
           name,
           url,
           hash,
-          rev ? null,
-        }:
+          ...
+        } @ args:
         let
           parts = splitString "://" url;
           proto = elemAt parts 0;
           path = elemAt parts 1;
           fetcher = {
-            "git+http" = fetchGitZig {
-              inherit name hash;
+            "git+http" = fetchGitZig (args // {
               url = "http://''${path}";
-              rev = rev;
-            };
-            "git+https" = fetchGitZig {
-              inherit name hash;
+            });
+            "git+https" = fetchGitZig (args // {
               url = "https://''${path}";
-              rev = rev;
-            };
+            });
             http = fetchZig {
               inherit name hash;
               url = "http://''${path}";
