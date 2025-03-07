@@ -8,12 +8,10 @@
   , llvm
   , zig
   , zigPackage
-  , allTargetSystems
-  , nixTripleFromSystem
-  , zigTripleFromSystem
-  , mkZigSystemFromPlatform
-  , mkZigSystemFromString
-  , buildPlatform
+  , target
+  , wrapCCWith
+  , wrapBintoolsWith
+  , stdenv
 }:
 
 with lib;
@@ -48,26 +46,26 @@ let
   #        -Wl,-arch, -march, -mcpu, -mtune are not compatible
   #        https://github.com/ziglang/zig/issues/4911
   #        this does not matter as -target encodes the needed information anyways
-  zigcc = target: let
-    support = zigPackage target {
+  zigcc = any: let
+    support = zigPackage any {
       name = "support";
       src = cleanSource ./support;
     };
 
-    pp_args = [ "-target" ''${target}'' ];
+    pp_args = [ "-target" ''${any}'' ];
 
-    system = mkZigSystemFromString target;
+    os = (target any).os;
 
     # Does not support the -c compiler flag
-    multiple-objects-supported = system.zig.kernel != "windows" && system.kernel.name != "darwin";
+    multiple-objects-supported = os != "windows" && os != "darwin";
 
-    libname = lib: if system.zig.kernel == "windows" then "${lib}.lib" else "lib${lib}.a";
+    libname = lib: if os == "windows" then "${lib}.lib" else "lib${lib}.a";
 
     # Has to be separate as these will be treated as inputs otherwise ...
     cc_args = [
       # Symbol versioning hell ...
       "-Wl,--undefined-version"
-    ] ++ optionals (multiple-objects-supported) [
+    ] ++ optionals multiple-objects-supported [
       # Provides arc4random family functions
       # This is quite unfortunate, but zig ships recent glibc headers, but links against older glibc stubs
       # Thus compile fails as autotools detects we don't have arc4random but it's in the glibc headers
@@ -75,7 +73,6 @@ let
       # https://github.com/spdk/spdk/issues/2637
       "${support}/lib/${libname "arc4random"}"
     ];
-
   in cmd: writeShellApplication {
     name = "zig${cmd}";
     runtimeInputs = [ zigtool ];
@@ -115,11 +112,17 @@ let
             shift;shift;;
           --target=*)
             shift;;
+          -B/nix*|-L/nix*)
+            shift;;
           -march=*|-mcpu=*|-mtune=*)
             shift;;
           -flto-partition=*)
             shift;;
           -static-libgcc)
+            shift;;
+          --gcc-toolchain=*)
+            shift;;
+          -fstack-clash-protection)
             shift;;
           ${concatStringsSep "|" sys_excluded})
             shift;;
@@ -194,51 +197,38 @@ let
     text = ''exec zigtool ${cmd} "$@"'';
   };
 
-  tools-for-target = t: let
-    local = zigTripleFromSystem (mkZigSystemFromPlatform buildPlatform);
-    z = t.z or local;
-    p = if t != null then "${t.n}-" else "";
-  in ''
-    ln -sf ${llvm}/bin/llvm-install-name-tool $out/bin/${p}install_name_tool
-    ln -sf ${llvm}/bin/llvm-as $out/bin/${p}as
-    ln -sf ${llvm}/bin/llvm-dwp $out/bin/${p}dwp
-    ln -sf ${llvm}/bin/llvm-nm $out/bin/${p}nm
-    ln -sf ${llvm}/bin/llvm-objdump $out/bin/${p}objdump
-    ln -sf ${llvm}/bin/llvm-readelf $out/bin/${p}readelf
-    ln -sf ${llvm}/bin/llvm-size $out/bin/${p}size
-    ln -sf ${llvm}/bin/llvm-strip $out/bin/${p}strip
-    ln -sf ${zigcmd "ar"}/bin/ar $out/bin/${p}ar
-    ln -sf ${zigcmd "ranlib"}/bin/ranlib $out/bin/${p}ranlib
-    ln -sf ${zigcmd "dlltool"}/bin/dlltool $out/bin/${p}dlltool
-    ln -sf ${zigcmd "lib"}/bin/lib $out/bin/${p}lib
-    ln -sf ${zigcmd "objcopy"}/bin/objcopy $out/bin/${p}objcopy
-    ln -sf ${zigrc}/bin/zigrc $out/bin/${p}rc
-    ln -sf $out/bin/${p}rc $out/bin/${p}windres
-    ln -sf ${zigcc z "cc"}/bin/zigcc $out/bin/${p}clang
-    ln -sf ${zigcc z "c++"}/bin/zigc++ $out/bin/${p}clang++
-    ln -sf $out/bin/${p}clang $out/bin/${p}gcc
-    ln -sf $out/bin/${p}clang++ $out/bin/${p}g++
-    ln -sf $out/bin/${p}clang $out/bin/${p}cc
-    ln -sf $out/bin/${p}clang++ $out/bin/${p}c++
-    ln -sf ${zigld}/bin/zigld $out/bin/${p}ld
-    '';
-
-  toolchain-universal = let
-    triples = map (s: { z = zigTripleFromSystem s; n = nixTripleFromSystem s; }) allTargetSystems;
-  in runCommandLocal "zig-toolchain-universal" {} ''
+  tools-for-target = any: let
+    z = (target any).zig;
+  in runCommandLocal "zig-toolchain-${(target any).config}-symlinks" {} ''
     mkdir -p "$out/bin"
-    ${concatStringsSep "\n" (map tools-for-target triples)}
+    ln -sf ${llvm}/bin/llvm-install-name-tool $out/bin/install_name_tool
+    ln -sf ${llvm}/bin/llvm-as $out/bin/as
+    ln -sf ${llvm}/bin/llvm-dwp $out/bin/dwp
+    ln -sf ${llvm}/bin/llvm-nm $out/bin/nm
+    ln -sf ${llvm}/bin/llvm-objdump $out/bin/objdump
+    ln -sf ${llvm}/bin/llvm-readelf $out/bin/readelf
+    ln -sf ${llvm}/bin/llvm-size $out/bin/size
+    ln -sf ${llvm}/bin/llvm-strip $out/bin/strip
+    ln -sf ${zigcmd "ar"}/bin/ar $out/bin/ar
+    ln -sf ${zigcmd "ranlib"}/bin/ranlib $out/bin/ranlib
+    ln -sf ${zigcmd "dlltool"}/bin/dlltool $out/bin/dlltool
+    ln -sf ${zigcmd "lib"}/bin/lib $out/bin/lib
+    ln -sf ${zigcmd "objcopy"}/bin/objcopy $out/bin/objcopy
+    ln -sf ${zigrc}/bin/zigrc $out/bin/rc
+    ln -sf $out/bin/rc $out/bin/windres
+    ln -sf ${zigcc z "cc"}/bin/zigcc $out/bin/clang
+    ln -sf ${zigcc z "c++"}/bin/zigc++ $out/bin/clang++
+    ln -sf $out/bin/clang $out/bin/gcc
+    ln -sf $out/bin/clang++ $out/bin/g++
+    ln -sf $out/bin/clang $out/bin/cc
+    ln -sf $out/bin/clang++ $out/bin/c++
+    ln -sf ${zigld}/bin/zigld $out/bin/ld
     '';
 
-  toolchain-local = runCommandLocal "zig-toolchain-local" {} ''
-    mkdir -p "$out/bin"
-    ${tools-for-target null}
-    '';
-
-  toolchain-unwrapped = libllvm: symlinkJoin {
-    name = "zig-toolchain";
+  toolchain-unwrapped = { libllvm, targetPlatform }: symlinkJoin {
+    name = "zig-toolchain-${targetPlatform.config}";
     inherit (zig) version;
-    paths = [ toolchain-local toolchain-universal ];
+    paths = [ (tools-for-target targetPlatform.config) ];
     passthru = {
       isClang = true;
       isLLVM = true;
@@ -248,30 +238,18 @@ let
 in
 
 {
-  libc
-  , wrapCCWith
-  , wrapBintoolsWith
-  , libllvm
+  callPackage
+  , targetPlatform
 }:
 
 wrapCCWith {
-  inherit gnugrep coreutils libc;
-  cc = toolchain-unwrapped libllvm;
+  inherit gnugrep coreutils;
+  cc = callPackage toolchain-unwrapped {};
   useCcForLibs = false;
+  libc = if (targetPlatform == stdenv.buildPlatform) then stdenv.cc.libc else null;
   bintools = wrapBintoolsWith {
-    inherit gnugrep coreutils libc;
-    bintools = toolchain-unwrapped libllvm;
+    inherit gnugrep coreutils;
+    libc = if (targetPlatform == stdenv.buildPlatform) then stdenv.cc.libc else null;
+    bintools = callPackage toolchain-unwrapped {};
   };
-
-  # nix really wants us to use nixpkgs libc
-  # so make sure we don't pass extra garbage on the cc command line
-  extraBuildCommands = ''
-    rm -f $out/nix-support/cc-cflags
-    rm -f $out/nix-support/cc-ldflags
-    rm -f $out/nix-support/libc-crt1-cflags
-    rm -f $out/nix-support/libc-cflags
-    rm -f $out/nix-support/libc-ldflags
-    rm -f $out/nix-support/libcxx-cxxflags
-    rm -f $out/nix-support/libcxx-ldflags
-    '';
 }

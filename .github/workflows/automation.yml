@@ -20,21 +20,29 @@ jobs:
         with:
           determinate: true
       - uses: DeterminateSystems/flakehub-cache-action@main
+      - uses: DeterminateSystems/flakehub-push@main
+        with:
+          name: Cloudef/zig2nix
+          rolling: true
+          visibility: public
+          include-output-paths: true
       - uses: cachix/cachix-action@master
         with:
           name: zig2nix
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
           skipAddingSubstituter: true
       - run: |
-          nix run .#update-versions > versions.json
+          nix flake update
+          nix run .#update-versions
           nix run .#update-templates
-          nix run .#test.all
+          nix run .#test-all
           nix run .#readme > README.md
       - uses: test-room-7/action-update-file@v2.0.0
         with:
           branch: ${{ github.head_ref || github.ref_name }}
           file-path: |
-            versions.json
+            flake.lock
+            src/zig/versions.nix
             templates/**
             README.md
           commit-msg: Automatic update

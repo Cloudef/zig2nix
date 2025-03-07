@@ -122,12 +122,14 @@ const SonameIterator = struct {
         };
 
         while (self.iter.next()) |soname| {
-            var split = std.mem.splitScalar(u8, soname, '.');
-            const base = split.first();
-
-            if (std.mem.count(u8, base, "ld-linux-") > 0) {
+            const trimmed = D: {
+                for (soname, 0..) |c, idx| if (std.ascii.isPrint(c)) break :D soname[idx..];
                 continue;
-            }
+            };
+            if (trimmed.len > 0 and trimmed[0] == '/') continue;
+
+            var split = std.mem.splitScalar(u8, trimmed, '.');
+            const base = split.first();
 
             const is_ignored = blk: {
                 inline for (ignored) |ignore| {
@@ -140,7 +142,7 @@ const SonameIterator = struct {
                 continue;
             }
 
-            return if (as_base) base else soname;
+            return if (as_base) base else trimmed;
         }
 
         return null;
@@ -200,8 +202,8 @@ fn setupLinux(allocator: std.mem.Allocator, bin: []const u8) !std.process.EnvMap
     // NixOS, Guix and GoboLinux are to my knowledge the only non-FHS Linux distros
     // However GoboLinux apparently has FHS compatibility, so it probably works OOB?
     switch (detectDistro(allocator)) {
-        .nixos => {
-            log.info("setting up a {s} runtime ...", .{@tagName(.nixos)});
+        .nixos => |tag| {
+            log.info("setting up a {s} runtime ...", .{@tagName(tag)});
 
             // packages that match a soname don't have to be included
             // this list only includes common libs for doing multimedia stuff on linux
@@ -288,8 +290,8 @@ fn setupLinux(allocator: std.mem.Allocator, bin: []const u8) !std.process.EnvMap
                 }
             }
         },
-        .guix => {
-            log.info("setting up a {s} runtime ...", .{@tagName(.guix)});
+        .guix => |tag| {
+            log.info("setting up a {s} runtime ...", .{@tagName(tag)});
 
             // I'm not sure if this is okay, but guix seems to not be so opposed to global env like nix is
             // And this path at least in guix live cd has mostly everything neccessary
