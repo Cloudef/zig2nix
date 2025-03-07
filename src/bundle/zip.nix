@@ -85,13 +85,13 @@ in stdenvNoCC.mkDerivation (userAttrs // {
   nativeBuildInputs = [ zip ];
   phases = [ "installPhase" ];
   installPhase = ''
-  '' + optionalString (useLoader) ''
+  '' + optionalString useLoader ''
     cp -f ${loader}/bin/loader ${zipEntrypoint}
   '' + optionalString (!useLoader && (!packageAsRoot || tightly-packed)) ''
     ln -s ${entrypoint} ${zipEntrypoint}
   '' + optionalString (!useLoader && (packageAsRoot && !tightly-packed)) ''
     ln -s ./${removePrefix "${toString package}/" entrypoint} ${zipEntrypoint}
-  '' + optionalString (tightly-packed) ''
+  '' + optionalString tightly-packed ''
     zip -9 $out ${zipEntrypoint}
   '' + optionalString (!tightly-packed && !packageAsRoot) ''
     zip -9 --symlinks $out ${zipEntrypoint}

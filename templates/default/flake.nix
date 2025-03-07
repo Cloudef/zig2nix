@@ -12,15 +12,17 @@
       # Check the flake.nix in zig2nix project for more options:
       # <https://github.com/Cloudef/zig2nix/blob/master/flake.nix>
       env = zig2nix.outputs.zig-env.${system} {};
-      system-triple = env.lib.zigTripleFromString system;
-    in with builtins; with env.lib; with env.pkgs.lib; rec {
-      # nix build .#target.{zig-target}
-      # e.g. nix build .#target.x86_64-linux-gnu
-      packages.target = genAttrs allTargetTriples (target: env.packageForTarget target ({
+    in with builtins; with env.pkgs.lib; rec {
+      # Produces clean binaries meant to be ship'd outside of nix
+      # nix build .#foreign
+      packages.foreign = env.package ({
         src = cleanSource ./.;
 
+        # Packages required for compiling
         nativeBuildInputs = with env.pkgs; [];
-        buildInputs = with env.pkgsForTarget target; [];
+
+        # Packages required for linking
+        buildInputs = with env.pkgs; [];
 
         # Smaller binaries and avoids shipping glibc.
         zigPreferMusl = true;
@@ -31,26 +33,28 @@
       } // optionalAttrs (!pathExists ./build.zig.zon) {
         pname = "my-zig-project";
         version = "0.0.0";
-      }));
+      });
 
       # nix build .
-      packages.default = packages.target.${system-triple}.override {
+      packages.default = packages.foreign.overrideAttrs (attrs: {
         # Prefer nix friendly settings.
         zigPreferMusl = false;
-        zigDisableWrap = false;
-      };
+
+        # Executables requires for runtime
+        # These packages will be added to the PATH
+        zigWrapperBins = with env.pkgs; [];
+
+        # Libraries requires for runtime
+        # These packages will be added to the LD_LIBRARY_PATH
+        zigWrapperLibs = with env.pkgs; [];
+      });
 
       # For bundling with nix bundle for running outside of nix
       # example: https://github.com/ralismark/nix-appimage
-      apps.bundle.target = genAttrs allTargetTriples (target: let
-        pkg = packages.target.${target};
-      in {
+      apps.bundle = {
         type = "app";
-        program = "${pkg}/bin/default";
-      });
-
-      # default bundle
-      apps.bundle.default = apps.bundle.target.${system-triple};
+        program = "${packages.foreign}/bin/default";
+      };
 
       # nix run .
       apps.default = env.app [] "zig build run -- \"$@\"";
@@ -64,16 +68,14 @@
       # nix run .#docs
       apps.docs = env.app [] "zig build docs -- \"$@\"";
 
-      # nix run .#zon2json
-      apps.zon2json = env.app [env.zon2json] "zon2json \"$@\"";
-
-      # nix run .#zon2json-lock
-      apps.zon2json-lock = env.app [env.zon2json-lock] "zon2json-lock \"$@\"";
-
-      # nix run .#zon2nix
-      apps.zon2nix = env.app [env.zon2nix] "zon2nix \"$@\"";
+      # nix run .#zig2nix
+      apps.zig2nix = env.app [] "zig2nix \"$@\"";
 
       # nix develop
-      devShells.default = env.mkShell {};
+      devShells.default = env.mkShell {
+        # Packages required for compiling, linking and running
+        # Libraries added here will be automatically added to the LD_LIBRARY_PATH and PKG_CONFIG_PATH
+        nativeBuildInputs = with env.pkgs; [];
+      };
     }));
 }

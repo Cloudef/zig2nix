@@ -26,6 +26,9 @@ fn stringifyValue(allocator: std.mem.Allocator, ast: std.zig.Ast, idx: std.zig.A
         defer allocator.free(v);
         return try std.json.stringifyAlloc(allocator, v, .{});
     }
+    if (std.mem.startsWith(u8, slice, "0x")) {
+        return try std.fmt.allocPrint(allocator, "\"{s}\"", .{slice});
+    }
     switch (std.zig.number_literal.parseNumberLiteral(slice)) {
         .int => |v| return try std.json.stringifyAlloc(allocator, v, .{}),
         .float => |v| return try std.json.stringifyAlloc(allocator, v, .{}),
@@ -56,7 +59,7 @@ fn stringify(allocator: std.mem.Allocator, writer: anytype, ast: std.zig.Ast, id
     } else if (ast.fullArrayInit(&buf, idx)) |v| {
         try writer.writeAll("[");
         for (v.ast.elements, 0..) |i, n| {
-            try stringify(allocator, writer, ast, i, false) ;
+            try stringify(allocator, writer, ast, i, false);
             if (n + 1 != v.ast.elements.len) try writer.writeAll(",");
         }
         try writer.writeAll("]");
@@ -73,24 +76,25 @@ pub const Options = struct {
     file_name: []const u8 = "build.zig.zon", // for errors
 };
 
-pub fn parse(allocator: std.mem.Allocator, reader: std.io.AnyReader, writer: anytype, error_writer: anytype, opts: Options) !void {
+pub fn parse(allocator: std.mem.Allocator, reader: anytype, writer: anytype, error_writer: anytype, opts: Options) !void {
+    var arena_state: std.heap.ArenaAllocator = .init(allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+
     const zon = blk: {
-        var tmp = try reader.readAllAlloc(allocator, opts.limit);
-        errdefer allocator.free(tmp);
-        tmp = try allocator.realloc(tmp, tmp.len + 1);
+        var tmp = try reader.readAllAlloc(arena, opts.limit);
+        tmp = try arena.realloc(tmp, tmp.len + 1);
         tmp[tmp.len - 1] = 0;
-        break :blk tmp[0..tmp.len - 1 :0];
+        break :blk tmp[0 .. tmp.len - 1 :0];
     };
 
-    defer allocator.free(zon);
-    var ast = try std.zig.Ast.parse(allocator, zon, .zon);
-    defer ast.deinit(allocator);
+    var ast = try std.zig.Ast.parse(arena, zon, .zon);
 
     if (ast.errors.len > 0) {
         if (@TypeOf(error_writer) != void) {
             for (ast.errors) |e| {
                 const loc = ast.tokenLocation(ast.errorOffset(e), e.token);
-                try error_writer.print("error: {s}:{}:{}: ", .{opts.file_name, loc.line, loc.column});
+                try error_writer.print("error: {s}:{}:{}: ", .{ opts.file_name, loc.line, loc.column });
                 try ast.renderError(e, error_writer);
                 try error_writer.writeAll("\n");
             }
@@ -98,17 +102,46 @@ pub fn parse(allocator: std.mem.Allocator, reader: std.io.AnyReader, writer: any
         return error.ParseFailed;
     }
 
-    try stringify(allocator, writer, ast, ast.nodes.items(.data)[0].lhs, false);
+    try stringify(arena, writer, ast, ast.nodes.items(.data)[0].lhs, false);
+}
+
+pub fn parsePath(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, writer: anytype, error_writer: anytype) !void {
+    var file = try cwd.openFile(path, .{ .mode = .read_only });
+    defer file.close();
+    try parse(allocator, file.reader(), writer, error_writer, .{ .file_name = path });
+}
+
+pub fn parseFromSlice(allocator: std.mem.Allocator, slice: []const u8, writer: anytype, error_writer: anytype, opts: Options) !void {
+    var stream = std.io.fixedBufferStream(slice);
+    return parse(allocator, stream.reader(), writer, error_writer, opts);
 }
 
 test {
     const allocator = std.testing.allocator;
-    var json = std.ArrayList(u8).init(allocator);
-    defer json.deinit();
-    var file = try std.fs.cwd().openFile("build.zig.zon", .{.mode = .read_only});
-    defer file.close();
-    try parse(allocator, file.reader().any(), json.writer(), {}, .{});
+    var json: std.ArrayListUnmanaged(u8) = .{};
+    defer json.deinit(allocator);
+    const zon =
+        \\.{
+        \\    .name = .fixture1,
+        \\    .version = "0.0.1",
+        \\    .paths = .{
+        \\        "src",
+        \\        "build.zig",
+        \\        "build.zig.zon",
+        \\    },
+        \\    .dependencies = .{
+        \\        .router = .{
+        \\            .path = ".",
+        \\        },
+        \\        .getty = .{
+        \\            .url = "https://github.com/getty-zig/getty/archive/cb007b8ed148510de71ccc52143343b2e11413ff.tar.gz",
+        \\            .hash = "getty-0.4.0-AAAAAI4bCAAwD1LXWSkUZg7jyORh3HwQvUVwjrMt6w40",
+        \\        },
+        \\    },
+        \\}
+    ;
+    try parseFromSlice(allocator, zon, json.writer(allocator), {}, .{});
     try std.testing.expectEqualStrings(
-        \\{"name":"zon2json","version":"0.0.0","dependencies":{},"paths":["src","build.zig","build.zig.zon","LICENSE"]}
-        , json.items);
+        \\{"name":"fixture1","version":"0.0.1","paths":["src","build.zig","build.zig.zon"],"dependencies":{"router":{"path":"."},"getty":{"url":"https://github.com/getty-zig/getty/archive/cb007b8ed148510de71ccc52143343b2e11413ff.tar.gz","hash":"getty-0.4.0-AAAAAI4bCAAwD1LXWSkUZg7jyORh3HwQvUVwjrMt6w40"}}}
+    , json.items);
 }

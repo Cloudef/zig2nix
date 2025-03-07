@@ -1,13 +1,12 @@
 {
   lib
   , zig
-  , resolveTargetSystem
-  , zigTripleFromSystem
   , fromZON
   , deriveLockFile
-  , runtimeForTargetSystem
   , makeWrapper
   , removeReferencesTo
+  , pkg-config
+  , target
 }:
 
 {
@@ -15,13 +14,12 @@
   , stdenvNoCC
   # Specify target for zig compiler, defaults to stdenv.targetPlatform.
   , zigTarget ? null
-  # By default if zigTarget is specified, nixpkgs stdenv compatible environment is not used.
-  # Set this to true, if you want to specify zigTarget, but still use the derived stdenv compatible environment.
-  , zigInheritStdenv ? zigTarget == null
   # Prefer musl libc without specifying the target.
   , zigPreferMusl ? false
-  # makeWrapper will not be used. Might be useful if distributing outside nix.
-  , zigDisableWrap ? false
+  # Binaries available to the binary during runtime (PATH)
+  , zigWrapperBins ? []
+  # Libraries available to the binary during runtime (LD_LIBRARY_PATH)
+  , zigWrapperLibs ? []
   # Additional arguments to makeWrapper.
   , zigWrapperArgs ? []
   # Path to build.zig.zon file, defaults to build.zig.zon.
@@ -35,19 +33,20 @@ with builtins;
 with lib;
 
 let
-  target-system = resolveTargetSystem {
-    target = zigTarget;
-    platform = stdenvNoCC.targetPlatform;
-    musl = zigPreferMusl;
-  };
-
-  target-triple = zigTripleFromSystem target-system;
   zon = fromZON zigBuildZon;
-  runtime = runtimeForTargetSystem target-system;
 
-  wrapper-args = zigWrapperArgs
-    ++ optionals (length runtime.bins > 0) [ "--prefix" "PATH" ":" (makeBinPath runtime.bins) ]
-    ++ optionals (length runtime.libs > 0) [ "--prefix" runtime.env.LIBRARY_PATH ":" (makeLibraryPath runtime.libs) ];
+  config =
+    if zigPreferMusl then
+      replaceStrings ["-gnu"] ["-musl"] stdenvNoCC.targetPlatform.config
+    else stdenvNoCC.targetPlatform.config;
+
+  default-target = (target config).zig;
+  resolved-target = if zigTarget != null then zigTarget else default-target;
+
+  wrapper-args = []
+    ++ optionals (length zigWrapperBins > 0) [ "--prefix" "PATH" ":" (makeBinPath zigWrapperBins) ]
+    ++ optionals (length zigWrapperLibs > 0) [ "--prefix" "LD_LIBRARY_PATH" ":" (makeLibraryPath zigWrapperLibs) ]
+    ++ zigWrapperArgs;
 
   attrs = optionalAttrs (pathExists zigBuildZon && !userAttrs ? name && !userAttrs ? pname) {
     pname = zon.name;
@@ -61,30 +60,22 @@ let
   };
 
   default-flags =
-    if hasPrefix "git" zig.version || versionAtLeast zig.version "0.11" then
+    if versionAtLeast zig.version "0.11" then
       [ "-Doptimize=ReleaseSafe" ]
     else
       [ "-Drelease-safe=true" ];
-
-  stdenv-flags = optionals (zigInheritStdenv) (runtime.env.stdenvZigFlags or []);
 in stdenvNoCC.mkDerivation (
   (removeAttrs attrs [ "stdenvNoCC" ]) // {
     zigBuildFlags =
       (attrs.zigBuildFlags or default-flags)
-      ++ [ "-Dtarget=${target-triple}" ]
-      ++ stdenv-flags;
+      ++ [ "-Dtarget=${resolved-target}" ]
+      ++ optionals (pathExists zigBuildZonLock) [ "--system" "${deps}" ];
 
-    nativeBuildInputs = [ zig.hook removeReferencesTo ]
-      ++ optionals (!zigDisableWrap) ([ makeWrapper ] ++ (runtime.env.wrapperBuildInputs or []))
-      ++ (runtime.build-bins or [])
+    nativeBuildInputs = [ zig.hook removeReferencesTo pkg-config ]
+      ++ optionals (length wrapper-args > 0) [ makeWrapper ]
       ++ (attrs.nativeBuildInputs or []);
 
-    postPatch = optionalString (pathExists zigBuildZonLock) ''
-      ln -s ${deps} "$ZIG_GLOBAL_CACHE_DIR"/p
-      ${attrs.postPatch or ""}
-      '';
-
-    postFixup = optionalString (!zigDisableWrap && length wrapper-args > 0) ''
+    postFixup = optionalString (length wrapper-args > 0) ''
       for bin in $out/bin/*; do
         wrapProgram $bin ${concatStringsSep " " wrapper-args}
       done
@@ -93,6 +84,7 @@ in stdenvNoCC.mkDerivation (
       ${attrs.postFixup or ""}
       '';
 
-    disallowedReferences = [ zig ];
+    disallowedReferences = [ zig zig.hook removeReferencesTo ]
+      ++ optionals (pathExists zigBuildZonLock) [ deps ];
   }
 )

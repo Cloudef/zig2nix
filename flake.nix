@@ -12,48 +12,36 @@
 
       #! Structures.
 
-      zig2nix-lib-base = pkgs.callPackage ./src/lib.nix {};
-
       # Use our own zig hook.
       # The nixpkgs one forces flags which can't be overridden.
       # Also -target is recommended over use of -Dcpu=baseline.
       # https://ziggit.dev/t/exe-files-not-interchangeable-among-identical-linux-systems/2708/6
       # I would've reused the setup-hook.sh, but it breaks when cross-compiling.
-      zig-hook = { makeSetupHook, zig }: makeSetupHook {
+      zigHook = { makeSetupHook, zig }: makeSetupHook {
         name = "zig-hook";
         propagatedBuildInputs = [ zig ];
         substitutions.zig_default_flags = [];
         passthru = { inherit zig; };
       } ./src/setup-hook.sh;
 
-      # Zig versions.
+      # Zig versions
       # <https://ziglang.org/download/index.json>
-      zigv = with zig2nix-lib-base; pkgs.callPackage ./versions.nix {
-        zigSystem = zigDoubleFromString system;
-        zigHook = zig-hook;
+      zigv = import ./src/zig/versions.nix {
+        inherit zigHook;
+        inherit (pkgs) callPackage;
       };
 
-      # Converts zon files to json
-      zon2json = with zig2nix-lib-base; let
-        target = resolveTargetTriple { target = system; musl = true; };
-      in (pkgs.callPackage tools/zon2json/default.nix { zig = zigv.default.bin; }) {
-        zigBuildFlags = [ "-Dtarget=${target}" ];
-      };
-
-      # Converts build.zig.zon to a build.zig.zon2json lock file
-      zon2json-lock-base = { zig }: pkgs.callPackage tools/zon2json-lock.nix {
-        inherit zig zon2json;
-      };
-
-      # Converts build.zig.zon and build.zig.zon2json-lock to nix deriviation
-      zon2nix-base = { zon2json-lock }: pkgs.callPackage tools/zon2nix.nix {
-        inherit zon2json-lock;
-      };
-
-      # Tools for bridging zig and nix
-      zig2nix-lib = { zon2json, zon2nix }: with pkgs; zig2nix-lib-base // {
-        fromZON = path: fromJSON (readFile (runCommandLocal "fromZON" {} ''${zon2json}/bin/zon2json "${path}" > "$out"''));
-        deriveLockFile = path: callPackage (runCommandLocal "deriveLockFile" {} ''${zon2nix}/bin/zon2nix ${path} > $out'');
+      # zig2nix bridge utility
+      # always compiled with zig-latest, but passes the correct zig to the PATH of the process
+      zig2nix-for-version = zig: let
+        pkg = pkgs.callPackage ./src/zig2nix/default.nix {
+          zig = zigv.latest;
+          zigBuildFlags = [ "-Dcpu=baseline" ];
+        };
+      in pkgs.writeShellApplication {
+          name = "zig2nix";
+          runtimeInputs = [ zig ];
+          text = ''${pkg}/bin/zig2nix "$@"'';
       };
 
       #:! Helper function for building and running Zig projects.
@@ -61,26 +49,7 @@
         # Overrideable nixpkgs.
         nixpkgs ? self.inputs.nixpkgs,
         # Zig version to use.
-        zig ? zigv.default.bin,
-        # Additional runtime deps to inject into the helpers.
-        customRuntimeDeps ? [],
-        # Additional runtime libs to inject to the helpers.
-        # Gets included in LD_LIBRARY_PATH and DYLD_LIBRARY_PATH.
-        customRuntimeLibs ? [],
-        # Custom prelude in the flake app helper.
-        customAppHook ? "",
-        # Custom prelude in the flake shell helper.
-        customDevShellHook ? "",
-        # Enable Vulkan support.
-        enableVulkan ? false,
-        # Enable OpenGL support.
-        enableOpenGL ? false,
-        # Enable Wayland support.
-        enableWayland ? false,
-        # Enable X11 support.
-        enableX11 ? false,
-        # Enable Alsa support.
-        enableAlsa ? false,
+        zig ? zigv.latest,
       }: with pkgs.lib; let
         #! --- Outputs of zig-env {} function.
         #!     access: (zig-env {}).thing
@@ -89,69 +58,69 @@
         pkgs = nixpkgs.outputs.legacyPackages.${system};
 
         #! Tools for bridging zig and nix
-        zon2json-lock = zon2json-lock-base { inherit zig; };
-        zon2nix = zon2nix-base { inherit zon2json-lock; };
-        lib = zig2nix-lib { inherit zon2json zon2nix; };
+        zig2nix = zig2nix-for-version zig;
+
+        exec = cmd: args: pkgs.runCommandLocal cmd {} ''${zig2nix}/bin/zig2nix ${cmd} ${escapeShellArgs args} > $out'';
+        exec-path = cmd: path: args: pkgs.runCommandLocal cmd {} ''${zig2nix}/bin/zig2nix ${cmd} ${path} ${escapeShellArgs args} > $out'';
+        exec-json = cmd: args: fromJSON (readFile (exec cmd args));
+        exec-json-path = cmd: path: args: fromJSON (readFile (exec-path cmd path args));
+
+        #! Translates zig and nix compatible targets
+        target = system: (exec-json "target" [ system ]);
+
+        #! Reads zon file into a attribute set
+        fromZON = path: exec-json-path "zon2json" path [];
+
+        #! Creates derivation from zon2json-lock file
+        deriveLockFile = path: pkgs.callPackage (exec-path "zon2nix" path []);
+
+        # Provides small shell runtime
+        shell-runtime = pkgs.callPackage ./src/shell.nix { inherit system; };
 
         #! Returns true if target is nix flake compatible.
         #! <https://github.com/NixOS/nixpkgs/blob/master/lib/systems/flake-systems.nix>
-        isFlakeTarget = with lib; args': let
-          target-system = if isString args' then mkZigSystemFromString args' else args';
-        in any (s: (systems.elaborate s).config == (nixTripleFromSystem target-system)) systems.flakeExposed;
+        isFlakeTarget = any: pkgs.lib.any (s: (systems.elaborate s).config == (target any).config) systems.flakeExposed;
 
         #! Returns crossPkgs from nixpkgs for target string or system.
         #! This will always cross-compile the package.
-        crossPkgsForTarget = with lib; args': let
-          target-system = if isString args' then mkZigSystemFromString args' else args';
-          crossPkgs = import nixpkgs { localSystem = system; crossSystem = { config = nixTripleFromSystem target-system; }; };
-          this-system = (systems.elaborate system).config == nixTripleFromSystem target-system;
+        crossPkgsForTarget = any: let
+          crossPkgs = import nixpkgs { localSystem = system; crossSystem = { config = (target any).config; }; };
+          this-system = (systems.elaborate system).config == (target any).config;
         in if this-system then pkgs else crossPkgs;
 
         #! Returns pkgs from nixpkgs for target string or system.
         #! This does not cross-compile and you'll get a error if package does not exist in binary cache.
-        binaryPkgsForTarget = with lib; args': let
-          target-system = if isString args' then mkZigSystemFromString args' else args';
-          binaryPkgs = import nixpkgs { localSystem = { config = nixTripleFromSystem target-system; }; };
-          this-system = (systems.elaborate system).config == nixTripleFromSystem target-system;
+        binaryPkgsForTarget = any: let
+          binaryPkgs = import nixpkgs { localSystem = { config = (target any).config; }; };
+          this-system = (systems.elaborate system).config == (target any).config;
         in if this-system then pkgs else binaryPkgs;
 
         #! Returns either binaryPkgs or crossPkgs depending if the target is flake target or not.
-        pkgsForTarget = args':
-          if isFlakeTarget args' then binaryPkgsForTarget args'
-          else crossPkgsForTarget args';
-
-        # Solving platform specific spaghetti
-        runtimeForTargetSystem = pkgs.callPackage ./src/runtime.nix {
-          inherit (lib) mkZigSystemFromString;
-          inherit pkgsForTarget customAppHook customDevShellHook customRuntimeLibs;
-          inherit enableVulkan enableOpenGL enableWayland enableX11 enableAlsa;
-        };
+        pkgsForTarget = any:
+          if isFlakeTarget any then binaryPkgsForTarget any
+          else crossPkgsForTarget any;
 
         # Package a Zig project
-        zigPackage = target: (crossPkgsForTarget target).callPackage (pkgs.callPackage ./src/package.nix {
-          inherit zig runtimeForTargetSystem;
-          inherit (lib) resolveTargetSystem zigTripleFromSystem fromZON deriveLockFile;
+        zigPackage = any: (crossPkgsForTarget any).callPackage (pkgs.callPackage ./src/package.nix {
+          inherit zig target fromZON deriveLockFile;
         });
 
         #! Cross-compile nixpkgs using zig :)
         #! NOTE: This is an experimental feature, expect it not faring well
-        zigCrossPkgsForTarget = with lib; args': let
-          target-system = if isString args' then mkZigSystemFromString args' else args';
+        zigCrossPkgsForTarget = any: let
           crossPkgs = pkgs.callPackage ./src/cross {
-            inherit zig zigPackage allTargetSystems;
-            inherit nixTripleFromSystem zigTripleFromSystem;
-            inherit mkZigSystemFromPlatform mkZigSystemFromString;
-            nixCrossPkgs = pkgsForTarget target-system;
+            inherit zig zigPackage target;
+            nixCrossPkgs = pkgsForTarget any;
+            nixBinaryPkgs = binaryPkgsForTarget any;
             localSystem = system;
-            crossSystem = { config = nixTripleFromSystem target-system; };
+            crossSystem = { config = (target any).config; };
           };
-        in warn "zigCross: ${zigTripleFromSystem target-system}" crossPkgs;
+        in warn "zigCross: ${(target any).zig}" crossPkgs;
 
-        runtime = runtimeForTargetSystem system;
-        _deps = [ zig ] ++ customRuntimeDeps ++ runtime.build-bins;
+        _deps = [ zig zig2nix ];
       in rec {
-        inherit lib pkgs pkgsForTarget crossPkgsForTarget zigCrossPkgsForTarget binaryPkgsForTarget;
-        inherit zig zon2json zon2json-lock zon2nix zig-hook;
+        inherit pkgs pkgsForTarget crossPkgsForTarget zigCrossPkgsForTarget binaryPkgsForTarget;
+        inherit zig zig2nix target fromZON deriveLockFile;
 
         #! Flake app helper (Without zig-env and root dir restriction).
         app-bare-no-root = deps: script: {
@@ -175,13 +144,13 @@
 
         #! Flake app helper (without root dir restriction).
         app-no-root = deps: script: app-bare-no-root (deps ++ _deps) ''
-          ${runtime.app}
+          ${shell-runtime deps}
           ${script}
           '';
 
         #! Flake app helper.
         app = deps: script: app-bare (deps ++ _deps) ''
-          ${runtime.app}
+          ${shell-runtime deps}
           ${script}
           '';
 
@@ -192,7 +161,7 @@
         } @attrs: pkgs.mkShellNoCC (attrs // {
           nativeBuildInputs = optionals (attrs ? nativeBuildInputs) attrs.nativeBuildInputs ++ _deps;
           shellHook = ''
-            ${runtime.shell}
+            ${shell-runtime nativeBuildInputs}
             ${attrs.shellHook or ""}
           '';
         }));
@@ -209,11 +178,9 @@
         #!
         #! Additional attributes:
         #!    zigTarget: Specify target for zig compiler, defaults to stdenv.targetPlatform of given target.
-        #!    zigInheritStdenv:
-        #!       By default if zigTarget is specified, nixpkgs stdenv compatible environment is not used.
-        #!       Set this to true, if you want to specify zigTarget, but still use the derived stdenv compatible environment.
         #!    zigPreferMusl: Prefer musl libc without specifying the target.
-        #!    zigDisableWrap: makeWrapper will not be used. Might be useful if distributing outside nix.
+        #!    zigWrapperBins: Binaries available to the binary during runtime (PATH)
+        #!    zigWrapperLibs: Libraries available to the binary during runtime (LD_LIBRARY_PATH)
         #!    zigWrapperArgs: Additional arguments to makeWrapper.
         #!    zigBuildZon: Path to build.zig.zon file, defaults to build.zig.zon.
         #!    zigBuildZonLock: Path to build.zig.zon2json-lock file, defaults to build.zig.zon2json-lock.
@@ -228,363 +195,199 @@
         bundle.aws.lambda = pkgs.callPackage ./src/bundle/lambda.nix { bundleZip = bundle.zip; };
       };
 
-      # Default zig env used for tests and automation.
-      default-env = zig-env { zig = zigv.default.bin; };
-      test-env = zig-env { zig = zigv.master.bin; };
+      test-env = zig-env { zig = zigv.master; };
       test-app = test-env.app-bare;
 
-      # For the convenience flake outputs
-      multimedia-attrs = {
-        enableX11 = true;
-        enableWayland = true;
-        enableVulkan = true;
-        enableOpenGL = true;
-        enableAlsa = true;
-      };
-    in rec {
-      # TODO: Convert this to the standard flake format
-      #       Currently this uses invalid flake format
-      #       See: nix flake check --help
+      test = removeAttrs (pkgs.callPackage src/test.nix {
+        inherit test-app;
+        inherit (test-env) zig zig2nix target deriveLockFile;
+        zig-env = test-env;
+      }) [ "override" "overrideDerivation" "overrideAttrs" ];
 
+      flake-outputs = pkgs.callPackage (import ./src/zig/outputs.nix) {
+        inherit zigv zig-env;
+      };
+    in with pkgs.lib; {
       #! --- Architecture dependent flake outputs.
       #!     access: `zig2nix.outputs.thing.${system}`
 
       #! Helper functions for building and running Zig projects.
-      inherit zig-env zig-hook;
-
-      #! Prints available zig versions
-      apps.versions = with pkgs; test-app [ coreutils jq ] ''
-        printf 'git\nmaster\ndefault\n'
-        jq -r 'delpaths([["master"],["default"],["git"]]) | keys_unsorted | sort_by(split(".") | map(tonumber)) | reverse | .[]' ${./versions.json}
-        '';
+      inherit zig-env;
 
       #! Versioned Zig packages.
-      #! nix build .#zig.master.bin
-      #! nix build .#zig.master.src
-      #! nix run .#zig.master.bin
-      #! nix run .#zig.master.src
-      packages.zig = zigv;
-
-      #! Default zig package.
-      #! Latest released binary zig.
-      packages.default = zigv.default.bin;
-
-      #! zon2json: Converts zon files to json
-      packages.zon2json = zon2json;
-
-      #! zon2json-lock: Converts build.zig.zon to a build.zig.zon2json lock file
-      packages.zon2json-lock = default-env.zon2json-lock;
-
-      #! zon2nix: Converts build.zig.zon and build.zig.zon2json-lock to nix deriviation
-      packages.zon2nix = default-env.zon2nix;
-
-      # Generate flake packages for all the zig versions.
-      packages.env = mapAttrs (k: v: let
-          pkgs-for = zig: let
-            env = zig-env { inherit zig; };
-          in {
-            #! Nixpkgs cross-compiled with zig
-            cross = env.pkgs.lib.genAttrs env.lib.allTargetTriples (t: env.zigCrossPkgsForTarget t);
-          };
-        in {
-          bin = pkgs-for v.bin;
-          src = pkgs-for v.src;
-        }
-      ) zigv;
-
-      #! Cross-compile nixpkgs with master zig
-      packages.zigCross = packages.env.master.bin.cross;
+      #! nix build .#zig-master
+      #! nix build .#zig-latest
+      #! nix run .#zig-0_13_0
+      packages = mapAttrs' (k: v: nameValuePair ("zig-" + k) v) zigv;
 
       # Generates flake apps for all the zig versions.
-      apps.env = mapAttrs (k: v: let
-          apps-for = zig: let
-            apps-for = attrs: let
-              env = zig-env ({ inherit zig; } // attrs);
-            in {
-              #! Run a version of a Zig compiler
-              #! nix run .#env."zig-version"."build"."type".zig
-              #! example: nix run .#env.master.src.bare.zig
-              #! example: nix run .#env.default.bin.multimedia.zig
-              zig = env.app-no-root [] ''zig "$@"'';
+      apps = flake-outputs.apps // {
+        default = flake-outputs.apps.zig2nix-latest;
 
-              #! nix run .#env."zig-version"."build"."type".zon2json-lock
-              #! example: nix run .#env.master.src.bare.zon2json-lock
-              #! example: nix run .#env.default.bin.multimedia.zon2json-lock
-              zon2json-lock = env.app-no-root [ env.zon2json-lock ] ''zon2json-lock "$@"'';
+        # Backwards compatibility
+        zon2json = flake-outputs.apps.zon2json-latest;
+        zon2json-lock = flake-outputs.apps.zon2json-lock-latest;
+        zon2nix = flake-outputs.apps.zon2nix-latest;
 
-              #! nix run .#env."zig-version"."build"."type".zon2nix
-              #! example: nix run .#env.master.src.bare.zon2nix
-              #! example: nix run .#env.default.bin.multimedia.zon2nix
-              zon2nix = env.app-no-root [ env.zon2nix ] ''zon2nix "$@"'';
-            };
-          in {
-            # Minimal environment
-            bare = apps-for {};
-            # Environment for running multimedia programs
-            multimedia = apps-for multimedia-attrs;
-          };
-        in {
-          bin = apps-for v.bin;
-          src = apps-for v.src;
-        }
-      ) zigv;
+        # nix run .#update-versions
+        update-versions = test-app [ test-env.zig2nix ] ''
+          tmp="$(mktemp)"
+          trap 'rm -f "$tmp"' EXIT
+          zig2nix versions "$@" > "$tmp"
+          cp -f "$tmp" src/zig/versions.nix
+        '';
 
-      #! Master zig
-      apps.master = apps.env.master.bin.bare.zig;
+        # nix run .#update-templates
+        update-templates = with pkgs; test-app [ coreutils gnused ] ''
+          rm -rf templates/default
+          mkdir -p templates/default
+          sed 's#/[*]SED_ZIG_VER[*]/##' templates/flake.nix > templates/default/flake.nix
+          sed -i 's#@SED_ZIG_BIN@#default#' templates/default/flake.nix
+          cp -f templates/gitignore templates/default/.gitignore
+          cp -f .gitattributes templates/default/.gitattributes
+          (cd templates/default; ${zigv.latest}/bin/zig init)
+          (cd templates/default; nix flake check --override-input zig2nix ../..)
 
-      #! Default zig
-      apps.default = apps.env.default.bin.bare.zig;
+          rm -rf templates/master
+          mkdir -p templates/master
+          # shellcheck disable=SC2016
+          sed 's#/[*]SED_ZIG_VER[*]/# zig = zig2nix.outputs.packages.''${system}.zig-master; #' templates/flake.nix > templates/master/flake.nix
+          sed -i 's#@SED_ZIG_BIN@#master#' templates/master/flake.nix
+          cp -f templates/gitignore templates/master/.gitignore
+          cp -f .gitattributes templates/master/.gitattributes
+          (cd templates/master; ${zigv.master}/bin/zig init)
+          (cd templates/master; nix flake check --override-input zig2nix ../..)
+          '';
 
-      # Develop shell for building and running Zig projects.
-      # nix develop .#env."zig-version"."build"."type"
-      # example: nix develop .#env.master.src.bare
-      # example: nix develop .#env.default.bin.multimedia
-      devShells.env = mapAttrs (k: v: let
-          shells-for = zig: let
-            shells-for = attrs: let
-              env = zig-env ({ inherit zig; } // attrs);
-            in env.mkShell {};
-          in {
-            # Minimal environment
-            bare = shells-for {};
-            # Environment for running multimedia programs
-            multimedia = shells-for multimedia-attrs;
-          };
-        in {
-          bin = shells-for v.bin;
-          src = shells-for v.src;
-        }
-      ) zigv;
+        # nix run .#readme
+        readme = let
+          project = "zig2nix flake";
+        in with pkgs; test-app [ gawk gnused ] (replaceStrings ["`"] ["\\`"] ''
+        cat <<EOF
+        # ${project}
 
-      #! Master dev shell
-      devShells.master = devShells.env.master.bin.bare;
+        Flake for packaging, building and running Zig projects.
 
-      #! Default dev shell
-      devShells.default = devShells.env.default.bin.bare;
+        https://ziglang.org/
 
-      # nix run .#update-versions
-      apps.update-versions = with pkgs; test-app [ curl jq coreutils ] ''
-        tmpdir="$(mktemp -d)"
-        trap 'rm -rf "$tmpdir"' EXIT
-        read -r rev _ < <(git ls-remote https://github.com/ziglang/zig.git HEAD)
-        url="https://github.com/ziglang/zig/archive/$rev.tar.gz"
-        curl -sSL "$url" -o "$tmpdir/git.tar.gz"
-        read -r size _ < <(wc -c "$tmpdir/git.tar.gz")
-        date="$(date +"%Y-%m-%d")"
-        cat <<EOF > "$tmpdir/git.json"
-        {
-          "git": {
-            "version": "git+''${rev:0:7}+$date",
-            "date": "$date",
-            "docs": "https://ziglang.org/documentation/master/",
-            "stdDocs": "https://ziglang.org/documentation/master/std/",
-            "src": {
-              "tarball": "$url",
-              "shasum": "$(nix hash file --type sha256 --base16 "$tmpdir/git.tar.gz")",
-              "size": "$size"
-            }
-          }
-        }
+        * Cachix: `cachix use zig2nix`
+
+        ---
+
+        [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+        * Zig master: `${zigv.master.version} @ ${zigv.master.date}`
+        * Zig latest: `${zigv.latest.version} @ ${zigv.latest.date}`
+
+        ## Examples
+
+        ### Zig project template
+
+        ```bash
+        nix flake init -t github:Cloudef/zig2nix
+        nix run .
+        # for more options check the flake.nix file
+        ```
+
+        #### With master version of Zig
+
+        ```bash
+        nix flake init -t github:Cloudef/zig2nix#master
+        nix run .
+        # for more options check the flake.nix file
+        ```
+
+        ### Build zig from source
+
+        ```bash
+        nix build github:Cloudef/zig2nix#zig-src-master
+        nix build github:Cloudef/zig2nix#zig-src-latest
+        nix build github:Cloudef/zig2nix#zig-src-0_8_0
+        ```
+
+        ### Running zig compiler directly
+
+        ```bash
+        nix run github:Cloudef/zig2nix#master -- version
+        nix run github:Cloudef/zig2nix#latest -- version
+        nix run github:Cloudef/zig2nix#0_8_0 -- version
+        ```
+
+        #### Convenience zig for multimedia programs
+
+        > This sets (DY)LD_LIBRARY_PATH and PKG_CONFIG_PATH so that common libs are available
+
+        ```bash
+        nix run github:Cloudef/zig2nix#multimedia-master -- version
+        nix run github:Cloudef/zig2nix#multimedia-latest -- version
+        nix run github:Cloudef/zig2nix#multimedia-0_8_0 -- version
+        ```
+
+        ### Shell for building and running a Zig project
+
+        ```bash
+        nix develop github:Cloudef/zig2nix#master
+        nix develop github:Cloudef/zig2nix#latest
+        nix develop github:Cloudef/zig2nix#0_8_0
+        ```
+
+        ### Convert zon file to json
+
+        ```bash
+        nix run github:Cloudef/zig2nix -- zon2json build.zig.zon
+        ```
+
+        ### Convert build.zig.zon to a build.zig.zon2json-lock
+
+        ```bash
+        nix run github:Cloudef/zig2nix -- zon2lock build.zig.zon
+        ```
+
+        ### Convert build.zig.zon/2json-lock to a nix derivation
+
+        ```bash
+        # calls zon2json-lock if build.zig.zon2json-lock does not exist (requires network access)
+        nix run github:Cloudef/zig2nix -- zon2nix build.zig.zon
+        # alternatively run against the lock file (no network access required)
+        nix run github:Cloudef/zig2nix -- zon2nix build.zig.zon2json-lock
+        ```
+
+        ## Crude documentation
+
+        Below is auto-generated dump of important outputs in this flake.
+
+        ```nix
+        $(awk -f doc.awk flake.nix | sed "s/```/---/g")
+        ```
         EOF
-        curl -sSL https://ziglang.org/download/index.json |\
-          jq 'with_entries(select(.key != "0.1.1" and .key != "0.2.0" and .key != "0.3.0" and .key != "0.4.0" and .key != "0.5.0" and .key != "0.6.0" and .key != "0.7.0" and .key != "0.7.1"))' > "$tmpdir"/versions.json
-        jq 'to_entries | {"default": ({"version": .[1].key} + .[1].value)}' "$tmpdir/versions.json" | cat "$tmpdir/git.json" - "$tmpdir/versions.json" | jq -s add
-        '';
+        '');
+      } // mapAttrs' (name: value: nameValuePair ("test-" + name) value) test;
 
-      # nix run .#update-templates
-      apps.update-templates = with pkgs; test-app [ coreutils gnused ] ''
-        rm -rf templates/default
-        mkdir -p templates/default
-        sed 's#/[*]SED_ZIG_VER[*]/##' templates/flake.nix > templates/default/flake.nix
-        sed -i 's#@SED_ZIG_BIN@#default#' templates/default/flake.nix
-        cp -f templates/gitignore templates/default/.gitignore
-        cp -f .gitattributes templates/default/.gitattributes
-        (cd templates/default; ${packages.zig.default.bin}/bin/zig init)
-
-        rm -rf templates/master
-        mkdir -p templates/master
-        # shellcheck disable=SC2016
-        sed 's#/[*]SED_ZIG_VER[*]/# zig = zig2nix.outputs.packages.''${system}.zig.master.bin; #' templates/flake.nix > templates/master/flake.nix
-        sed -i 's#@SED_ZIG_BIN@#master#' templates/master/flake.nix
-        cp -f templates/gitignore templates/master/.gitignore
-        cp -f .gitattributes templates/master/.gitattributes
-        (cd templates/master; ${packages.zig.master.bin}/bin/zig init)
-        '';
-
-      apps.test = pkgs.callPackage src/test.nix {
-        inherit test-app;
-        inherit (test-env.lib) deriveLockFile resolveTargetSystem zigTripleFromSystem nixTripleFromSystem allFlakeTargetTriples;
-        inherit (test-env) zig zon2json-lock;
-        zig-env = test-env;
+      #! Develop shell for building and running Zig projects.
+      #! nix develop .#zig_version
+      #! example: nix develop .#master
+      #! example: nix develop .#default
+      devShells = flake-outputs.devShells // {
+        default = flake-outputs.devShells.latest;
       };
-
-      # nix run .#readme
-      apps.readme = let
-        project = "zig2nix flake";
-      in with pkgs; test-app [ gawk gnused jq ] (replaceStrings ["`"] ["\\`"] ''
-      cat <<EOF
-      # ${project}
-
-      Flake for packaging, building and running Zig projects.
-
-      https://ziglang.org/
-
-      * Cachix: `cachix use zig2nix`
-
-      ---
-
-      [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-      * Zig git: `${zigv.git.src.version} @ ${zigv.git.src.date}`
-      * Zig master: `${zigv.master.bin.version} @ ${zigv.master.bin.date}`
-      * Zig default: `${zigv.default.bin.version} @ ${zigv.default.bin.date}`
-
-      ## Examples
-
-      ### Zig project template
-
-      ```bash
-      nix flake init -t github:Cloudef/zig2nix
-      nix run .
-      # for more options check the flake.nix file
-      ```
-
-      #### With master version of Zig
-
-      ```bash
-      nix flake init -t github:Cloudef/zig2nix#master
-      nix run .
-      # for more options check the flake.nix file
-      ```
-
-      ### Build zig from source
-
-      ```bash
-      nix build github:Cloudef/zig2nix#zig.master.src
-      ```
-
-      ### Running zig compiler directly
-
-      ```bash
-      nix run github:Cloudef/zig2nix#env.master.bin.bare.zig -- version
-      nix run github:Cloudef/zig2nix#env.default.bin.bare.zig -- version
-      # Or simply these aliases
-      nix run github:Cloudef/zig2nix#master -- version
-      nix run github:Cloudef/zig2nix -- version
-      ```
-
-      #### Convenience zig for multimedia programs
-
-      > This sets (DY)LD_LIBRARY_PATH and PKG_CONFIG_PATH so that common libs are available
-
-      ```bash
-      nix run github:Cloudef/zig2nix#env.master.bin.multimedia.zig -- version
-      nix run github:Cloudef/zig2nix#env.default.bin.multimedia.zig -- version
-      ```
-
-      ### Shell for building and running a Zig project
-
-      ```bash
-      nix develop github:Cloudef/zig2nix#env.master.bin.bare
-      nix develop github:Cloudef/zig2nix#env.default.bin.bare
-      # Or simply these aliases
-      nix develop github:Cloudef/zig2nix#master
-      nix develop github:Cloudef/zig2nix
-      ```
-
-      #### Convenience shell for multimedia programs
-
-      > This sets (DY)LD_LIBRARY_PATH and PKG_CONFIG_PATH so that common libs are available
-
-      ```bash
-      nix develop github:Cloudef/zig2nix#env.master.bin.multimedia
-      nix develop github:Cloudef/zig2nix#env.default.bin.multimedia
-      ```
-
-      ### Convert zon file to json
-
-      ```bash
-      nix run github:Cloudef/zig2nix#zon2json -- build.zig.zon
-      ```
-
-      ### Convert build.zig.zon to a build.zig.zon2json-lock
-
-      ```bash
-      nix run github:Cloudef/zig2nix#zon2json-lock -- build.zig.zon
-      # alternatively output to stdout
-      nix run github:Cloudef/zig2nix#zon2json-lock -- build.zig.zon -
-      ```
-
-      ### Convert build.zig.zon/2json-lock to a nix derivation
-
-      ```bash
-      # calls zon2json-lock if build.zig.zon2json-lock does not exist (requires network access)
-      nix run github:Cloudef/zig2nix#zon2nix -- build.zig.zon
-      # alternatively run against the lock file (no network access required)
-      nix run github:Cloudef/zig2nix#zon2nix -- build.zig.zon2json-lock
-      ```
-
-      ### Cross-compile nixpkgs using zig
-
-      > This is very experimental, and many things may not compile.
-
-      ```bash
-      nix build github:Cloudef/zig2nix#env.master.bin.cross.x86_64-windows-gnu.zlib
-      nix build github:Cloudef/zig2nix#env.default.bin.cross.x86_64-windows-gnu.zlib
-      # Or simply this alias that uses env.master.bin
-      nix build github:Cloudef/zig2nix#zigCross.x86_64-windows-gnu.zlib
-      ```
-
-      ## Crude documentation
-
-      Below is auto-generated dump of important outputs in this flake.
-
-      ```nix
-      $(awk -f doc.awk flake.nix | sed "s/```/---/g")
-      ```
-      EOF
-      '');
     }));
 
-    welcome-template = description: ''
-      # ${description}
-      - Zig: https://ziglang.org/
+  welcome-template = description: ''
+    # ${description}
+    - Zig: https://ziglang.org/
 
-      ## Build & Run
+    ## Build & Run
 
-      ```
-      nix run .
-      ```
+    ```
+    nix run .
+    ```
 
-      See flake.nix for more options.
-      '';
-  in outputs // rec {
+    See flake.nix for more options.
+    '';
+
+  in outputs // {
     #! --- Generic flake outputs.
     #!     access: `zig2nix.outputs.thing`
-
-    #! Overlay for overriding Zig with specific version (source).
-    overlays.zig.src = mapAttrs (k: v: (final: prev: {
-      zig = v.src;
-      # TODO: fix these to be for correct zig version
-      inherit (outputs.packages) zon2json zon2json-lock zon2nix;
-    })) outputs.packages.${prev.system}.zig;
-
-    #! Overlay for overriding Zig with specific version (binary).
-    overlays.zig.bin = mapAttrs (k: v: (final: prev: {
-      zig = v.bin;
-      # TODO: fix these to be for correct zig version
-      inherit (outputs.packages) zon2json zon2json-lock zon2nix;
-    })) outputs.packages.${prev.system}.zig;
-
-    #! mitchellh/zig-overlay compatible overlay.
-    overlays.zig-overlay = final: prev: {
-      zigpkgs = mapAttrs (k: v: v.bin) outputs.packages.${prev.system}.zig;
-      # TODO: fix these to be for correct zig version
-      inherit (outputs.packages) zon2json zon2json-lock zon2nix;
-    };
-
-    #! Default overlay
-    overlays.default = overlays.zig.bin.default;
 
     #! Default project template
     #! nix flake init -t templates
