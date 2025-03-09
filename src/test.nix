@@ -18,7 +18,7 @@ with builtins;
 with lib;
 
 {
-  # nix run .#test.zon2json-lock
+  # nix run .#test-zon2json-lock
   zon2lock = test-app [ zig2nix ] ''
     for f in ./fixtures/*.zig.zon ./fixtures/example/build.zig.zon; do
       echo "testing (zon2lock): $f"
@@ -28,7 +28,7 @@ with lib;
     done
     '';
 
-  # nix run .#test.zon2nix
+  # nix run .#test-zon2nix
   zon2nix = let
     fixtures = filter (f: hasSuffix ".zig.zon2json-lock" f) (attrNames (readDir ../fixtures)) ++ [ "example/build.zig.zon2json-lock"];
     drvs = map (f: {
@@ -55,7 +55,7 @@ with lib;
       '';
   in test-app [ findutils coreutils ] (concatStringsSep "\n" (map test drvs));
 
-  # nix run .#test.templates
+  # nix run .#test-templates
   templates = test-app [ file ] ''
     for var in default master; do
       printf -- 'run . (%s)\n' "$var"
@@ -73,7 +73,7 @@ with lib;
     done
     '';
 
-  # nix run .#test.package
+  # nix run .#test-package
   package = let
     pkg = zig-env.package {
       name = "zig2nix";
@@ -81,7 +81,7 @@ with lib;
     };
   in test-app [] "echo ${pkg}";
 
-  # nix run .#test.bundle
+  # nix run .#test-bundle
   bundle = let
     zip1 = zig-env.bundle.zip {
       package = zig-env.package {
@@ -114,7 +114,7 @@ with lib;
     bsdtar -tf ${lambda} | grep bootstrap
     '';
 
-  # nix run .#test.cross
+  # nix run .#test-cross
   cross = let
     blacklist = [ "armv6l-linux" "armv7l-linux" "x86_64-freebsd" "riscv64-linux" "powerpc64le-linux" "i686-linux" ]
       ++ optionals (!buildPlatform.isDarwin) [ "aarch64-darwin" ];
@@ -127,7 +127,7 @@ with lib;
     echo "${crossPkgs.zlib}"
   '') targets));
 
-  # nix run .#test.targets
+  # nix run .#test-targets
   targets = test-app [] (concatStrings (map (nix: let
       system = (target nix).system;
       config1 = (systems.elaborate nix).config;
@@ -139,7 +139,7 @@ with lib;
       test '${config1}' = '${config2}' || error '${config1} != ${config2}'
     '') systems.flakeExposed));
 
-  # nix run .#test.all
+  # nix run .#test-all
   all = test-app [] ''
     nix flake check --keep-going
     nix run -L .#test-targets
