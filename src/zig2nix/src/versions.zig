@@ -64,11 +64,13 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
         \\{
         \\  callPackage
         \\  , zigHook
+        \\  , zigBin
+        \\  , zigSrc
         \\}:
         \\
         \\let
-        \\  bin = release: callPackage ./bin.nix { inherit zigHook release; };
-        \\  src = release: callPackage ./src.nix { inherit zigHook release; };
+        \\  bin = release: callPackage zigBin { inherit zigHook release; };
+        \\  src = release: callPackage zigSrc { inherit zigHook release; };
         \\
     );
 

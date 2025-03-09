@@ -29,6 +29,8 @@
       zigv = import ./src/zig/versions.nix {
         inherit zigHook;
         inherit (pkgs) callPackage;
+        zigBin = ./src/zig/bin.nix;
+        zigSrc = ./src/zig/src.nix;
       };
 
       # zig2nix bridge utility
@@ -230,10 +232,11 @@
         zon2nix = flake-outputs.apps.zon2nix-latest;
 
         # nix run .#update-versions
-        update-versions = test-app [ test-env.zig2nix ] ''
+        update-versions = test-app [ pkgs.curl test-env.zig2nix ] ''
           tmp="$(mktemp)"
           trap 'rm -f "$tmp"' EXIT
-          zig2nix versions "$@" > "$tmp"
+          # use curl because zig's std.net is flaky
+          curl "''${@:-https://ziglang.org/download/index.json}" | zig2nix versions - > "$tmp"
           cp -f "$tmp" src/zig/versions.nix
         '';
 
