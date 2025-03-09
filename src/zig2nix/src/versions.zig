@@ -8,6 +8,8 @@ const Meta = enum {
     docs,
     stdDocs,
     notes,
+    machNominated,
+    machDocs,
 };
 
 const Source = struct {
@@ -78,7 +80,7 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
     defer releases.deinit(arena);
 
     try assumeNext(&scanner, .object_begin);
-    const opts: std.json.ParseOptions = .{ .max_value_len = 4096, .allocate = .alloc_always };
+    const opts: std.json.ParseOptions = .{ .max_value_len = 4096, .allocate = .alloc_always, .ignore_unknown_fields = true };
     while (true) {
         if (try scanner.peekNextTokenType() == .object_end) break;
         const release = try assumeNextAlloc(arena, &scanner, .string);
@@ -93,18 +95,26 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
         while (true) {
             if (try scanner.peekNextTokenType() == .object_end) break;
             const str_key = try assumeNextAlloc(arena, &scanner, .string);
-            if (std.meta.stringToEnum(Meta, str_key)) |_| {
-                const value = try assumeNextAlloc(arena, &scanner, .string);
-                try writer.print("{s} = \"{s}\";\n", .{ str_key, value });
-            } else {
-                const src = try std.json.innerParse(Source, arena, &scanner, opts);
-                if (Target.parse(arena, str_key)) |target| {
-                    try writer.print("\n{s} = {{\n", .{target.system});
-                } else |_| {
-                    try writer.print("\n{s} = {{\n", .{str_key});
+            if (std.meta.stringToEnum(Meta, str_key)) |key| {
+                if (!std.mem.eql(u8, release, "master") and key == .version) {
+                    const value = try assumeNextAlloc(arena, &scanner, .string);
+                    try writer.print("zigVersion = \"{s}\";\n", .{ value });
+                } else {
+                    const value = try assumeNextAlloc(arena, &scanner, .string);
+                    try writer.print("{s} = \"{s}\";\n", .{ str_key, value });
                 }
-                try src.write(writer);
-                try writer.writeAll("};\n");
+            } else {
+                if (std.json.innerParse(Source, arena, &scanner, opts)) |src| {
+                    if (Target.parse(arena, str_key)) |target| {
+                        try writer.print("\n{s} = {{\n", .{target.system});
+                    } else |_| {
+                        try writer.print("\n{s} = {{\n", .{str_key});
+                    }
+                    try src.write(writer);
+                    try writer.writeAll("};\n");
+                } else |_| {
+                    // ignore
+                }
             }
         }
         try writer.writeAll("};\n");
@@ -126,6 +136,8 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
     for (releases.items) |release| {
         if (std.mem.eql(u8, release, "master")) {
             try writer.print("{s} = bin meta-{s};\n", .{ release, release });
+        } else if (std.mem.eql(u8, release, "latest")) {
+            // ignore
         } else {
             try writer.print("\"{s}\" = bin meta-{s};\n", .{ release, release });
         }
