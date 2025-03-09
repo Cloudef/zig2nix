@@ -102,15 +102,6 @@ fn writeInternal(arena: std.mem.Allocator, lock: zon2lock.Lock, out: anytype) !v
     };
 }
 
-pub fn writeFromSlice(allocator: std.mem.Allocator, slice: []const u8, writer: anytype) !void {
-    var arena_state: std.heap.ArenaAllocator = .init(allocator);
-    defer arena_state.deinit();
-    const arena = arena_state.allocator();
-    var lock = (try zon2lock.parseSlice(arena, slice)) orelse return;
-    defer lock.deinit();
-    try writeInternal(arena, lock, writer);
-}
-
 pub fn write(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, writer: anytype) !void {
     var arena_state: std.heap.ArenaAllocator = .init(allocator);
     defer arena_state.deinit();

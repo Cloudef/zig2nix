@@ -70,13 +70,6 @@ pub fn parse(allocator: std.mem.Allocator, reader: anytype) !?Lock {
     return .{ .arena = arena_state, .map = map };
 }
 
-pub fn parseSlice(allocator: std.mem.Allocator, json: []const u8) !?Lock {
-    var stream = std.io.fixedBufferStream(json);
-    var reader = std.json.reader(allocator, stream.reader());
-    defer reader.deinit();
-    return parse(allocator, &reader);
-}
-
 pub fn parsePath(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8) !?Lock {
     var file = try cwd.openFile(path, .{});
     defer file.close();
@@ -114,16 +107,12 @@ const NixFetchResult = struct {
 };
 
 fn nixFetchHttp(allocator: std.mem.Allocator, ctx: LockBuilderContext, zhash: []const u8, url: []const u8) !NixFetchResult {
-    {
-        var artifact: std.ArrayListUnmanaged(u8) = .{};
-        defer artifact.deinit(allocator);
-        try cli.download(allocator, url, artifact.writer(allocator), std.math.maxInt(usize));
-        try ctx.tmp.writeFile(.{
-            .data = artifact.items,
-            .sub_path = zhash,
-        });
-    }
     defer ctx.tmp.deleteFile(zhash) catch {};
+    {
+        var file = try ctx.tmp.createFile(zhash, .{});
+        defer file.close();
+        try cli.download(allocator, url, file.writer(), std.math.maxInt(usize));
+    }
     return .{ .hash = try cli.run(allocator, ctx.tmp, &.{ "nix", "hash", "path", "--mode", "flat", zhash }, 128) };
 }
 

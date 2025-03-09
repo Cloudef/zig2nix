@@ -16,7 +16,19 @@ test {
     }
 }
 
-const mib_in_bytes = 1048576;
+fn readInput(allocator: std.mem.Allocator, dir: std.fs.Dir, stdin_path_or_url: []const u8) ![]const u8 {
+    const mib_in_bytes = 1048576;
+    if (std.mem.eql(u8, stdin_path_or_url, "-")) {
+        return try std.io.getStdIn().reader().readAllAlloc(allocator, mib_in_bytes * 40);
+    } else if (std.mem.startsWith(u8, stdin_path_or_url, "http://") or std.mem.startsWith(u8, stdin_path_or_url, "https://")) {
+        var bytes: std.ArrayListUnmanaged(u8) = .{};
+        errdefer bytes.deinit(allocator);
+        try cli.download(allocator, stdin_path_or_url, bytes.writer(allocator), mib_in_bytes * 40);
+        return try bytes.toOwnedSlice(allocator);
+    } else {
+        return try dir.readFileAlloc(allocator, stdin_path_or_url, mib_in_bytes * 40);
+    }
+}
 
 pub const MainCommand = enum {
     zon2json,
@@ -87,10 +99,9 @@ fn @"cmd::target"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdo
 }
 
 fn @"cmd::zon2json"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: anytype, stderr: anytype) !void {
-    const path = args.next() orelse "build.zig.zon";
-    var file = try std.fs.cwd().openFile(path, .{ .mode = .read_only });
-    defer file.close();
-    try zon2json.parse(arena, file.reader(), stdout, stderr, .{ .file_name = path });
+    const input = args.next() orelse "build.zig.zon";
+    const zon = try readInput(arena, std.fs.cwd(), input);
+    try zon2json.parseFromSlice(arena, zon, stdout, stderr, .{ .file_name = input });
 }
 
 fn @"cmd::zon2lock"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: anytype, stderr: anytype) !void {
@@ -138,11 +149,9 @@ fn @"cmd::zon2nix"(arena: std.mem.Allocator, args: *std.process.ArgIterator, std
 }
 
 fn @"cmd::versions"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: anytype, _: anytype) !void {
-    var json: std.ArrayListUnmanaged(u8) = .{};
-    defer json.deinit(arena);
-    const url = args.next() orelse "https://ziglang.org/download/index.json";
-    try cli.download(arena, url, json.writer(arena), mib_in_bytes * 40);
-    try versions.write(arena, json.items, stdout);
+    const input = args.next() orelse "https://ziglang.org/download/index.json";
+    const json = try readInput(arena, std.fs.cwd(), input);
+    try versions.write(arena, json, stdout);
 }
 
 fn realMain(stdout: anytype, stderr: anytype) !void {
