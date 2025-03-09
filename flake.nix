@@ -72,7 +72,7 @@
         fromZON = path: exec-json-path "zon2json" path [];
 
         #! Creates derivation from zon2json-lock file
-        deriveLockFile = path: pkgs.callPackage (exec-path "zon2nix" path []);
+        deriveLockFile = path: pkgs.callPackage (exec-path "zon2nix" path [ "-" ]);
 
         # Provides small shell runtime
         shell-runtime = pkgs.callPackage ./src/shell.nix { inherit system; };

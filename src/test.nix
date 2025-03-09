@@ -22,7 +22,7 @@ with lib;
   zon2lock = test-app [ zig2nix ] ''
     for f in ./fixtures/*.zig.zon ./fixtures/example/build.zig.zon; do
       echo "testing (zon2lock): $f"
-      if ! cmp <(zig2nix zon2lock "$f") "''${f}2json-lock"; then
+      if ! cmp <(zig2nix zon2lock "$f" -) "''${f}2json-lock"; then
         error "unexpected output"
       fi
     done
