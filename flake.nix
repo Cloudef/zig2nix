@@ -120,7 +120,7 @@
         _deps = [ zig zig2nix ];
       in rec {
         inherit pkgs pkgsForTarget crossPkgsForTarget zigCrossPkgsForTarget binaryPkgsForTarget;
-        inherit zig zig2nix target fromZON deriveLockFile;
+        inherit zig zigHook zig2nix target fromZON deriveLockFile;
 
         #! Flake app helper (Without zig-env and root dir restriction).
         app-bare-no-root = deps: script: {
