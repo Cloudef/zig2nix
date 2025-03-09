@@ -25,10 +25,25 @@ const Source = struct {
     }
 };
 
-fn assumeNext(scanner: *std.json.Scanner, comptime expected: std.json.TokenType) !std.meta.TagPayload(std.json.Token, @enumFromInt(@intFromEnum(expected))) {
+fn assumeNext(scanner: anytype, comptime expected: std.json.TokenType) !std.meta.TagPayload(std.json.Token, @enumFromInt(@intFromEnum(expected))) {
     const tok = try scanner.next();
     switch (tok) {
-        inline else => |_, tag| if (!std.mem.eql(u8, @tagName(tag), @tagName(expected))) return error.UnexpectedJson,
+        inline else => |_, tag| if (!std.mem.eql(u8, @tagName(tag), @tagName(expected))) {
+            std.log.err("expected token: {s}, got: {s}", .{@tagName(expected), @tagName(tag)});
+            return error.UnexpectedJson;
+        }
+    }
+    return @field(tok, @tagName(expected));
+}
+
+fn assumeNextAlloc(allocator: std.mem.Allocator, scanner: anytype, comptime expected: std.json.TokenType) !std.meta.TagPayload(std.json.Token, @enumFromInt(@intFromEnum(expected))) {
+    const tok = try scanner.nextAlloc(allocator, .alloc_always);
+    switch (tok) {
+        inline else => |_, tag| if (!std.mem.eql(u8, @tagName(tag), @tagName(expected))) {
+            if (expected == .string and tag == .allocated_string) return tok.allocated_string;
+            std.log.err("expected token: {s}, got: {s}", .{@tagName(expected), @tagName(tag)});
+            return error.UnexpectedJson;
+        }
     }
     return @field(tok, @tagName(expected));
 }
@@ -61,10 +76,10 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
     defer releases.deinit(arena);
 
     try assumeNext(&scanner, .object_begin);
-    const opts: std.json.ParseOptions = .{ .max_value_len = 4096, .allocate = .alloc_if_needed };
+    const opts: std.json.ParseOptions = .{ .max_value_len = 4096, .allocate = .alloc_always };
     while (true) {
         if (try scanner.peekNextTokenType() == .object_end) break;
-        const release = try assumeNext(&scanner, .string);
+        const release = try assumeNextAlloc(arena, &scanner, .string);
         const release_name = try arena.dupe(u8, release);
         std.mem.replaceScalar(u8, release_name, '.', '_');
         try releases.append(arena, release_name);
@@ -75,9 +90,9 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
         }
         while (true) {
             if (try scanner.peekNextTokenType() == .object_end) break;
-            const str_key = try assumeNext(&scanner, .string);
+            const str_key = try assumeNextAlloc(arena, &scanner, .string);
             if (std.meta.stringToEnum(Meta, str_key)) |_| {
-                const value = try assumeNext(&scanner, .string);
+                const value = try assumeNextAlloc(arena, &scanner, .string);
                 try writer.print("{s} = \"{s}\";\n", .{ str_key, value });
             } else {
                 const src = try std.json.innerParse(Source, arena, &scanner, opts);

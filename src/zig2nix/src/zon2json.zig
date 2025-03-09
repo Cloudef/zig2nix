@@ -35,6 +35,12 @@ fn stringifyValue(allocator: std.mem.Allocator, ast: std.zig.Ast, idx: std.zig.A
         .big_int => |v| return try std.json.stringifyAlloc(allocator, v, .{}),
         .failure => {},
     }
+    if (std.mem.eql(u8, slice, "true") or std.mem.eql(u8, slice, "false")) {
+        return try allocator.dupe(u8, slice);
+    }
+    if (std.mem.eql(u8, slice, "null")) {
+        return try allocator.dupe(u8, slice);
+    }
     // literal
     return try std.json.stringifyAlloc(allocator, slice, .{});
 }

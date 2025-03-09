@@ -5,7 +5,22 @@ const zon2json = @import("zon2json.zig");
 fn assumeNext(scanner: anytype, comptime expected: std.json.TokenType) !std.meta.TagPayload(std.json.Token, @enumFromInt(@intFromEnum(expected))) {
     const tok = try scanner.next();
     switch (tok) {
-        inline else => |_, tag| if (!std.mem.eql(u8, @tagName(tag), @tagName(expected))) return error.UnexpectedJson,
+        inline else => |_, tag| if (!std.mem.eql(u8, @tagName(tag), @tagName(expected))) {
+            std.log.err("expected token: {s}, got: {s}", .{@tagName(expected), @tagName(tag)});
+            return error.UnexpectedJson;
+        }
+    }
+    return @field(tok, @tagName(expected));
+}
+
+fn assumeNextAlloc(allocator: std.mem.Allocator, scanner: anytype, comptime expected: std.json.TokenType) !std.meta.TagPayload(std.json.Token, @enumFromInt(@intFromEnum(expected))) {
+    const tok = try scanner.nextAlloc(allocator, .alloc_always);
+    switch (tok) {
+        inline else => |_, tag| if (!std.mem.eql(u8, @tagName(tag), @tagName(expected))) {
+            if (expected == .string and tag == .allocated_string) return tok.allocated_string;
+            std.log.err("expected token: {s}, got: {s}", .{@tagName(expected), @tagName(tag)});
+            return error.UnexpectedJson;
+        }
     }
     return @field(tok, @tagName(expected));
 }
@@ -15,18 +30,6 @@ pub const LockDependency = struct {
     url: []const u8,
     hash: []const u8,
     rev: ?[]const u8 = null,
-
-    pub fn dupeFields(self: *@This(), allocator: std.mem.Allocator) !void {
-        inline for (std.meta.fields(@This())) |field| {
-            if (field.type == ?[]const u8) {
-                if (@field(self, field.name)) |slice| {
-                    @field(self, field.name) = try allocator.dupe(u8, slice);
-                }
-            } else {
-                @field(self, field.name) = try allocator.dupe(u8, @field(self, field.name));
-            }
-        }
-    }
 };
 
 pub const Lock = struct {
@@ -55,13 +58,12 @@ pub fn parse(allocator: std.mem.Allocator, reader: anytype) !?Lock {
         else => |e| return e,
     };
 
-    const opts: std.json.ParseOptions = .{ .max_value_len = 4096, .allocate = .alloc_if_needed };
+    const opts: std.json.ParseOptions = .{ .max_value_len = 4096, .allocate = .alloc_always };
     while (true) {
         if (try reader.peekNextTokenType() == .object_end) break;
-        const zhash = try assumeNext(reader, .string);
-        var dep = try std.json.innerParse(LockDependency, arena, reader, opts);
-        try dep.dupeFields(arena);
-        try map.putNoClobber(arena, try arena.dupe(u8, zhash), dep);
+        const zhash = try assumeNextAlloc(arena, reader, .string);
+        const dep = try std.json.innerParse(LockDependency, arena, reader, opts);
+        try map.putNoClobber(arena, zhash, dep);
     }
     try assumeNext(reader, .object_end);
 
@@ -87,6 +89,7 @@ const ZonDependency = struct {
     url: ?[]const u8 = null,
     hash: ?[]const u8 = null,
     path: ?[]const u8 = null,
+    lazy: bool = false,
 };
 
 const LockBuilderContext = struct {
@@ -219,16 +222,16 @@ fn writeInner(arena: std.mem.Allocator, ctx: LockBuilderContext, writer: anytype
     while (true) {
         switch (try scanner.next()) {
             .string => |tok| if (std.mem.eql(u8, tok, "dependencies")) break,
-            .end_of_document => return error.InvalidBuildZigZon,
+            .end_of_document => return,
             else => {},
         }
     }
 
-    const opts: std.json.ParseOptions = .{ .max_value_len = 4096, .allocate = .alloc_if_needed };
+    const opts: std.json.ParseOptions = .{ .max_value_len = 4096, .allocate = .alloc_always, .ignore_unknown_fields = true };
     try assumeNext(&scanner, .object_begin);
     while (true) {
         if (try scanner.peekNextTokenType() == .object_end) break;
-        const name = try assumeNext(&scanner, .string);
+        const name = try assumeNextAlloc(arena, &scanner, .string);
         const dep = try std.json.innerParse(ZonDependency, arena, &scanner, opts);
         if (dep.hash) |hash| {
             const res = try ctx.set.getOrPut(arena, hash);
