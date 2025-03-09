@@ -249,6 +249,7 @@
           cp -f templates/gitignore templates/default/.gitignore
           cp -f .gitattributes templates/default/.gitattributes
           (cd templates/default; ${zigv.latest}/bin/zig init)
+          sed -i 's#.fingerprint = 0xe35e00df[a-f0-9]*#.fingerprint = 0xe35e00df11111111#' templates/default/build.zig.zon
           (cd templates/default; nix flake check --override-input zig2nix ../..)
 
           rm -rf templates/master
@@ -259,6 +260,7 @@
           cp -f templates/gitignore templates/master/.gitignore
           cp -f .gitattributes templates/master/.gitattributes
           (cd templates/master; ${zigv.master}/bin/zig init)
+          sed -i 's#.fingerprint = 0x2d09a3d6[a-f0-9]*#.fingerprint = 0x2d09a3d611111111#' templates/master/build.zig.zon
           (cd templates/master; nix flake check --override-input zig2nix ../..)
           '';
 

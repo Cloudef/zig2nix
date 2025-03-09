@@ -26,10 +26,6 @@
 
         # Smaller binaries and avoids shipping glibc.
         zigPreferMusl = true;
-
-        # This disables LD_LIBRARY_PATH mangling, binary patching etc...
-        # The package won't be usable inside nix.
-        zigDisableWrap = true;
       } // optionalAttrs (!pathExists ./build.zig.zon) {
         pname = "my-zig-project";
         version = "0.0.0";
@@ -40,11 +36,11 @@
         # Prefer nix friendly settings.
         zigPreferMusl = false;
 
-        # Executables requires for runtime
+        # Executables required for runtime
         # These packages will be added to the PATH
         zigWrapperBins = with env.pkgs; [];
 
-        # Libraries requires for runtime
+        # Libraries required for runtime
         # These packages will be added to the LD_LIBRARY_PATH
         zigWrapperLibs = with env.pkgs; [];
       });
