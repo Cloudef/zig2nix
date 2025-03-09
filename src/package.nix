@@ -68,12 +68,16 @@ in stdenvNoCC.mkDerivation (
   (removeAttrs attrs [ "stdenvNoCC" ]) // {
     zigBuildFlags =
       (attrs.zigBuildFlags or default-flags)
-      ++ [ "-Dtarget=${resolved-target}" ]
-      ++ optionals (pathExists zigBuildZonLock) [ "--system" "${deps}" ];
+      ++ [ "-Dtarget=${resolved-target}" ];
 
     nativeBuildInputs = [ zig.hook removeReferencesTo pkg-config ]
       ++ optionals (length wrapper-args > 0) [ makeWrapper ]
       ++ (attrs.nativeBuildInputs or []);
+
+    postPatch = optionalString (pathExists zigBuildZonLock) ''
+      ln -s ${deps} "$ZIG_GLOBAL_CACHE_DIR"/p
+      ${attrs.postPatch or ""}
+      '';
 
     postFixup = optionalString (length wrapper-args > 0) ''
       for bin in $out/bin/*; do
