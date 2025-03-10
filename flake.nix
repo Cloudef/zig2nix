@@ -161,7 +161,7 @@
           nativeBuildInputs ? [],
           ...
         } @attrs: pkgs.mkShellNoCC (attrs // {
-          nativeBuildInputs = optionals (attrs ? nativeBuildInputs) attrs.nativeBuildInputs ++ _deps;
+          nativeBuildInputs = nativeBuildInputs ++ _deps;
           shellHook = ''
             ${shell-runtime nativeBuildInputs}
             ${attrs.shellHook or ""}
