@@ -58,6 +58,7 @@ with lib;
   # nix run .#test-templates
   templates = test-app [ file ] ''
     for var in default master; do
+      nix flake check --keep-going
       printf -- 'run . (%s)\n' "$var"
       (cd templates/"$var"; nix run -L --override-input zig2nix ../.. .)
       printf -- 'run .#bundle (%s)\n' "$var"
@@ -142,7 +143,7 @@ with lib;
 
   # nix run .#test-all
   all = test-app [] ''
-    nix flake check --keep-going
+    nix flake check --keep-going --all-systems
     nix run -L .#test-targets
     nix run -L .#test-zon2lock
     nix run -L .#test-zon2nix
