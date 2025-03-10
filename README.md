@@ -10,7 +10,7 @@ https://ziglang.org/
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-* Zig master: `0.15.0-dev.10+214750fcf @ 2025-03-08`
+* Zig master: `0.15.0-dev.23+1eb729b9b @ 2025-03-09`
 * Zig latest: `0.14.0 @ 2025-03-05`
 
 ## Examples
@@ -114,7 +114,7 @@ target = system: (exec-json "target" [ system ]);
 fromZON = path: exec-json-path "zon2json" path [];
 
 #! Creates derivation from zon2json-lock file
-deriveLockFile = path: pkgs.callPackage (exec-path "zon2nix" path []);
+deriveLockFile = path: pkgs.callPackage (exec-path "zon2nix" path [ "-" ]);
 
 #! Returns true if target is nix flake compatible.
 #! <https://github.com/NixOS/nixpkgs/blob/master/lib/systems/flake-systems.nix>
