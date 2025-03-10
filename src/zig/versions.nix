@@ -1,13 +1,12 @@
 {
-  callPackage,
   zigHook,
   zigBin,
   zigSrc,
 }:
 
 let
-  bin = release: callPackage zigBin { inherit zigHook release; };
-  src = release: callPackage zigSrc { inherit zigHook release; };
+  bin = release: zigBin { inherit zigHook release; };
+  src = release: zigSrc { inherit zigHook release; };
 
   meta-master = {
     version = "0.15.0-dev.23+1eb729b9b";

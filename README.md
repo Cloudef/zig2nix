@@ -105,7 +105,7 @@ zig-env = {
 #!     access: (zig-env {}).thing
 
 #! Tools for bridging zig and nix
-zig2nix = zig2nix-for-version zig;
+zig2nix = zig2nix-for-version pkgs zig;
 
 #! Translates zig and nix compatible targets
 target = system: (exec-json "target" [ system ]);

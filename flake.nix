@@ -8,7 +8,8 @@
 
   outputs = { self, flake-utils, ... }: with builtins; let
     outputs = (flake-utils.lib.eachDefaultSystem (system: let
-      pkgs = self.inputs.nixpkgs.outputs.legacyPackages.${system};
+      # Used only for top level stuff, everything else should be done with env.pkgs
+      _callPackage = self.inputs.nixpkgs.outputs.legacyPackages.${system}.callPackage;
 
       #! Structures.
 
@@ -28,14 +29,13 @@
       # <https://ziglang.org/download/index.json>
       zigv = import ./src/zig/versions.nix {
         inherit zigHook;
-        inherit (pkgs) callPackage;
-        zigBin = ./src/zig/bin.nix;
-        zigSrc = ./src/zig/src.nix;
+        zigBin = _callPackage ./src/zig/bin.nix;
+        zigSrc = _callPackage ./src/zig/src.nix;
       };
 
       # zig2nix bridge utility
       # always compiled with zig-latest, but passes the correct zig to the PATH of the process
-      zig2nix-for-version = zig: let
+      zig2nix-for-version = pkgs: zig: let
         pkg = pkgs.callPackage ./src/zig2nix/default.nix {
           zig = zigv.latest;
           zigBuildFlags = [ "-Dcpu=baseline" ];
@@ -52,7 +52,7 @@
         nixpkgs ? self.inputs.nixpkgs,
         # Zig version to use.
         zig ? zigv.latest,
-      }: with pkgs.lib; let
+      }: with nixpkgs.lib; let
         #! --- Outputs of zig-env {} function.
         #!     access: (zig-env {}).thing
 
@@ -60,7 +60,7 @@
         pkgs = nixpkgs.outputs.legacyPackages.${system};
 
         #! Tools for bridging zig and nix
-        zig2nix = zig2nix-for-version zig;
+        zig2nix = zig2nix-for-version pkgs zig;
 
         exec = cmd: args: pkgs.runCommandLocal cmd {} ''${zig2nix}/bin/zig2nix ${cmd} ${escapeShellArgs args} > $out'';
         exec-path = cmd: path: args: pkgs.runCommandLocal cmd {} ''${zig2nix}/bin/zig2nix ${cmd} ${path} ${escapeShellArgs args} > $out'';
@@ -194,16 +194,16 @@
       test-env = zig-env { zig = zigv.master; };
       test-app = test-env.app-bare;
 
-      test = removeAttrs (pkgs.callPackage src/test.nix {
+      test = removeAttrs (_callPackage src/test.nix {
         inherit test-app;
         inherit (test-env) zig zig2nix target deriveLockFile;
         zig-env = test-env;
       }) [ "override" "overrideDerivation" "overrideAttrs" ];
 
-      flake-outputs = pkgs.callPackage (import ./src/zig/outputs.nix) {
+      flake-outputs = _callPackage (import ./src/zig/outputs.nix) {
         inherit zigv zig-env;
       };
-    in with pkgs.lib; {
+    in with test-env.pkgs.lib; {
       #! --- Architecture dependent flake outputs.
       #!     access: `zig2nix.outputs.thing.${system}`
 
@@ -226,7 +226,7 @@
         zon2nix = flake-outputs.apps.zon2nix-latest;
 
         # nix run .#update-versions
-        update-versions = test-app [ pkgs.curl test-env.zig2nix ] ''
+        update-versions = with test-env.pkgs; test-app [ curl test-env.zig2nix ] ''
           tmp="$(mktemp)"
           trap 'rm -f "$tmp"' EXIT
           # use curl because zig's std.net is flaky
@@ -235,7 +235,7 @@
         '';
 
         # nix run .#update-templates
-        update-templates = with pkgs; test-app [ coreutils gnused ] ''
+        update-templates = with test-env.pkgs; test-app [ coreutils gnused ] ''
           rm -rf templates/default
           mkdir -p templates/default
           sed 's#/[*]SED_ZIG_VER[*]/##' templates/flake.nix > templates/default/flake.nix
@@ -261,7 +261,7 @@
         # nix run .#readme
         readme = let
           project = "zig2nix flake";
-        in with pkgs; test-app [ gawk gnused ] (replaceStrings ["`"] ["\\`"] ''
+        in with test-env.pkgs; test-app [ gawk gnused ] (replaceStrings ["`"] ["\\`"] ''
         cat <<EOF
         # ${project}
 
