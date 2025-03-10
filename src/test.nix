@@ -116,10 +116,10 @@ with lib;
 
   # nix run .#test-cross
   cross = let
-    blacklist = [ "armv6l-linux" "armv7l-linux" "x86_64-freebsd" "riscv64-linux" "powerpc64le-linux" "i686-linux" ]
+    blacklist =
+      [ "armv6l-linux" "armv7l-linux" "x86_64-freebsd" "riscv64-linux" "powerpc64le-linux" "i686-linux" ]
       ++ optionals (!buildPlatform.isDarwin) [ "aarch64-darwin" ];
-    filteredFlakeTargets = filter (x: ! elem x blacklist) systems.flakeExposed;
-    targets = [ "x86_64-windows-gnu" ] ++ filteredFlakeTargets;
+    targets = [ "x86_64-windows-gnu" ] ++ (subtractLists blacklist systems.flakeExposed);
   in test-app [] (concatStrings (map (nix: let
     crossPkgs = zig-env.zigCrossPkgsForTarget nix;
   in ''
