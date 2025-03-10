@@ -6,7 +6,7 @@
   , file
   , findutils
   , zip
-  , packageForTarget
+  , zigPackage
 }:
 
 with lib;
@@ -66,9 +66,10 @@ let
   # NOTE: this only works in linux
   loader = let
     entrypoint' = if packageAsRoot then ".${removePrefix (toString package) entrypoint}" else "${entrypoint}";
-  in packageForTarget "${loaderArch}-linux-musl" {
+  in zigPackage {
     name = "loader";
     src = cleanSource ./loader;
+    zigTarget = "${loaderArch}-linux-musl";
     zigBuildFlags = [
       "-Doptimize=ReleaseSmall"
       "-Dentrypoint=${entrypoint'}"

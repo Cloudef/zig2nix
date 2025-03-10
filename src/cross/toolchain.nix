@@ -47,9 +47,10 @@ let
   #        https://github.com/ziglang/zig/issues/4911
   #        this does not matter as -target encodes the needed information anyways
   zigcc = any: let
-    support = zigPackage any {
+    support = zigPackage {
       name = "support";
       src = cleanSource ./support;
+      zigTarget = (target any).zig;
     };
 
     pp_args = [ "-target" ''${any}'' ];

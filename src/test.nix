@@ -99,7 +99,8 @@ with lib;
       packageAsRoot = true;
     };
     lambda = zig-env.bundle.aws.lambda {
-      package = zig-env.packageForTarget "aarch64-linux-musl" {
+      package = zig-env.package {
+        zigTarget = "aarch64-linux-musl";
         name = "zig2nix";
         src = cleanSource ../src/zig2nix;
         meta.mainProgram = "zig2nix";

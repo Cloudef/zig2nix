@@ -103,7 +103,7 @@
           else crossPkgsForTarget any;
 
         # Package a Zig project
-        zigPackage = any: (crossPkgsForTarget any).callPackage (pkgs.callPackage ./src/package.nix {
+        zigPackage = pkgs.callPackage (pkgs.callPackage ./src/package.nix {
           inherit zig target fromZON deriveLockFile;
         });
 
@@ -168,12 +168,6 @@
           '';
         }));
 
-        #! Package for specific target supported by nix.
-        #! You can still compile to other platforms by using package and specifying zigTarget.
-        #! When compiling to non-nix supported targets, you can't rely on pkgsForTarget, but rather have to provide all the pkgs yourself.
-        #! NOTE: Even though target is supported by nix, cross-compiling to it might not be, in that case you should get an error.
-        packageForTarget = zigPackage;
-
         #! Packages zig project.
         #! NOTE: If your project has build.zig.zon you must first generate build.zig.zon2json-lock using zon2json-lock.
         #!       It is recommended to commit the build.zig.zon2json-lock to your repo.
@@ -188,10 +182,10 @@
         #!    zigBuildZonLock: Path to build.zig.zon2json-lock file, defaults to build.zig.zon2json-lock.
         #!
         #! <https://github.com/NixOS/nixpkgs/blob/master/doc/hooks/zig.section.md>
-        package = packageForTarget system;
+        package = zigPackage;
 
         #! Bundle a package into a zip
-        bundle.zip = pkgs.callPackage ./src/bundle/zip.nix { inherit packageForTarget; };
+        bundle.zip = pkgs.callPackage ./src/bundle/zip.nix { inherit zigPackage; };
 
         #! Bundle a package for running in AWS lambda
         bundle.aws.lambda = pkgs.callPackage ./src/bundle/lambda.nix { bundleZip = bundle.zip; };
