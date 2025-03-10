@@ -79,6 +79,7 @@ in with llvmPackages_19; stdenv.mkDerivation (finalAttrs: {
     '';
 
   passthru = {
+    info = release;
     inherit (release) date notes stdDocs docs src;
     hook = callPackage zigHook {
       zig = finalAttrs.finalPackage;

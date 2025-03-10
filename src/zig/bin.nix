@@ -55,6 +55,7 @@ in if release ? ${system} then stdenvNoCC.mkDerivation (finalAttrs: {
     '';
 
   passthru = {
+    info = release;
     inherit (release) date notes stdDocs docs src;
     inherit (release.${system}) size;
     hook = callPackage zigHook {
