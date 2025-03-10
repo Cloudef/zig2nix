@@ -105,7 +105,12 @@ zig-env = {
 #!     access: (zig-env {}).thing
 
 #! Tools for bridging zig and nix
-zig2nix = zig2nix-for-version pkgs zig;
+#! The correct zig version is put into the PATH
+zig2nix = pkgs.writeShellApplication {
+ name = "zig2nix";
+ runtimeInputs = [ zig ];
+ text = ''${zig2nix-zigless}/bin/zig2nix "$@"'';
+};
 
 #! Translates zig and nix compatible targets
 target = system: (exec-json "target" [ system ]);

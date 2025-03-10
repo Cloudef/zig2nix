@@ -34,16 +34,11 @@
       };
 
       # zig2nix bridge utility
-      # always compiled with zig-latest, but passes the correct zig to the PATH of the process
-      zig2nix-for-version = pkgs: zig: let
-        pkg = pkgs.callPackage ./src/zig2nix/default.nix {
-          zig = zigv.latest;
-          zigBuildFlags = [ "-Dcpu=baseline" ];
-        };
-      in pkgs.writeShellApplication {
-          name = "zig2nix";
-          runtimeInputs = [ zig ];
-          text = ''${pkg}/bin/zig2nix "$@"'';
+      # always compiled with zig-latest, does not have zig in the path
+      # can be used for zon2json, zon2nix and target queries
+      zig2nix-zigless = _callPackage ./src/zig2nix/default.nix {
+        zig = zigv.latest;
+        zigBuildFlags = [ "-Dcpu=baseline" ];
       };
 
       #:! Helper function for building and running Zig projects.
@@ -60,10 +55,15 @@
         pkgs = nixpkgs.outputs.legacyPackages.${system};
 
         #! Tools for bridging zig and nix
-        zig2nix = zig2nix-for-version pkgs zig;
+        #! The correct zig version is put into the PATH
+        zig2nix = pkgs.writeShellApplication {
+          name = "zig2nix";
+          runtimeInputs = [ zig ];
+          text = ''${zig2nix-zigless}/bin/zig2nix "$@"'';
+        };
 
-        exec = cmd: args: pkgs.runCommandLocal cmd {} ''${zig2nix}/bin/zig2nix ${cmd} ${escapeShellArgs args} > $out'';
-        exec-path = cmd: path: args: pkgs.runCommandLocal cmd {} ''${zig2nix}/bin/zig2nix ${cmd} ${path} ${escapeShellArgs args} > $out'';
+        exec = cmd: args: pkgs.runCommandLocal cmd {} ''${zig2nix-zigless}/bin/zig2nix ${cmd} ${escapeShellArgs args} > $out'';
+        exec-path = cmd: path: args: pkgs.runCommandLocal cmd {} ''${zig2nix-zigless}/bin/zig2nix ${cmd} ${path} ${escapeShellArgs args} > $out'';
         exec-json = cmd: args: fromJSON (readFile (exec cmd args));
         exec-json-path = cmd: path: args: fromJSON (readFile (exec-path cmd path args));
 
