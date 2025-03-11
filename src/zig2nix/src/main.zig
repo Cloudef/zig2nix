@@ -122,15 +122,14 @@ fn @"cmd::zon2nix"(arena: std.mem.Allocator, args: *std.process.ArgIterator, std
     const path = args.next() orelse "build.zig.zon";
     const dest = args.next() orelse D: {
         if (std.mem.endsWith(u8, path, "2json-lock")) {
-            break :D try std.fmt.allocPrint(arena, "{s}.nix", .{path[0..path.len - "2json-lock".len]});
+            break :D try std.fmt.allocPrint(arena, "{s}.nix", .{path[0 .. path.len - "2json-lock".len]});
         }
         break :D try std.fmt.allocPrint(arena, "{s}.nix", .{path});
     };
 
     if (std.mem.endsWith(u8, path, "zig.zon")) {
         const lock_path = try std.fmt.allocPrint(arena, "{s}2json-lock", .{path});
-        if (std.fs.cwd().access(lock_path, .{})) |_| {
-        } else |_| {
+        if (std.fs.cwd().access(lock_path, .{})) |_| {} else |_| {
             var json: std.ArrayListUnmanaged(u8) = .{};
             defer json.deinit(arena);
             try zon2lock.write(arena, std.fs.cwd(), path, json.writer(arena), stderr);

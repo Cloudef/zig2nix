@@ -4,9 +4,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     const test_step = b.step("test", "Run unit tests");
-    inline for (&.{
-        "arc4random"
-    }) |name| {
+    inline for (&.{"arc4random"}) |name| {
         const src = std.fmt.comptimePrint("src/{s}.zig", .{name});
         const lib = b.addStaticLibrary(.{
             .name = name,

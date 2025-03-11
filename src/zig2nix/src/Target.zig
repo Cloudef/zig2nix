@@ -1,5 +1,4 @@
 const std = @import("std");
-const cli = @import("cli.zig");
 
 zig: []const u8,
 system: []const u8,

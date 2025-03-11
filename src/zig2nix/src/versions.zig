@@ -31,9 +31,9 @@ fn assumeNext(scanner: anytype, comptime expected: std.json.TokenType) !std.meta
     const tok = try scanner.next();
     switch (tok) {
         inline else => |_, tag| if (!std.mem.eql(u8, @tagName(tag), @tagName(expected))) {
-            std.log.err("expected token: {s}, got: {s}", .{@tagName(expected), @tagName(tag)});
+            std.log.err("expected token: {s}, got: {s}", .{ @tagName(expected), @tagName(tag) });
             return error.UnexpectedJson;
-        }
+        },
     }
     return @field(tok, @tagName(expected));
 }
@@ -43,9 +43,9 @@ fn assumeNextAlloc(allocator: std.mem.Allocator, scanner: anytype, comptime expe
     switch (tok) {
         inline else => |_, tag| if (!std.mem.eql(u8, @tagName(tag), @tagName(expected))) {
             if (expected == .string and tag == .allocated_string) return tok.allocated_string;
-            std.log.err("expected token: {s}, got: {s}", .{@tagName(expected), @tagName(tag)});
+            std.log.err("expected token: {s}, got: {s}", .{ @tagName(expected), @tagName(tag) });
             return error.UnexpectedJson;
-        }
+        },
     }
     return @field(tok, @tagName(expected));
 }
@@ -97,7 +97,7 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
             if (std.meta.stringToEnum(Meta, str_key)) |key| {
                 if (!std.mem.eql(u8, release, "master") and key == .version) {
                     const value = try assumeNextAlloc(arena, &scanner, .string);
-                    try writer.print("zigVersion = \"{s}\";\n", .{ value });
+                    try writer.print("zigVersion = \"{s}\";\n", .{value});
                 } else {
                     const value = try assumeNextAlloc(arena, &scanner, .string);
                     try writer.print("{s} = \"{s}\";\n", .{ str_key, value });
