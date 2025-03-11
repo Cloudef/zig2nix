@@ -92,11 +92,13 @@ const LockBuilderContext = struct {
     path: []const u8,
     set: *std.StringHashMapUnmanaged(void),
     lock: ?Lock,
+    is_root: bool,
 
     pub fn with(self: @This(), cwd: std.fs.Dir, path: []const u8) @This() {
         var cpy = self;
         cpy.cwd = cwd;
         cpy.path = path;
+        cpy.is_root = false;
         return cpy;
     }
 };
@@ -200,7 +202,7 @@ fn writeInner(arena: std.mem.Allocator, ctx: LockBuilderContext, writer: anytype
     var json: std.ArrayListUnmanaged(u8) = .{};
     defer json.deinit(arena);
     zon2json.parsePath(arena, ctx.cwd, ctx.path, json.writer(arena), stderr) catch |err| switch (err) {
-        error.FileNotFound => return,
+        error.FileNotFound => |e| if (ctx.is_root) return e else return,
         else => |e| return e,
     };
 
@@ -312,6 +314,7 @@ pub fn write(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, st
         .path = std.fs.path.basename(path),
         .set = &set,
         .lock = lock,
+        .is_root = true,
     }, &writer, stderr);
     try writer.endObject();
 }
