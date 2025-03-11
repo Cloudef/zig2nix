@@ -1046,6 +1046,7 @@ let
 in
 {
   latest = bin meta-0_14_0;
+  latest-src = src meta-0_14_0;
   master = bin meta-master;
   src-master = src meta-master;
   "0_14_0" = bin meta-0_14_0;
