@@ -127,8 +127,9 @@ fn @"cmd::zon2nix"(arena: std.mem.Allocator, args: *std.process.ArgIterator, std
         break :D try std.fmt.allocPrint(arena, "{s}.nix", .{path});
     };
 
-    if (std.mem.endsWith(u8, path, "zig.zon")) {
-        const lock_path = try std.fmt.allocPrint(arena, "{s}2json-lock", .{path});
+    var lock_path: []const u8 = path;
+    if (std.mem.endsWith(u8, path, ".zig.zon")) {
+        lock_path = try std.fmt.allocPrint(arena, "{s}2json-lock", .{path});
         if (std.fs.cwd().access(lock_path, .{})) |_| {} else |_| {
             var json: std.ArrayListUnmanaged(u8) = .{};
             defer json.deinit(arena);
@@ -138,11 +139,11 @@ fn @"cmd::zon2nix"(arena: std.mem.Allocator, args: *std.process.ArgIterator, std
     }
 
     if (std.mem.eql(u8, dest, "-")) {
-        try zon2nix.write(arena, std.fs.cwd(), path, stdout);
+        try zon2nix.write(arena, std.fs.cwd(), lock_path, stdout);
     } else {
         var nix: std.ArrayListUnmanaged(u8) = .{};
         defer nix.deinit(arena);
-        try zon2nix.write(arena, std.fs.cwd(), path, nix.writer(arena));
+        try zon2nix.write(arena, std.fs.cwd(), lock_path, nix.writer(arena));
         try std.fs.cwd().writeFile(.{ .data = nix.items, .sub_path = dest });
     }
 }
