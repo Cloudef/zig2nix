@@ -14,7 +14,8 @@ fn stringifyFieldName(allocator: std.mem.Allocator, ast: std.zig.Ast, idx: std.z
 }
 
 fn stringifyValue(allocator: std.mem.Allocator, ast: std.zig.Ast, idx: std.zig.Ast.Node.Index) !?[]const u8 {
-    const slice = ast.tokenSlice(ast.nodes.items(.main_token)[idx]);
+    const ridx = if (@typeInfo(@TypeOf(idx)) == .@"enum") @intFromEnum(idx) else idx;
+    const slice = ast.tokenSlice(ast.nodes.items(.main_token)[ridx]);
     if (Debug) std.log.debug("value: {s}", .{slice});
     if (slice[0] == '\'') {
         switch (std.zig.parseCharLiteral(slice)) {
@@ -108,7 +109,11 @@ pub fn parse(allocator: std.mem.Allocator, reader: anytype, writer: anytype, err
         return error.ParseFailed;
     }
 
-    try stringify(arena, writer, ast, ast.nodes.items(.data)[0].lhs, false);
+    if (@hasField(std.zig.Ast.Node.Data, "lhs")) {
+        try stringify(arena, writer, ast, ast.nodes.items(.data)[0].lhs, false);
+    } else {
+        try stringify(arena, writer, ast, ast.nodes.items(.data)[0].node, false);
+    }
 }
 
 pub fn parsePath(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, writer: anytype, error_writer: anytype) !void {
