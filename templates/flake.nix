@@ -39,7 +39,7 @@
 
         # Libraries required for runtime
         # These packages will be added to the LD_LIBRARY_PATH
-        zigWrapperLibs = with env.pkgs; [];
+        zigWrapperLibs = attrs.buildInputs or [];
       });
 
       # For bundling with nix bundle for running outside of nix
@@ -68,7 +68,11 @@
       devShells.default = env.mkShell {
         # Packages required for compiling, linking and running
         # Libraries added here will be automatically added to the LD_LIBRARY_PATH and PKG_CONFIG_PATH
-        nativeBuildInputs = with env.pkgs; [];
+        nativeBuildInputs = []
+          ++ packages.default.nativeBuildInputs
+          ++ packages.default.buildInputs
+          ++ packages.default.zigWrapperBins
+          ++ packages.default.zigWrapperLibs;
       };
     }));
 }
