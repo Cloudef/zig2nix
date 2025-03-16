@@ -119,7 +119,7 @@
           };
         in warn "zigCross: ${(target any).zig}" crossPkgs;
 
-        _deps = [ zig zig2nix ];
+        _deps = [ zig zig2nix pkgs.pkg-config ];
       in rec {
         inherit pkgs pkgsForTarget crossPkgsForTarget zigCrossPkgsForTarget binaryPkgsForTarget;
         inherit zig zigHook zig2nix target fromZON deriveLockFile;
