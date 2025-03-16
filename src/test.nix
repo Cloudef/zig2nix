@@ -7,7 +7,6 @@
   , findutils
   , coreutils
   , libarchive
-  , file
   , zig
   , target
   , deriveLockFile
@@ -56,7 +55,7 @@ with lib;
   in test-app [ findutils coreutils ] (concatStringsSep "\n" (map test drvs));
 
   # nix run .#test-templates
-  templates = test-app [ file ] ''
+  templates = test-app [] ''
     for var in default master; do
       printf -- 'run . (%s)\n' "$var"
       (cd templates/"$var"; nix run -L --override-input zig2nix ../.. .)
@@ -66,6 +65,8 @@ with lib;
       (cd templates/"$var"; nix run -L --override-input zig2nix ../.. .#test)
       printf -- 'build . (%s)\n' "$var"
       (cd templates/"$var"; nix build -L --override-input zig2nix ../.. .; ./result/bin/"$var")
+      printf -- 'build .#foreign (%s)\n' "$var"
+      (cd templates/"$var"; nix build -L --override-input zig2nix ../.. .#foreign; ./result/bin/"$var")
       rm -f templates/"$var"/result
       rm -rf templates/"$var"/zig-out
       rm -rf templates/"$var"/zig-cache

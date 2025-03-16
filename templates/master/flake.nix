@@ -15,7 +15,7 @@
     in with builtins; with env.pkgs.lib; rec {
       # Produces clean binaries meant to be ship'd outside of nix
       # nix build .#foreign
-      packages.foreign = env.package ({
+      packages.foreign = env.package {
         src = cleanSource ./.;
 
         # Packages required for compiling
@@ -26,13 +26,10 @@
 
         # Smaller binaries and avoids shipping glibc.
         zigPreferMusl = true;
-      } // optionalAttrs (!pathExists ./build.zig.zon) {
-        pname = "my-zig-project";
-        version = "0.0.0";
-      });
+      };
 
       # nix build .
-      packages.default = packages.foreign.overrideAttrs (attrs: {
+      packages.default = packages.foreign.override (attrs: {
         # Prefer nix friendly settings.
         zigPreferMusl = false;
 
