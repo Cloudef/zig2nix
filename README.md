@@ -86,6 +86,14 @@ nix run github:Cloudef/zig2nix -- zon2nix build.zig.zon
 nix run github:Cloudef/zig2nix -- zon2nix build.zig.zon2json-lock
 ```
 
+### Github actions
+
+When using zig2nix in github actions, you have to disable apparmor in the ubuntu runner:
+
+```bash
+sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+```
+
 ## Crude documentation
 
 Below is auto-generated dump of important outputs in this flake.
