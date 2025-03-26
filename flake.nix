@@ -161,7 +161,7 @@
           nativeBuildInputs ? [],
           ...
         } @attrs: pkgs.mkShellNoCC (attrs // {
-          nativeBuildInputs = nativeBuildInputs ++ _deps;
+          nativeBuildInputs = (remove zig.hook nativeBuildInputs) ++ _deps;
           shellHook = ''
             ${shell-runtime nativeBuildInputs}
             ${attrs.shellHook or ""}
