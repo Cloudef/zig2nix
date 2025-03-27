@@ -10,7 +10,7 @@ https://ziglang.org/
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-* Zig master: `0.15.0-dev.102+525466b49 @ 2025-03-25`
+* Zig master: `0.15.0-dev.117+1408288b9 @ 2025-03-26`
 * Zig latest: `0.14.0 @ 2025-03-05`
 
 ## Examples
@@ -201,7 +201,7 @@ mkShell = pkgs.callPackage ({
  nativeBuildInputs ? [],
  ...
  } @attrs: pkgs.mkShellNoCC (attrs // {
- nativeBuildInputs = nativeBuildInputs ++ _deps;
+ nativeBuildInputs = (remove zig.hook nativeBuildInputs) ++ _deps;
  shellHook = ''
   ${shell-runtime nativeBuildInputs}
   ${attrs.shellHook or ""}
