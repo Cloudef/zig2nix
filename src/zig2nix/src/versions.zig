@@ -132,16 +132,17 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
     };
 
     try writer.print("latest = bin meta-{s};\n", .{latest});
-    try writer.print("latest-src = src meta-{s};\n", .{latest});
+    try writer.print("src-latest = src meta-{s};\n", .{latest});
     for (releases.items) |release| {
         if (std.mem.eql(u8, release, "master")) {
             try writer.print("{s} = bin meta-{s};\n", .{ release, release });
+            try writer.print("src-{s} = src meta-{s};\n", .{ release, release });
         } else if (std.mem.eql(u8, release, "latest")) {
             // ignore
         } else {
             try writer.print("\"{s}\" = bin meta-{s};\n", .{ release, release });
+            try writer.print("src-{s} = src meta-{s};\n", .{ release, release });
         }
-        try writer.print("src-{s} = src meta-{s};\n", .{ release, release });
     }
 
     try writer.writeAll("}");
