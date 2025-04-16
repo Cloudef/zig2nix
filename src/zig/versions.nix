@@ -32,7 +32,7 @@ let
       size = 52454664;
     };
 
-    aarch64-darwin = {
+    arm64-darwin = {
       tarball = "https://ziglang.org/builds/zig-macos-aarch64-0.15.0-dev.355+206bd1ced.tar.xz";
       shasum = "c039a5b8215ba42d247010d1a9851020b16aae81ebcf01ac46c82234bf45f943";
       size = 47269396;
@@ -124,7 +124,7 @@ let
       size = 51039964;
     };
 
-    aarch64-darwin = {
+    arm64-darwin = {
       tarball = "https://ziglang.org/download/0.14.0/zig-macos-aarch64-0.14.0.tar.xz";
       shasum = "b71e4b7c4b4be9953657877f7f9e6f7ee89114c716da7c070f4a238220e95d7e";
       size = 45902412;
@@ -222,7 +222,7 @@ let
       size = 48857012;
     };
 
-    aarch64-darwin = {
+    arm64-darwin = {
       tarball = "https://ziglang.org/download/0.13.0/zig-macos-aarch64-0.13.0.tar.xz";
       shasum = "46fae219656545dfaf4dce12fb4e8685cec5b51d721beee9389ab4194d43394c";
       size = 44892040;
@@ -313,7 +313,7 @@ let
       size = 47202232;
     };
 
-    aarch64-darwin = {
+    arm64-darwin = {
       tarball = "https://ziglang.org/download/0.12.1/zig-macos-aarch64-0.12.1.tar.xz";
       shasum = "6587860dbbc070e1ee069e1a3d18ced83b7ba7a80bf67b2c57caf7c9ce5208b1";
       size = 43451512;
@@ -405,7 +405,7 @@ let
       size = 47185720;
     };
 
-    aarch64-darwin = {
+    arm64-darwin = {
       tarball = "https://ziglang.org/download/0.12.0/zig-macos-aarch64-0.12.0.tar.xz";
       shasum = "294e224c14fd0822cfb15a35cf39aa14bd9967867999bf8bdfe3db7ddec2a27f";
       size = 43447724;
@@ -497,7 +497,7 @@ let
       size = 47189164;
     };
 
-    aarch64-darwin = {
+    arm64-darwin = {
       tarball = "https://ziglang.org/download/0.11.0/zig-macos-aarch64-0.11.0.tar.xz";
       shasum = "c6ebf927bb13a707d74267474a9f553274e64906fd21bf1c75a20bde8cadf7b2";
       size = 43855096;
@@ -589,7 +589,7 @@ let
       size = 45119596;
     };
 
-    aarch64-darwin = {
+    arm64-darwin = {
       tarball = "https://ziglang.org/download/0.10.1/zig-macos-aarch64-0.10.1.tar.xz";
       shasum = "b9b00477ec5fa1f1b89f35a7d2a58688e019910ab80a65eac2a7417162737656";
       size = 40517896;
@@ -687,7 +687,7 @@ let
       size = 44142400;
     };
 
-    aarch64-darwin = {
+    arm64-darwin = {
       tarball = "https://ziglang.org/download/0.10.0/zig-macos-aarch64-0.10.0.tar.xz";
       shasum = "02f7a7839b6a1e127eeae22ea72c87603fb7298c58bc35822a951479d53c7557";
       size = 40602664;
@@ -767,7 +767,7 @@ let
       size = 41011464;
     };
 
-    aarch64-darwin = {
+    arm64-darwin = {
       tarball = "https://ziglang.org/download/0.9.1/zig-macos-aarch64-0.9.1.tar.xz";
       shasum = "8c473082b4f0f819f1da05de2dbd0c1e891dff7d85d2c12b6ee876887d438287";
       size = 38995640;
@@ -853,7 +853,7 @@ let
       size = 43420796;
     };
 
-    aarch64-darwin = {
+    arm64-darwin = {
       tarball = "https://ziglang.org/download/0.9.0/zig-macos-aarch64-0.9.0.tar.xz";
       shasum = "3991c70594d61d09fb4b316157a7c1d87b1d4ec159e7a5ecd11169ff74cad832";
       size = 39013392;
@@ -939,7 +939,7 @@ let
       size = 41250060;
     };
 
-    aarch64-darwin = {
+    arm64-darwin = {
       tarball = "https://ziglang.org/download/0.8.1/zig-macos-aarch64-0.8.1.tar.xz";
       shasum = "5351297e3b8408213514b29c0a938002c5cf9f97eee28c2f32920e1227fd8423";
       size = 35340712;
@@ -1019,7 +1019,7 @@ let
       size = 41211184;
     };
 
-    aarch64-darwin = {
+    arm64-darwin = {
       tarball = "https://ziglang.org/download/0.8.0/zig-macos-aarch64-0.8.0.tar.xz";
       shasum = "b32d13f66d0e1ff740b3326d66a469ee6baddbd7211fa111c066d3bd57683111";
       size = 35292180;
