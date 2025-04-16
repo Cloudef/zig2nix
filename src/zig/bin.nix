@@ -16,7 +16,9 @@ with builtins;
 with lib;
 
 let
-  system = stdenvNoCC.targetPlatform.system;
+  # sigh
+  # <https://github.com/NixOS/nixpkgs/commit/61582c704327002b75d61354a769ebf00f594cdf>
+  system = if stdenvNoCC.targetPlatform.system == "aarch64-darwin" then "arm64-darwin" else stdenvNoCC.targetPlatform.system;
   meta-for = release: {
     homepage = "https://ziglang.org/";
     description = "General-purpose programming language and toolchain for maintaining robust, optimal, and reusable software";
