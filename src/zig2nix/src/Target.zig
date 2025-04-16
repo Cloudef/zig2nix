@@ -7,12 +7,14 @@ os: []const u8,
 libc: bool,
 
 pub fn parse(allocator: std.mem.Allocator, arch_os_abi: []const u8) !@This() {
+    errdefer std.log.err("{s}", .{arch_os_abi});
     var arena_state: std.heap.ArenaAllocator = .init(allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
 
     const Arch = enum {
         i686,
+        arm64,
         armv7a,
         armv7l,
         armv6l,
@@ -47,6 +49,7 @@ pub fn parse(allocator: std.mem.Allocator, arch_os_abi: []const u8) !@This() {
         const arch = iter.next() orelse break :D arch_os_abi;
         switch (std.meta.stringToEnum(Arch, arch) orelse ._passthru) {
             .i686 => try buf.appendSlice(arena, "x86"),
+            .arm64 => try buf.appendSlice(arena, "aarch64"),
             .armv7a, .armv7l => try buf.appendSlice(arena, "arm"),
             .armv6l => {
                 try buf.appendSlice(arena, "arm");
@@ -110,6 +113,10 @@ pub fn parse(allocator: std.mem.Allocator, arch_os_abi: []const u8) !@This() {
 
     const arch = switch (target.cpu.arch) {
         .x86 => "i686",
+        .aarch64 => switch (target.os.tag) {
+            .macos, .ios, .watchos, .visionos => "arm64",
+            else => "aarch64",
+        },
         .arm => D: {
             if (std.Target.arm.featureSetHas(target.cpu.features, .v6)) {
                 break :D "armv6l";

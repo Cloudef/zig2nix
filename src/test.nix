@@ -131,12 +131,15 @@ with lib;
 
   # nix run .#test-targets
   targets = test-app [] (concatStrings (map (nix: let
+      # sigh
+      # <https://github.com/NixOS/nixpkgs/commit/61582c704327002b75d61354a769ebf00f594cdf>
+      double = if nix == "aarch64-darwin" then "arm64-darwin" else nix;
       system = (target nix).system;
       config1 = (systems.elaborate nix).config;
       config2 = (target (systems.elaborate nix).config).config;
     in ''
       # shellcheck disable=SC2268
-      test '${nix}' = '${system}' || error '${nix} != ${system}'
+      test '${double}' = '${system}' || error '${double} != ${system}'
       # shellcheck disable=SC2268
       test '${config1}' = '${config2}' || error '${config1} != ${config2}'
     '') systems.flakeExposed));

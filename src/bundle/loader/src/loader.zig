@@ -48,7 +48,7 @@ const Executor = struct {
 
         var dynamic = false;
         if (comptime @import("options").runtime) {
-            if (try dynamicLinkerFromPath(allocator, exe)) |dl0| {
+            if (dynamicLinkerFromPath(allocator, exe) catch null) |dl0| {
                 defer allocator.free(dl0);
                 if (try dynamicLinkerFromPath(allocator, "/usr/bin/env")) |dl| {
                     log.info("dynamic linker: {s}", .{dl});
