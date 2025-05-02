@@ -104,10 +104,15 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
                 }
             } else {
                 if (std.json.innerParse(Source, arena, &scanner, opts)) |src| {
-                    if (Target.parse(arena, str_key)) |target| {
-                        try writer.print("\n{s} = {{\n", .{target.system});
-                    } else |_| {
+                    if (std.mem.eql(u8, str_key, "src") or
+                        std.mem.eql(u8, str_key, "bootstrap")) {
                         try writer.print("\n{s} = {{\n", .{str_key});
+                    } else {
+                        if (Target.parse(arena, str_key)) |target| {
+                            try writer.print("\n{s} = {{\n", .{target.system});
+                        } else |_| {
+                            try writer.print("\n{s} = {{\n", .{str_key});
+                        }
                     }
                     try src.write(writer);
                     try writer.writeAll("};\n");
