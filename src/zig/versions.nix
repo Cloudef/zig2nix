@@ -2,11 +2,19 @@
   zigHook,
   zigBin,
   zigSrc,
+  llvmPackages_20,
+  llvmPackages_19,
+  llvmPackages_18,
+  llvmPackages_17,
+  llvmPackages_16,
+  llvmPackages_15,
+  llvmPackages_13,
+  llvmPackages_12,
 }:
 
 let
   bin = release: zigBin { inherit zigHook release; };
-  src = release: zigSrc { inherit zigHook release; };
+  src = release: llvmPackages: zigSrc { inherit zigHook release llvmPackages; };
 
   meta-master = {
     version = "0.15.0-dev.471+369177f0b";
@@ -1046,29 +1054,29 @@ let
 in
 {
   latest = bin meta-0_14_0;
-  src-latest = src meta-0_14_0;
+  src-latest = src meta-0_14_0 llvmPackages_19;
   master = bin meta-master;
-  src-master = src meta-master;
+  src-master = src meta-master llvmPackages_20;
   "0_14_0" = bin meta-0_14_0;
-  src-0_14_0 = src meta-0_14_0;
+  src-0_14_0 = src meta-0_14_0 llvmPackages_19;
   "0_13_0" = bin meta-0_13_0;
-  src-0_13_0 = src meta-0_13_0;
+  src-0_13_0 = src meta-0_13_0 llvmPackages_18;
   "0_12_1" = bin meta-0_12_1;
-  src-0_12_1 = src meta-0_12_1;
+  src-0_12_1 = src meta-0_12_1 llvmPackages_17;
   "0_12_0" = bin meta-0_12_0;
-  src-0_12_0 = src meta-0_12_0;
+  src-0_12_0 = src meta-0_12_0 llvmPackages_17;
   "0_11_0" = bin meta-0_11_0;
-  src-0_11_0 = src meta-0_11_0;
+  src-0_11_0 = src meta-0_11_0 llvmPackages_16;
   "0_10_1" = bin meta-0_10_1;
-  src-0_10_1 = src meta-0_10_1;
+  src-0_10_1 = src meta-0_10_1 llvmPackages_15;
   "0_10_0" = bin meta-0_10_0;
-  src-0_10_0 = src meta-0_10_0;
+  src-0_10_0 = src meta-0_10_0 llvmPackages_15;
   "0_9_1" = bin meta-0_9_1;
-  src-0_9_1 = src meta-0_9_1;
+  src-0_9_1 = src meta-0_9_1 llvmPackages_13;
   "0_9_0" = bin meta-0_9_0;
-  src-0_9_0 = src meta-0_9_0;
+  src-0_9_0 = src meta-0_9_0 llvmPackages_13;
   "0_8_1" = bin meta-0_8_1;
-  src-0_8_1 = src meta-0_8_1;
+  src-0_8_1 = src meta-0_8_1 llvmPackages_12;
   "0_8_0" = bin meta-0_8_0;
-  src-0_8_0 = src meta-0_8_0;
+  src-0_8_0 = src meta-0_8_0 llvmPackages_12;
 }

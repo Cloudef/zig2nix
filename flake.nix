@@ -27,11 +27,11 @@
 
       # Zig versions
       # <https://ziglang.org/download/index.json>
-      zigv = import ./src/zig/versions.nix {
+      zigv = removeAttrs (_callPackage ./src/zig/versions.nix {
         inherit zigHook;
         zigBin = _callPackage ./src/zig/bin.nix;
         zigSrc = _callPackage ./src/zig/src.nix;
-      };
+      }) [ "override" "overrideDerivation" "overrideAttrs" ];
 
       # zig2nix bridge utility
       # always compiled with zig-latest, does not have zig in the path

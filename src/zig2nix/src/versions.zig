@@ -67,11 +67,19 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
         \\  zigHook
         \\  , zigBin
         \\  , zigSrc
+        \\  , llvmPackages_20
+        \\  , llvmPackages_19
+        \\  , llvmPackages_18
+        \\  , llvmPackages_17
+        \\  , llvmPackages_16
+        \\  , llvmPackages_15
+        \\  , llvmPackages_13
+        \\  , llvmPackages_12
         \\}:
         \\
         \\let
         \\  bin = release: zigBin { inherit zigHook release; };
-        \\  src = release: zigSrc { inherit zigHook release; };
+        \\  src = release: llvmPackages: zigSrc { inherit zigHook release llvmPackages; };
         \\
     );
 
@@ -136,17 +144,34 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
         return error.NoVersions;
     };
 
+    const llvm = std.StaticStringMap([]const u8).initComptime(.{
+        .{ "master", "llvmPackages_20" },
+        .{ "0_14_0", "llvmPackages_19" },
+        .{ "0_13_0", "llvmPackages_18" },
+        .{ "0_12_1", "llvmPackages_17" },
+        .{ "0_12_0", "llvmPackages_17" },
+        .{ "0_11_0", "llvmPackages_16" },
+        .{ "0_10_1", "llvmPackages_15" },
+        .{ "0_10_0", "llvmPackages_15" },
+        .{ "0_9_1", "llvmPackages_13" },
+        .{ "0_9_0", "llvmPackages_13" },
+        .{ "0_8_1", "llvmPackages_12" },
+        .{ "0_8_0", "llvmPackages_12" },
+    });
+
+    const default_llvm = llvm.get("master") orelse unreachable;
+
     try writer.print("latest = bin meta-{s};\n", .{latest});
-    try writer.print("src-latest = src meta-{s};\n", .{latest});
+    try writer.print("src-latest = src meta-{s} {s};\n", .{ latest, llvm.get(latest) orelse default_llvm });
     for (releases.items) |release| {
         if (std.mem.eql(u8, release, "master")) {
             try writer.print("{s} = bin meta-{s};\n", .{ release, release });
-            try writer.print("src-{s} = src meta-{s};\n", .{ release, release });
+            try writer.print("src-{s} = src meta-{s} {s};\n", .{ release, release, llvm.get(release) orelse default_llvm });
         } else if (std.mem.eql(u8, release, "latest")) {
             // ignore
         } else {
             try writer.print("\"{s}\" = bin meta-{s};\n", .{ release, release });
-            try writer.print("src-{s} = src meta-{s};\n", .{ release, release });
+            try writer.print("src-{s} = src meta-{s} {s};\n", .{ release, release, llvm.get(release) orelse default_llvm });
         }
     }
 

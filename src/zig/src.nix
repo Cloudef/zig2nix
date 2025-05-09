@@ -8,7 +8,7 @@
   , fetchurl
   , zig-shell-completions
   , cmake
-  , llvmPackages_19
+  , llvmPackages
   , libxml2
   , zlib
   , coreutils
@@ -28,7 +28,7 @@ let
   } // optionalAttrs (release ? notes) {
     changelog = release.notes;
   };
-in with llvmPackages_19; stdenv.mkDerivation (finalAttrs: {
+in with llvmPackages; stdenv.mkDerivation (finalAttrs: {
   pname = "zig";
   inherit (release) version;
 
