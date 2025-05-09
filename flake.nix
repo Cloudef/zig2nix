@@ -136,6 +136,9 @@
               ${script}
               '';
           }) + "/bin/app";
+          meta = {
+            description = "";
+          };
         };
 
         #! Flake app helper (Without zig-env).
