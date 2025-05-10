@@ -176,6 +176,9 @@ app-bare-no-root = deps: script: {
    ${script}
   '';
  }) + "/bin/app";
+ meta = {
+  description = "";
+ };
 };
 
 #! Flake app helper (Without zig-env).
