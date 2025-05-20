@@ -28,7 +28,7 @@
 
     // Tracks the earliest Zig version that the package considers to be a
     // supported use case.
-    .minimum_zig_version = "0.15.0-dev.565+8e72a2528",
+    .minimum_zig_version = "0.15.0-dev.580+ad1e09eab",
 
     // This field is optional.
     // Each dependency must either provide a `url` and `hash`, or a `path`.
