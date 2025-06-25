@@ -189,6 +189,10 @@ pub fn parse(allocator: std.mem.Allocator, arch_os_abi: []const u8) !@This() {
         .system = try std.fmt.allocPrint(allocator, "{s}-{s}", .{ arch, os }),
         .config = config,
         .os = @tagName(target.os.tag),
-        .libc = std.zig.target.canBuildLibC(target),
+        .libc = switch (@TypeOf(std.zig.target.canBuildLibC)) {
+            fn (std.Target) bool => std.zig.target.canBuildLibC(target),
+            fn (*const std.Target) bool => std.zig.target.canBuildLibC(&target),
+            else => @compileError("std api changed"),
+        },
     };
 }
