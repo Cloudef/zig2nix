@@ -62,12 +62,12 @@ pub const Pipe = struct {
     child: std.process.Child,
     finished: bool = false,
 
-    pub fn writer(self: *@This()) std.fs.File.Writer {
-        return self.child.stdin.?.writer();
+    pub fn writer(self: *@This()) std.fs.File.DeprecatedWriter {
+        return self.child.stdin.?.deprecatedWriter();
     }
 
-    pub fn reader(self: *@This()) std.fs.File.Reader {
-        return self.child.stdout.?.reader();
+    pub fn reader(self: *@This()) std.fs.File.DeprecatedReader {
+        return self.child.stdout.?.deprecatedReader();
     }
 
     pub fn close(self: *@This()) void {

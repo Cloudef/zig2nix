@@ -73,7 +73,7 @@ pub fn parse(allocator: std.mem.Allocator, reader: anytype) !?Lock {
 pub fn parsePath(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8) !?Lock {
     var file = try cwd.openFile(path, .{});
     defer file.close();
-    var reader = std.json.reader(allocator, file.reader());
+    var reader = std.json.reader(allocator, file.deprecatedReader());
     defer reader.deinit();
     return parse(allocator, &reader);
 }
@@ -113,7 +113,7 @@ fn nixFetchHttp(allocator: std.mem.Allocator, ctx: LockBuilderContext, zhash: []
     {
         var file = try ctx.tmp.createFile(zhash, .{});
         defer file.close();
-        try cli.download(allocator, url, file.writer(), std.math.maxInt(usize));
+        try cli.download(allocator, url, file.deprecatedWriter(), std.math.maxInt(usize));
     }
     return .{ .hash = try cli.run(allocator, ctx.tmp, &.{ "nix", "hash", "path", "--mode", "flat", zhash }, 128) };
 }
