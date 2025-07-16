@@ -6,19 +6,24 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
     inline for (&.{"arc4random"}) |name| {
         const src = std.fmt.comptimePrint("src/{s}.zig", .{name});
-        const lib = b.addStaticLibrary(.{
+        const lib = b.addLibrary(.{
             .name = name,
-            .root_source_file = b.path(src),
-            .target = target,
-            .optimize = optimize,
-            .pic = true,
-            .link_libc = false,
+            .linkage = .static,
+            .root_module = b.createModule(.{
+                .root_source_file = b.path(src),
+                .target = target,
+                .optimize = optimize,
+                .pic = true,
+                .link_libc = false,
+            }),
         });
         b.installArtifact(lib);
         const unit_tests = b.addTest(.{
-            .root_source_file = b.path(src),
-            .target = target,
-            .optimize = optimize,
+            .root_module = b.createModule(.{
+                .root_source_file = b.path(src),
+                .target = target,
+                .optimize = optimize,
+            }),
         });
         const run_unit_tests = b.addRunArtifact(unit_tests);
         test_step.dependOn(&run_unit_tests.step);

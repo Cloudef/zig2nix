@@ -119,7 +119,7 @@ pub fn parse(allocator: std.mem.Allocator, reader: anytype, writer: anytype, err
 pub fn parsePath(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, writer: anytype, error_writer: anytype) !void {
     var file = try cwd.openFile(path, .{ .mode = .read_only });
     defer file.close();
-    try parse(allocator, file.reader(), writer, error_writer, .{ .file_name = path });
+    try parse(allocator, file.deprecatedReader(), writer, error_writer, .{ .file_name = path });
 }
 
 pub fn parseFromSlice(allocator: std.mem.Allocator, slice: []const u8, writer: anytype, error_writer: anytype, opts: Options) !void {

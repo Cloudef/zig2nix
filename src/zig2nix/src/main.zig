@@ -19,7 +19,7 @@ test {
 fn readInput(allocator: std.mem.Allocator, dir: std.fs.Dir, stdin_path_or_url: []const u8) ![]const u8 {
     const mib_in_bytes = 1048576;
     if (std.mem.eql(u8, stdin_path_or_url, "-")) {
-        return try std.io.getStdIn().reader().readAllAlloc(allocator, mib_in_bytes * 40);
+        return try std.fs.File.stdout().deprecatedReader().readAllAlloc(allocator, mib_in_bytes * 40);
     } else if (std.mem.startsWith(u8, stdin_path_or_url, "http://") or std.mem.startsWith(u8, stdin_path_or_url, "https://")) {
         var bytes: std.ArrayListUnmanaged(u8) = .{};
         errdefer bytes.deinit(allocator);
@@ -95,7 +95,7 @@ fn @"cmd::zen"(_: std.mem.Allocator, _: *std.process.ArgIterator, stdout: anytyp
 
 fn @"cmd::target"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: anytype, _: anytype) !void {
     const result = try Target.parse(arena, args.next() orelse "native");
-    try stdout.print("{s}", .{std.json.fmt(result, .{ .whitespace = .indent_2 })});
+    try stdout.print("{f}", .{std.json.fmt(result, .{ .whitespace = .indent_2 })});
 }
 
 fn @"cmd::zon2json"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: anytype, stderr: anytype) !void {
@@ -176,9 +176,9 @@ fn realMain(stdout: anytype, stderr: anytype) !void {
 pub fn main() !noreturn {
     var status: cli.ExitStatus = .ok;
     {
-        var stdout = std.io.bufferedWriter(std.io.getStdOut().writer());
+        var stdout = std.io.bufferedWriter(std.fs.File.stdout().deprecatedWriter());
         defer stdout.flush() catch {};
-        var stderr = std.io.bufferedWriter(std.io.getStdErr().writer());
+        var stderr = std.io.bufferedWriter(std.fs.File.stderr().deprecatedWriter());
         defer stderr.flush() catch {};
         realMain(stdout.writer(), stderr.writer()) catch |err| {
             switch (err) {
