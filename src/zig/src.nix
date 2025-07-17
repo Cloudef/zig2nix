@@ -5,7 +5,7 @@
   , release
   , stdenv
   , callPackage
-  , fetchurl
+  , fetchRelease
   , zig-shell-completions
   , cmake
   , llvmPackages
@@ -34,10 +34,7 @@ in with llvmPackages; stdenv.mkDerivation (finalAttrs: {
 
   outputs = [ "out" ] ++ optionals installDocs [ "doc" ];
 
-  src = fetchurl {
-    url = release.src.tarball;
-    sha256 = release.src.shasum;
-  };
+  src = fetchRelease release.src;
 
   nativeBuildInputs = [ cmake llvm.dev ];
   buildInputs = [ libxml2 zlib libclang lld llvm ];

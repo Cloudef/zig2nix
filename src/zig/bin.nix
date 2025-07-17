@@ -5,7 +5,7 @@
   , release
   , stdenvNoCC
   , callPackage
-  , fetchurl
+  , fetchRelease
   , zig-shell-completions
   , coreutils
   , bubblewrap
@@ -35,10 +35,7 @@ in if release ? ${system} then stdenvNoCC.mkDerivation (finalAttrs: {
 
   outputs = [ "out" ] ++ optionals installDocs [ "doc" ];
 
-  src = fetchurl {
-    url = release.${system}.tarball;
-    sha256 = release.${system}.shasum;
-  };
+  src = fetchRelease release.${system};
 
   phases = [ "unpackPhase" "installPhase" ];
 
