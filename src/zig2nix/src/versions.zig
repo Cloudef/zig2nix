@@ -16,15 +16,6 @@ const Source = struct {
     tarball: []const u8,
     shasum: []const u8,
     size: u64,
-
-    pub fn write(self: @This(), writer: anytype) !void {
-        inline for (std.meta.fields(@This())) |field| {
-            switch (field.type) {
-                []const u8 => try writer.print("{s} = \"{s}\";\n", .{ field.name, @field(self, field.name) }),
-                else => try writer.print("{s} = {};\n", .{ field.name, @field(self, field.name) }),
-            }
-        }
-    }
 };
 
 fn assumeNext(scanner: anytype, comptime expected: std.json.TokenType) !std.meta.TagPayload(std.json.Token, @enumFromInt(@intFromEnum(expected))) {
@@ -50,7 +41,7 @@ fn assumeNextAlloc(allocator: std.mem.Allocator, scanner: anytype, comptime expe
     return @field(tok, @tagName(expected));
 }
 
-pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void {
+pub fn write(allocator: std.mem.Allocator, json: []const u8, mirrorlist: []const u8, out: anytype) !void {
     var arena_state: std.heap.ArenaAllocator = .init(allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
@@ -67,6 +58,7 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
         \\  zigHook
         \\  , zigBin
         \\  , zigSrc
+        \\  , fetchFromMirror
         \\  , llvmPackages_20
         \\  , llvmPackages_19
         \\  , llvmPackages_18
@@ -78,10 +70,18 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
         \\}:
         \\
         \\let
-        \\  bin = release: zigBin { inherit zigHook release; };
-        \\  src = release: llvmPackages: zigSrc { inherit zigHook release llvmPackages; };
+        \\  bin = release: zigBin { inherit zigHook release fetchRelease; };
+        \\  src = release: llvmPackages: zigSrc { inherit zigHook release fetchRelease llvmPackages; };
         \\
     );
+
+    try writer.print(
+        \\
+        \\fetchRelease = fetchFromMirror {{
+        \\  zigMirrors = ''{s}'';
+        \\}};
+        \\
+    , .{mirrorlist});
 
     var releases: std.ArrayListUnmanaged([]const u8) = .{};
     defer releases.deinit(arena);
@@ -113,7 +113,8 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
             } else {
                 if (std.json.innerParse(Source, arena, &scanner, opts)) |src| {
                     if (std.mem.eql(u8, str_key, "src") or
-                        std.mem.eql(u8, str_key, "bootstrap")) {
+                        std.mem.eql(u8, str_key, "bootstrap"))
+                    {
                         try writer.print("\n{s} = {{\n", .{str_key});
                     } else {
                         if (Target.parse(arena, str_key)) |target| {
@@ -122,7 +123,13 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
                             try writer.print("\n{s} = {{\n", .{str_key});
                         }
                     }
-                    try src.write(writer);
+
+                    const slash = std.mem.lastIndexOfScalar(u8, src.tarball, '/') orelse 0;
+                    const filename = if (src.tarball.len > slash) src.tarball[slash + 1 ..] else "";
+
+                    try writer.print("filename = \"{s}\";\n", .{filename});
+                    try writer.print("shasum = \"{s}\";\n", .{src.shasum});
+                    try writer.print("size = {};\n", .{src.size});
                     try writer.writeAll("};\n");
                 } else |_| {
                     // ignore

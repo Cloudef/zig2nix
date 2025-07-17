@@ -31,6 +31,7 @@
         inherit zigHook;
         zigBin = _callPackage ./src/zig/bin.nix;
         zigSrc = _callPackage ./src/zig/src.nix;
+        fetchFromMirror = _callPackage ./src/zig/fetch.nix;
       }) [ "override" "overrideDerivation" "overrideAttrs" ];
 
       # zig2nix bridge utility
@@ -188,7 +189,9 @@
         package = zigPackage;
 
         #! Bundle a package into a zip
-        bundle.zip = pkgs.callPackage ./src/bundle/zip.nix { inherit zigPackage; };
+        bundle.zip = pkgs.callPackage ./src/bundle/zip.nix {
+          zigPackage = (zig-env { zig = zigv.latest; }).package;
+        };
 
         #! Bundle a package for running in AWS lambda
         bundle.aws.lambda = pkgs.callPackage ./src/bundle/lambda.nix { bundleZip = bundle.zip; };
@@ -198,9 +201,10 @@
       test-app = test-env.app-bare;
 
       test = removeAttrs (_callPackage src/test.nix {
-        inherit test-app;
+        inherit test-app zig2nix-zigless;
         inherit (test-env) zig zig2nix target deriveLockFile;
         zig-env = test-env;
+        zig-stable-env = zig-env {};
       }) [ "override" "overrideDerivation" "overrideAttrs" ];
 
       flake-outputs = _callPackage (import ./src/zig/outputs.nix) {

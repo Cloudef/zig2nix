@@ -150,8 +150,10 @@ fn @"cmd::zon2nix"(arena: std.mem.Allocator, args: *std.process.ArgIterator, std
 
 fn @"cmd::versions"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: anytype, _: anytype) !void {
     const input = args.next() orelse "https://ziglang.org/download/index.json";
+    const mirrors = args.next() orelse "https://ziglang.org/download/community-mirrors.txt";
     const json = try readInput(arena, std.fs.cwd(), input);
-    try versions.write(arena, json, stdout);
+    const mirrorlist = try readInput(arena, std.fs.cwd(), mirrors);
+    try versions.write(arena, json, mirrorlist, stdout);
 }
 
 fn realMain(stdout: anytype, stderr: anytype) !void {
