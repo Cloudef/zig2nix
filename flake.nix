@@ -31,6 +31,7 @@
         inherit zigHook;
         zigBin = _callPackage ./src/zig/bin.nix;
         zigSrc = _callPackage ./src/zig/src.nix;
+        fetchFromMirror = _callPackage ./src/zig/fetch.nix;
       }) [ "override" "overrideDerivation" "overrideAttrs" ];
 
       # zig2nix bridge utility
