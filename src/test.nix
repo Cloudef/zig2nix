@@ -2,7 +2,9 @@
   lib
   , test-app
   , zig-env
+  , zig-stable-env
   , zig2nix
+  , zig2nix-zigless
   , jq
   , findutils
   , coreutils
@@ -76,7 +78,7 @@ with lib;
 
   # nix run .#test-package
   package = let
-    pkg = zig-env.package {
+    pkg = zig-stable-env.package {
       name = "zig2nix";
       src = cleanSource ../src/zig2nix;
     };
@@ -85,14 +87,14 @@ with lib;
   # nix run .#test-bundle
   bundle = let
     zip1 = zig-env.bundle.zip {
-      package = zig-env.package {
+      package = zig-stable-env.package {
         name = "zig2nix";
         src = cleanSource ../src/zig2nix;
         meta.mainProgram = "zig2nix";
       };
     };
     zip2 = zig-env.bundle.zip {
-      package = zig-env.package {
+      package = zig-stable-env.package {
         name = "zig2nix";
         src = cleanSource ../src/zig2nix;
         meta.mainProgram = "zig2nix";
@@ -100,7 +102,7 @@ with lib;
       packageAsRoot = true;
     };
     lambda = zig-env.bundle.aws.lambda {
-      package = zig-env.package {
+      package = zig-stable-env.package {
         zigTarget = "aarch64-linux-musl";
         name = "zig2nix";
         src = cleanSource ../src/zig2nix;
