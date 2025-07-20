@@ -8,9 +8,9 @@ fn stringifyFieldName(allocator: std.mem.Allocator, ast: std.zig.Ast, idx: std.z
     if (slice[0] == '@') {
         const v = try std.zig.string_literal.parseAlloc(allocator, slice[1..]);
         defer allocator.free(v);
-        return try std.json.stringifyAlloc(allocator, v, .{});
+        return try std.json.Stringify.valueAlloc(allocator, v, .{});
     }
-    return try std.json.stringifyAlloc(allocator, slice, .{});
+    return try std.json.Stringify.valueAlloc(allocator, slice, .{});
 }
 
 fn stringifyValue(allocator: std.mem.Allocator, ast: std.zig.Ast, idx: std.zig.Ast.Node.Index) !?[]const u8 {
@@ -19,21 +19,21 @@ fn stringifyValue(allocator: std.mem.Allocator, ast: std.zig.Ast, idx: std.zig.A
     if (Debug) std.log.debug("value: {s}", .{slice});
     if (slice[0] == '\'') {
         switch (std.zig.parseCharLiteral(slice)) {
-            .success => |v| return try std.json.stringifyAlloc(allocator, v, .{}),
+            .success => |v| return try std.json.Stringify.valueAlloc(allocator, v, .{}),
             .failure => return error.parseCharLiteralFailed,
         }
     } else if (slice[0] == '"') {
         const v = try std.zig.string_literal.parseAlloc(allocator, slice);
         defer allocator.free(v);
-        return try std.json.stringifyAlloc(allocator, v, .{});
+        return try std.json.Stringify.valueAlloc(allocator, v, .{});
     }
     if (std.mem.startsWith(u8, slice, "0x")) {
         return try std.fmt.allocPrint(allocator, "\"{s}\"", .{slice});
     }
     switch (std.zig.number_literal.parseNumberLiteral(slice)) {
-        .int => |v| return try std.json.stringifyAlloc(allocator, v, .{}),
-        .float => |v| return try std.json.stringifyAlloc(allocator, v, .{}),
-        .big_int => |v| return try std.json.stringifyAlloc(allocator, v, .{}),
+        .int => |v| return try std.json.Stringify.valueAlloc(allocator, v, .{}),
+        .float => |v| return try std.json.Stringify.valueAlloc(allocator, v, .{}),
+        .big_int => |v| return try std.json.Stringify.valueAlloc(allocator, v, .{}),
         .failure => {},
     }
     if (std.mem.eql(u8, slice, "true") or std.mem.eql(u8, slice, "false")) {
@@ -43,10 +43,10 @@ fn stringifyValue(allocator: std.mem.Allocator, ast: std.zig.Ast, idx: std.zig.A
         return try allocator.dupe(u8, slice);
     }
     // literal
-    return try std.json.stringifyAlloc(allocator, slice, .{});
+    return try std.json.Stringify.valueAlloc(allocator, slice, .{});
 }
 
-fn stringify(allocator: std.mem.Allocator, writer: anytype, ast: std.zig.Ast, idx: std.zig.Ast.Node.Index, has_name: bool) !void {
+fn stringify(allocator: std.mem.Allocator, writer: *std.io.Writer, ast: std.zig.Ast, idx: std.zig.Ast.Node.Index, has_name: bool) !void {
     if (has_name) {
         if (try stringifyFieldName(allocator, ast, idx)) |name| {
             defer allocator.free(name);
@@ -83,13 +83,13 @@ pub const Options = struct {
     file_name: []const u8 = "build.zig.zon", // for errors
 };
 
-pub fn parse(allocator: std.mem.Allocator, reader: anytype, writer: anytype, error_writer: anytype, opts: Options) !void {
+pub fn parse(allocator: std.mem.Allocator, reader: *std.io.Reader, writer: *std.io.Writer, error_writer: *std.io.Writer, opts: Options) !void {
     var arena_state: std.heap.ArenaAllocator = .init(allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
 
     const zon = blk: {
-        var tmp = try reader.readAllAlloc(arena, opts.limit);
+        var tmp = try reader.allocRemaining(arena, .limited(opts.limit));
         tmp = try arena.realloc(tmp, tmp.len + 1);
         tmp[tmp.len - 1] = 0;
         break :blk tmp[0 .. tmp.len - 1 :0];
@@ -116,15 +116,16 @@ pub fn parse(allocator: std.mem.Allocator, reader: anytype, writer: anytype, err
     }
 }
 
-pub fn parsePath(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, writer: anytype, error_writer: anytype) !void {
+pub fn parsePath(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, writer: *std.io.Writer, error_writer: *std.io.Writer) !void {
     var file = try cwd.openFile(path, .{ .mode = .read_only });
     defer file.close();
-    try parse(allocator, file.deprecatedReader(), writer, error_writer, .{ .file_name = path });
+    var file_reader = file.reader("");
+    try parse(allocator, &file_reader.interface, writer, error_writer, .{ .file_name = path });
 }
 
-pub fn parseFromSlice(allocator: std.mem.Allocator, slice: []const u8, writer: anytype, error_writer: anytype, opts: Options) !void {
-    var stream = std.io.fixedBufferStream(slice);
-    return parse(allocator, stream.reader(), writer, error_writer, opts);
+pub fn parseFromSlice(allocator: std.mem.Allocator, slice: []const u8, writer: *std.io.Writer, error_writer: *std.io.Writer, opts: Options) !void {
+    var stream: std.io.Reader = .fixed(slice);
+    return parse(allocator, &stream, writer, error_writer, opts);
 }
 
 test {
@@ -151,7 +152,9 @@ test {
         \\    },
         \\}
     ;
-    try parseFromSlice(allocator, zon, json.writer(allocator), {}, .{});
+    var stderr = std.fs.File.stderr().writer("");
+    var json_writer = json.writer(allocator).adaptToNewApi();
+    try parseFromSlice(allocator, zon, &json_writer.new_interface, &stderr.interface, .{});
     try std.testing.expectEqualStrings(
         \\{"name":"fixture1","version":"0.0.1","paths":["src","build.zig","build.zig.zon"],"dependencies":{"router":{"path":"."},"getty":{"url":"https://github.com/getty-zig/getty/archive/cb007b8ed148510de71ccc52143343b2e11413ff.tar.gz","hash":"getty-0.4.0-AAAAAI4bCAAwD1LXWSkUZg7jyORh3HwQvUVwjrMt6w40"}}}
     , json.items);

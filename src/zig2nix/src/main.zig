@@ -44,7 +44,7 @@ pub const GeneralOptions = enum {
     help,
 };
 
-fn usage(writer: anytype) !void {
+fn usage(writer: *std.io.Writer) !void {
     try writer.writeAll(
         \\Usage: zig2nix [command] [options]
         \\
@@ -52,9 +52,9 @@ fn usage(writer: anytype) !void {
         \\
     );
     for (std.enums.values(MainCommand)) |cmd| {
-        var counter = std.io.countingWriter(writer);
-        try counter.writer().print("  {s}", .{@tagName(cmd)});
-        try writer.writeByteNTimes(' ', 20 - counter.bytes_written);
+        const n = std.fmt.count("  {s}", .{@tagName(cmd)});
+        try writer.print("  {s}", .{@tagName(cmd)});
+        _ = try writer.splatByte(' ', 20 - n);
         try switch (cmd) {
             .zon2json => writer.writeAll("Convert zon to json\n"),
             .zon2lock => writer.writeAll("Convert build.zig.zon to build.zig.zon2json-lock\n"),
@@ -71,20 +71,20 @@ fn usage(writer: anytype) !void {
         \\
     );
     for (std.enums.values(GeneralOptions)) |opt| {
-        var counter = std.io.countingWriter(writer);
-        try counter.writer().print("  -{c}, --{s}", .{ @tagName(opt)[0], @tagName(opt) });
-        try writer.writeByteNTimes(' ', 20 - counter.bytes_written);
+        const n = std.fmt.count("  -{c}, --{s}", .{ @tagName(opt)[0], @tagName(opt) });
+        try writer.print("  -{c}, --{s}", .{ @tagName(opt)[0], @tagName(opt) });
+        _ = try writer.splatByte(' ', 20 - n);
         try switch (opt) {
             .help => writer.writeAll("Print command-specific usage\n"),
         };
     }
 }
 
-fn @"cmd::help"(_: std.mem.Allocator, _: *std.process.ArgIterator, stdout: anytype, _: anytype) !void {
+fn @"cmd::help"(_: std.mem.Allocator, _: *std.process.ArgIterator, stdout: *std.io.Writer, _: *std.io.Writer) !void {
     try usage(stdout);
 }
 
-fn @"cmd::zen"(_: std.mem.Allocator, _: *std.process.ArgIterator, stdout: anytype, _: anytype) !void {
+fn @"cmd::zen"(_: std.mem.Allocator, _: *std.process.ArgIterator, stdout: *std.io.Writer, _: *std.io.Writer) !void {
     try stdout.writeAll(
         \\
         \\ * Death to NativePaths.zig
@@ -93,18 +93,18 @@ fn @"cmd::zen"(_: std.mem.Allocator, _: *std.process.ArgIterator, stdout: anytyp
     );
 }
 
-fn @"cmd::target"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: anytype, _: anytype) !void {
+fn @"cmd::target"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: *std.io.Writer, _: *std.io.Writer) !void {
     const result = try Target.parse(arena, args.next() orelse "native");
     try stdout.print("{f}", .{std.json.fmt(result, .{ .whitespace = .indent_2 })});
 }
 
-fn @"cmd::zon2json"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: anytype, stderr: anytype) !void {
+fn @"cmd::zon2json"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: *std.io.Writer, stderr: *std.io.Writer) !void {
     const input = args.next() orelse "build.zig.zon";
     const zon = try readInput(arena, std.fs.cwd(), input);
     try zon2json.parseFromSlice(arena, zon, stdout, stderr, .{ .file_name = input });
 }
 
-fn @"cmd::zon2lock"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: anytype, stderr: anytype) !void {
+fn @"cmd::zon2lock"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: *std.io.Writer, stderr: *std.io.Writer) !void {
     const path = args.next() orelse "build.zig.zon";
     const dest = args.next() orelse try std.fmt.allocPrint(arena, "{s}2json-lock", .{path});
 
@@ -113,12 +113,13 @@ fn @"cmd::zon2lock"(arena: std.mem.Allocator, args: *std.process.ArgIterator, st
     } else {
         var json: std.ArrayListUnmanaged(u8) = .{};
         defer json.deinit(arena);
-        try zon2lock.write(arena, std.fs.cwd(), path, json.writer(arena), stderr);
+        var json_writer = json.writer(arena).adaptToNewApi();
+        try zon2lock.write(arena, std.fs.cwd(), path, &json_writer.new_interface, stderr);
         try std.fs.cwd().writeFile(.{ .data = json.items, .sub_path = dest });
     }
 }
 
-fn @"cmd::zon2nix"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: anytype, stderr: anytype) !void {
+fn @"cmd::zon2nix"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: *std.io.Writer, stderr: *std.io.Writer) !void {
     const path = args.next() orelse "build.zig.zon";
     const dest = args.next() orelse D: {
         if (std.mem.endsWith(u8, path, "2json-lock")) {
@@ -133,7 +134,8 @@ fn @"cmd::zon2nix"(arena: std.mem.Allocator, args: *std.process.ArgIterator, std
         if (std.fs.cwd().access(lock_path, .{})) |_| {} else |_| {
             var json: std.ArrayListUnmanaged(u8) = .{};
             defer json.deinit(arena);
-            try zon2lock.write(arena, std.fs.cwd(), path, json.writer(arena), stderr);
+            var json_writer = json.writer(arena).adaptToNewApi();
+            try zon2lock.write(arena, std.fs.cwd(), path, &json_writer.new_interface, stderr);
             try std.fs.cwd().writeFile(.{ .data = json.items, .sub_path = lock_path });
         }
     }
@@ -141,20 +143,22 @@ fn @"cmd::zon2nix"(arena: std.mem.Allocator, args: *std.process.ArgIterator, std
     if (std.mem.eql(u8, dest, "-")) {
         try zon2nix.write(arena, std.fs.cwd(), lock_path, stdout);
     } else {
-        var nix: std.ArrayListUnmanaged(u8) = .{};
+        var writer: std.io.Writer.Allocating = .init(arena);
+        defer writer.deinit();
+        try zon2nix.write(arena, std.fs.cwd(), lock_path, &writer.writer);
+        var nix: std.ArrayListUnmanaged(u8) = writer.toArrayList();
         defer nix.deinit(arena);
-        try zon2nix.write(arena, std.fs.cwd(), lock_path, nix.writer(arena));
         try std.fs.cwd().writeFile(.{ .data = nix.items, .sub_path = dest });
     }
 }
 
-fn @"cmd::versions"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: anytype, _: anytype) !void {
+fn @"cmd::versions"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: *std.io.Writer, _: *std.io.Writer) !void {
     const input = args.next() orelse "https://ziglang.org/download/index.json";
     const json = try readInput(arena, std.fs.cwd(), input);
     try versions.write(arena, json, stdout);
 }
 
-fn realMain(stdout: anytype, stderr: anytype) !void {
+fn realMain(stdout: *std.io.Writer, stderr: *std.io.Writer) !void {
     var arena_state: std.heap.ArenaAllocator = .init(std.heap.page_allocator);
     const arena = arena_state.allocator();
 
@@ -176,20 +180,22 @@ fn realMain(stdout: anytype, stderr: anytype) !void {
 pub fn main() !noreturn {
     var status: cli.ExitStatus = .ok;
     {
-        var stdout = std.io.bufferedWriter(std.fs.File.stdout().deprecatedWriter());
-        defer stdout.flush() catch {};
-        var stderr = std.io.bufferedWriter(std.fs.File.stderr().deprecatedWriter());
-        defer stderr.flush() catch {};
-        realMain(stdout.writer(), stderr.writer()) catch |err| {
+        var stdout_buffer: [1024]u8 = undefined;
+        var stdout = std.fs.File.stdout().writer(&stdout_buffer);
+        defer stdout.interface.flush() catch {};
+        var stderr_buffer: [1024]u8 = undefined;
+        var stderr = std.fs.File.stderr().writer(&stderr_buffer);
+        defer stderr.interface.flush() catch {};
+        realMain(&stdout.interface, &stderr.interface) catch |err| {
             switch (err) {
                 error.MainCommandRequired,
                 error.UnknownMainCommand,
                 => {
-                    try usage(stderr.writer());
+                    try usage(&stderr.interface);
                     status = .usage;
                 },
                 else => |suberr| {
-                    try stderr.writer().print("{}", .{suberr});
+                    try stderr.interface.print("{}", .{suberr});
                     if (@errorReturnTrace()) |trace| {
                         std.debug.dumpStackTrace(trace.*);
                     }

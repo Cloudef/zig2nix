@@ -152,7 +152,8 @@ pub fn fetchZigEnv(allocator: std.mem.Allocator) !std.json.Parsed(ZigEnv) {
     var proc = try pipe(allocator, null, &.{ "zig", "env" });
     defer proc.deinit();
     proc.close();
-    var reader = std.json.reader(allocator, proc.reader());
+    var proc_reader = proc.reader().adaptToNewApi();
+    var reader = std.json.Reader.init(allocator, &proc_reader.new_interface);
     defer reader.deinit();
     const env = try std.json.parseFromTokenSource(ZigEnv, allocator, &reader, .{ .ignore_unknown_fields = true });
     _ = try proc.finish();

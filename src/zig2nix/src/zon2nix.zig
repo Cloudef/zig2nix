@@ -2,7 +2,7 @@ const std = @import("std");
 const cli = @import("cli.zig");
 const zon2lock = @import("zon2lock.zig");
 
-fn writeInternal(arena: std.mem.Allocator, lock: zon2lock.Lock, out: anytype) !void {
+fn writeInternal(arena: std.mem.Allocator, lock: zon2lock.Lock, out: *std.io.Writer) !void {
     var pipe = try cli.pipe(arena, null, &.{ "nixfmt", "-v" });
     defer pipe.deinit();
     const writer = pipe.writer();
@@ -88,7 +88,8 @@ fn writeInternal(arena: std.mem.Allocator, lock: zon2lock.Lock, out: anytype) !v
 
     try writer.writeAll("]");
     pipe.close();
-    pipe.reader().streamUntilDelimiter(out, 0, null) catch |err| switch (err) {
+    var pipe_reader = pipe.reader().adaptToNewApi();
+    _ = pipe_reader.new_interface.streamDelimiter(out, 0) catch |err| switch (err) {
         error.EndOfStream => {},
         else => |e| return e,
     };
@@ -102,7 +103,7 @@ fn writeInternal(arena: std.mem.Allocator, lock: zon2lock.Lock, out: anytype) !v
     };
 }
 
-pub fn write(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, writer: anytype) !void {
+pub fn write(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, writer: *std.io.Writer) !void {
     var arena_state: std.heap.ArenaAllocator = .init(allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();

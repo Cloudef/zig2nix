@@ -47,7 +47,7 @@ pub const Lock = struct {
     }
 };
 
-pub fn parse(allocator: std.mem.Allocator, reader: anytype) !?Lock {
+pub fn parse(allocator: std.mem.Allocator, reader: *std.json.Reader) !?Lock {
     var arena_state: std.heap.ArenaAllocator = .init(allocator);
     errdefer arena_state.deinit();
     const arena = arena_state.allocator();
@@ -73,7 +73,8 @@ pub fn parse(allocator: std.mem.Allocator, reader: anytype) !?Lock {
 pub fn parsePath(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8) !?Lock {
     var file = try cwd.openFile(path, .{});
     defer file.close();
-    var reader = std.json.reader(allocator, file.deprecatedReader());
+    var file_reader = file.reader("");
+    var reader = std.json.Reader.init(allocator, &file_reader.interface);
     defer reader.deinit();
     return parse(allocator, &reader);
 }
@@ -164,7 +165,7 @@ fn nixFetchGit(allocator: std.mem.Allocator, ctx: LockBuilderContext, zhash: []c
     return gitPrefetch(allocator, ctx.tmp, zhash, base, rev);
 }
 
-fn nixFetch(allocator: std.mem.Allocator, ctx: LockBuilderContext, zhash: []const u8, url: []const u8, stderr: anytype) !NixFetchResult {
+fn nixFetch(allocator: std.mem.Allocator, ctx: LockBuilderContext, zhash: []const u8, url: []const u8, stderr: *std.io.Writer) !NixFetchResult {
     const Prefix = enum {
         @"git+http://",
         @"git+https://",
@@ -185,7 +186,7 @@ fn nixFetch(allocator: std.mem.Allocator, ctx: LockBuilderContext, zhash: []cons
     return error.UnsupportedUrl;
 }
 
-fn zigFetch(allocator: std.mem.Allocator, zhash: []const u8, url: []const u8, stderr: anytype) !void {
+fn zigFetch(allocator: std.mem.Allocator, zhash: []const u8, url: []const u8, stderr: *std.io.Writer) !void {
     const zfhash = try cli.run(allocator, null, &.{ "zig", "fetch", url }, 128);
     defer allocator.free(zfhash);
     if (!std.mem.eql(u8, zhash, zfhash)) {
@@ -198,10 +199,11 @@ fn zigFetch(allocator: std.mem.Allocator, zhash: []const u8, url: []const u8, st
     }
 }
 
-fn writeInner(arena: std.mem.Allocator, ctx: LockBuilderContext, writer: anytype, stderr: anytype) !void {
+fn writeInner(arena: std.mem.Allocator, ctx: LockBuilderContext, writer: *std.json.Stringify, stderr: *std.io.Writer) !void {
     var json: std.ArrayListUnmanaged(u8) = .{};
     defer json.deinit(arena);
-    zon2json.parsePath(arena, ctx.cwd, ctx.path, json.writer(arena), stderr) catch |err| switch (err) {
+    var json_writer = json.writer(arena).adaptToNewApi();
+    zon2json.parsePath(arena, ctx.cwd, ctx.path, &json_writer.new_interface, stderr) catch |err| switch (err) {
         error.FileNotFound => |e| if (ctx.is_root) return e else return,
         else => |e| return e,
     };
@@ -288,7 +290,7 @@ fn openFileDir(cwd: std.fs.Dir, path: []const u8) !std.fs.Dir {
     return cwd.openDir(dname, .{});
 }
 
-pub fn write(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, stdout: anytype, stderr: anytype) !void {
+pub fn write(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, stdout: *std.io.Writer, stderr: *std.io.Writer) !void {
     var dir = try openFileDir(cwd, path);
     defer if (cwd.fd != dir.fd) dir.close();
     var arena_state: std.heap.ArenaAllocator = .init(allocator);
@@ -298,8 +300,7 @@ pub fn write(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, st
     var tmp = try cli.mktemp("zig2nix_");
     defer tmp.close();
     var set: std.StringHashMapUnmanaged(void) = .{};
-    var writer = std.json.writeStream(stdout, .{ .whitespace = .indent_2 });
-    defer writer.deinit();
+    var writer: std.json.Stringify = .{ .writer = stdout, .options = .{ .whitespace = .indent_2 } };
     try writer.beginObject();
     const lock_path = try std.fmt.allocPrint(arena_state.allocator(), "{s}2json-lock", .{path});
     var lock = parsePath(arena_state.allocator(), cwd, lock_path) catch |err| switch (err) {

@@ -50,7 +50,7 @@ fn assumeNextAlloc(allocator: std.mem.Allocator, scanner: anytype, comptime expe
     return @field(tok, @tagName(expected));
 }
 
-pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void {
+pub fn write(allocator: std.mem.Allocator, json: []const u8, out: *std.io.Writer) !void {
     var arena_state: std.heap.ArenaAllocator = .init(allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
@@ -113,7 +113,8 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
             } else {
                 if (std.json.innerParse(Source, arena, &scanner, opts)) |src| {
                     if (std.mem.eql(u8, str_key, "src") or
-                        std.mem.eql(u8, str_key, "bootstrap")) {
+                        std.mem.eql(u8, str_key, "bootstrap"))
+                    {
                         try writer.print("\n{s} = {{\n", .{str_key});
                     } else {
                         if (Target.parse(arena, str_key)) |target| {
@@ -178,7 +179,8 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, out: anytype) !void
     try writer.writeAll("}");
 
     pipe.close();
-    pipe.reader().streamUntilDelimiter(out, 0, null) catch |err| switch (err) {
+    var pipe_reader = pipe.reader().adaptToNewApi();
+    _ = pipe_reader.new_interface.streamDelimiter(out, 0) catch |err| switch (err) {
         error.EndOfStream => {},
         else => |e| return e,
     };
