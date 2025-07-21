@@ -54,7 +54,7 @@ fn usage(writer: *std.io.Writer) !void {
     for (std.enums.values(MainCommand)) |cmd| {
         const n = std.fmt.count("  {s}", .{@tagName(cmd)});
         try writer.print("  {s}", .{@tagName(cmd)});
-        _ = try writer.splatByte(' ', 20 - n);
+        try writer.splatByteAll(' ', 20 - n);
         try switch (cmd) {
             .zon2json => writer.writeAll("Convert zon to json\n"),
             .zon2lock => writer.writeAll("Convert build.zig.zon to build.zig.zon2json-lock\n"),
@@ -73,7 +73,7 @@ fn usage(writer: *std.io.Writer) !void {
     for (std.enums.values(GeneralOptions)) |opt| {
         const n = std.fmt.count("  -{c}, --{s}", .{ @tagName(opt)[0], @tagName(opt) });
         try writer.print("  -{c}, --{s}", .{ @tagName(opt)[0], @tagName(opt) });
-        _ = try writer.splatByte(' ', 20 - n);
+        try writer.splatByteAll(' ', 20 - n);
         try switch (opt) {
             .help => writer.writeAll("Print command-specific usage\n"),
         };
