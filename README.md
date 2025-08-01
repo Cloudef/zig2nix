@@ -10,7 +10,7 @@ https://ziglang.org/
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-* Zig master: `0.15.0-dev.936+fc2c1883b @ 2025-07-08`
+* Zig master: `0.15.0-dev.1283+1fcaf90dd @ 2025-07-30`
 * Zig latest: `0.14.1 @ 2025-05-21`
 
 ## Examples
@@ -228,8 +228,9 @@ mkShell = pkgs.callPackage ({
 package = zigPackage;
 
 #! Bundle a package into a zip
-bundle.zip = pkgs.callPackage ./src/bundle/zip.nix { inherit zigPackage; };
-
+bundle.zip = pkgs.callPackage ./src/bundle/zip.nix {
+ zigPackage = (zig-env { zig = zigv.latest; }).package;
+};
 
 #! Bundle a package for running in AWS lambda
 bundle.aws.lambda = pkgs.callPackage ./src/bundle/lambda.nix { bundleZip = bundle.zip; };
