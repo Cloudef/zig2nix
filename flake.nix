@@ -196,7 +196,7 @@
         bundle.aws.lambda = pkgs.callPackage ./src/bundle/lambda.nix { bundleZip = bundle.zip; };
       };
 
-      test-env = zig-env { zig = zigv.master; };
+      test-env = zig-env { zig = zigv.latest; };
       test-app = test-env.app-bare;
 
       test = removeAttrs (_callPackage src/test.nix {
