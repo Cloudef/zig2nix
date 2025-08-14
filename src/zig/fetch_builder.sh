@@ -1,3 +1,5 @@
+# shellcheck shell=bash disable=SC2154
+
 curlVersion=$(curl -V | head -1 | cut -d' ' -f2)
 
 # Curl flags to handle redirects, not use EPSV, handle cookies for
@@ -38,10 +40,21 @@ tryDownload() {
     curlRetry "$url$urlQuery" --output "$out" || return
 
     # check signature
-    if ! minisign -Vm "$out" -x "$TMPDIR/$filename.minisig" -P "$minisignPublicKey"; then
+    if ! trusted_comment=$(minisign -QVm "$out" -x "$TMPDIR/$filename.minisig" -P "$minisignPublicKey"); then
         echo "minisign verification failed!!"
         return 111
     fi
+    echo "validated minisig. trusted comment is $trusted_comment"
+
+    # check trusted comment
+    if ! trusted_filename=$(sed -E 's/^timestamp:[0-9]+\tfile:([^\t]+)\thashed$/\1/;t;q1' <<<"$trusted_comment"); then
+        echo "invalid minisign trusted comment format"
+        return 111
+    elif [[ "$trusted_filename" != "$filename" ]]; then
+        echo "filename in trusted comment does not match!"
+        return 111
+    fi
+    echo "filename matches trusted comment"
 
     return 0
 }
