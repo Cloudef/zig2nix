@@ -87,7 +87,7 @@ in stdenvNoCC.mkDerivation (
       ${attrs.postPatch or ""}
       '';
 
-    postFixup = optionalString (length wrapper-args > 0) (''
+    preFixup = optionalString (length wrapper-args > 0) (''
       for bin in $out/bin/*; do
         '' + optionalString (stdenvNoCC.isLinux) ''
         if patchelf --print-interpreter $bin &> /dev/null; then
@@ -97,11 +97,13 @@ in stdenvNoCC.mkDerivation (
         wrapProgram $bin ${concatStringsSep " " wrapper-args}
       done
       '') + ''
+      ${attrs.preFixup or ""}
+      '';
+
+    postFixup = ''
       find "$out" -type f -exec remove-references-to -t ${zig} '{}' +
       ${attrs.postFixup or ""}
       '';
-
-    dontAutoPatchelf = true;
 
     disallowedReferences = [ zig zig.hook removeReferencesTo ]
       ++ optionals (pathExists zigBuildZonLock) [ deps ];
