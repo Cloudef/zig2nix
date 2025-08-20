@@ -47,7 +47,8 @@ let
 
   wrapper-args = []
     ++ optionals (length zigWrapperBins > 0) [ "--prefix" "PATH" ":" (makeBinPath zigWrapperBins) ]
-    ++ optionals (length zigWrapperLibs > 0) [ "--prefix" "LD_LIBRARY_PATH" ":" (makeLibraryPath zigWrapperLibs) ]
+    ++ optionals (length zigWrapperLibs > 0 && stdenvNoCC.isLinux) [ "--prefix" "LD_LIBRARY_PATH" ":" (makeLibraryPath zigWrapperLibs) ]
+    ++ optionals (length zigWrapperLibs > 0 && stdenvNoCC.isDarwin) [ "--prefix" "DYLD_LIBRARY_PATH" ":" (makeLibraryPath zigWrapperLibs) ]
     ++ zigWrapperArgs;
 
   attrs = optionalAttrs (pathExists zigBuildZon && !userAttrs ? name && !userAttrs ? pname) {
