@@ -6,6 +6,8 @@
   , makeWrapper
   , removeReferencesTo
   , pkg-config
+  , runCommandCC
+  , patchelf
   , target
 }:
 
@@ -59,6 +61,10 @@ let
     name = "${attrs.pname or attrs.name}-dependencies";
   };
 
+  # Do the same thing autopatchelf does, that is assume stdenv's dynamic-linker is what we want
+  # We do not use autopatchelf because we already use makeWrapper to setup proper runtime environment otherwise
+  dl-path = runCommandCC "dl-path" {} "ln -s $NIX_CC/nix-support/dynamic-linker $out";
+
   default-flags =
     if versionAtLeast zig.version "0.11" then
       [ "-Doptimize=ReleaseSafe" ]
@@ -72,6 +78,7 @@ in stdenvNoCC.mkDerivation (
 
     nativeBuildInputs = [ zig.hook removeReferencesTo pkg-config ]
       ++ optionals (length wrapper-args > 0) [ makeWrapper ]
+      ++ optionals (length wrapper-args > 0 && stdenvNoCC.isLinux) [ patchelf ]
       ++ (attrs.nativeBuildInputs or []);
 
     postPatch = optionalString (pathExists zigBuildZonLock) ''
@@ -79,14 +86,21 @@ in stdenvNoCC.mkDerivation (
       ${attrs.postPatch or ""}
       '';
 
-    postFixup = optionalString (length wrapper-args > 0) ''
+    postFixup = optionalString (length wrapper-args > 0) (''
       for bin in $out/bin/*; do
+        '' + optionalString (stdenvNoCC.isLinux) ''
+        if patchelf --print-interpreter $bin &> /dev/null; then
+          patchelf --set-interpreter "$(cat ${dl-path})" $bin
+        fi
+        '' + ''
         wrapProgram $bin ${concatStringsSep " " wrapper-args}
       done
-      '' + ''
+      '') + ''
       find "$out" -type f -exec remove-references-to -t ${zig} '{}' +
       ${attrs.postFixup or ""}
       '';
+
+    dontAutoPatchelf = true;
 
     disallowedReferences = [ zig zig.hook removeReferencesTo ]
       ++ optionals (pathExists zigBuildZonLock) [ deps ];
