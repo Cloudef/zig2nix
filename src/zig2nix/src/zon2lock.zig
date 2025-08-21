@@ -297,7 +297,7 @@ pub fn write(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, st
     defer if (cwd.fd != dir.fd) dir.close();
     var arena_state: std.heap.ArenaAllocator = .init(allocator);
     defer arena_state.deinit();
-    var env = try cli.fetchZigEnv(allocator, stderr);
+    var env = try cli.fetchZigEnv(allocator);
     defer env.deinit();
     var tmp = try cli.mktemp("zig2nix_");
     defer tmp.close();
