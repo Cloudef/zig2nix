@@ -27,4 +27,5 @@ jobs:
       - run: |
           nix run .#update-templates
           nix run .#test-all
+          nix run .#test-0_14-all
           nix run .#readme
