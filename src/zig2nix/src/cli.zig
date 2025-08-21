@@ -152,7 +152,20 @@ const ZigEnv = struct {
     version: []const u8,
 };
 
-pub fn fetchZigEnv(allocator: std.mem.Allocator, error_writer: *std.Io.Writer) !std.json.Parsed(ZigEnv) {
+const FetchedZigEnv = struct {
+    arena: ?*std.heap.ArenaAllocator,
+    value: ZigEnv,
+
+    pub fn deinit(self: *FetchedZigEnv) void {
+        if (self.arena) |arena| {
+            const allocator = arena.allocator();
+            arena.deinit();
+            allocator.destroy(arena);
+        }
+    }
+};
+
+pub fn fetchZigEnv(allocator: std.mem.Allocator) !FetchedZigEnv {
     var proc = try pipe(allocator, null, &.{ "zig", "env" });
     defer proc.deinit();
     proc.close();
@@ -160,10 +173,21 @@ pub fn fetchZigEnv(allocator: std.mem.Allocator, error_writer: *std.Io.Writer) !
     var proc_reader = proc.reader(&buf);
     var tmp = try std.Io.Writer.Allocating.initCapacity(allocator, 1024);
     defer tmp.deinit();
-    try @import("zon2json.zig").parse(allocator, &proc_reader.interface, &tmp.writer, error_writer, .{.file_name = "zig env"});
-    var scanner = std.json.Scanner.initCompleteInput(allocator, try tmp.toOwnedSlice());
-    defer scanner.deinit();
-    const env = try std.json.parseFromTokenSource(ZigEnv, allocator, &scanner, .{ .ignore_unknown_fields = true });
+    _ = try proc_reader.interface.streamRemaining(&tmp.writer);
+    const env_slice = try tmp.toOwnedSliceSentinel(0);
+    const env = std.zon.parse.fromSlice(ZigEnv, allocator, env_slice, null, .{ .ignore_unknown_fields = true }) catch {
+        var scanner = std.json.Scanner.initCompleteInput(allocator, env_slice);
+        defer scanner.deinit();
+        const parsed = try std.json.parseFromTokenSource(ZigEnv, allocator, &scanner, .{ .ignore_unknown_fields = true });
+        _ = try proc.finish();
+        return .{
+            .arena = parsed.arena,
+            .value = parsed.value,
+        };
+    };
     _ = try proc.finish();
-    return env;
+    return .{
+        .arena = null,
+        .value = env,
+    };
 }
