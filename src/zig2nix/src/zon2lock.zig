@@ -2,8 +2,8 @@ const std = @import("std");
 const cli = @import("cli.zig");
 const zon2json = @import("zon2json.zig");
 
-fn assumeNext(scanner: anytype, comptime expected: std.json.TokenType) !std.meta.TagPayload(std.json.Token, @enumFromInt(@intFromEnum(expected))) {
-    const tok = try scanner.next();
+fn assumeNext(reader_or_scanner: anytype, comptime expected: std.json.TokenType) !std.meta.TagPayload(std.json.Token, @enumFromInt(@intFromEnum(expected))) {
+    const tok = try reader_or_scanner.next();
     switch (tok) {
         inline else => |_, tag| if (!std.mem.eql(u8, @tagName(tag), @tagName(expected))) {
             std.log.err("expected token: {s}, got: {s}", .{ @tagName(expected), @tagName(tag) });
@@ -13,8 +13,8 @@ fn assumeNext(scanner: anytype, comptime expected: std.json.TokenType) !std.meta
     return @field(tok, @tagName(expected));
 }
 
-fn assumeNextAlloc(allocator: std.mem.Allocator, scanner: anytype, comptime expected: std.json.TokenType) !std.meta.TagPayload(std.json.Token, @enumFromInt(@intFromEnum(expected))) {
-    const tok = try scanner.nextAlloc(allocator, .alloc_always);
+fn assumeNextAlloc(allocator: std.mem.Allocator, reader_or_scanner: anytype, comptime expected: std.json.TokenType) !std.meta.TagPayload(std.json.Token, @enumFromInt(@intFromEnum(expected))) {
+    const tok = try reader_or_scanner.nextAlloc(allocator, .alloc_always);
     switch (tok) {
         inline else => |_, tag| if (!std.mem.eql(u8, @tagName(tag), @tagName(expected))) {
             if (expected == .string and tag == .allocated_string) return tok.allocated_string;
@@ -47,7 +47,7 @@ pub const Lock = struct {
     }
 };
 
-pub fn parse(allocator: std.mem.Allocator, reader: anytype) !?Lock {
+pub fn parse(allocator: std.mem.Allocator, reader: *std.json.Reader) !?Lock {
     var arena_state: std.heap.ArenaAllocator = .init(allocator);
     errdefer arena_state.deinit();
     const arena = arena_state.allocator();
@@ -73,7 +73,9 @@ pub fn parse(allocator: std.mem.Allocator, reader: anytype) !?Lock {
 pub fn parsePath(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8) !?Lock {
     var file = try cwd.openFile(path, .{});
     defer file.close();
-    var reader = std.json.reader(allocator, file.reader());
+    var buf: [1024]u8 = undefined;
+    var file_reader = file.reader(&buf);
+    var reader = std.json.Reader.init(allocator, &file_reader.interface);
     defer reader.deinit();
     return parse(allocator, &reader);
 }
@@ -113,9 +115,12 @@ fn nixFetchHttp(allocator: std.mem.Allocator, ctx: LockBuilderContext, zhash: []
     {
         var file = try ctx.tmp.createFile(zhash, .{});
         defer file.close();
-        try cli.download(allocator, url, file.writer(), std.math.maxInt(usize));
+        var buf: [1024]u8 = undefined;
+        var file_writer = file.writer(&buf);
+        try cli.download(allocator, url, &file_writer.interface);
+        try file_writer.interface.flush();
     }
-    return .{ .hash = try cli.run(allocator, ctx.tmp, &.{ "nix", "hash", "path", "--mode", "flat", zhash }, 128) };
+    return .{ .hash = try cli.run(allocator, ctx.tmp, &.{ "nix", "hash", "path", "--mode", "flat", zhash }) };
 }
 
 fn gitPrefetch(allocator: std.mem.Allocator, cwd: std.fs.Dir, zhash: []const u8, url: []const u8, rev: []const u8) !NixFetchResult {
@@ -123,7 +128,6 @@ fn gitPrefetch(allocator: std.mem.Allocator, cwd: std.fs.Dir, zhash: []const u8,
         allocator,
         cwd,
         &.{ "nix-prefetch-git", "--out", zhash, "--url", url, "--rev", rev, "--no-deepClone", "--fetch-submodules", "--quiet" },
-        4096,
     );
     defer cwd.deleteTree(zhash) catch {};
     const Result = struct { hash: []const u8, rev: []const u8 };
@@ -144,7 +148,7 @@ fn gitResolveRev(allocator: std.mem.Allocator, url: []const u8, sha_tag_branch: 
         break :D false;
     };
     if (is_sha) return sha_tag_branch;
-    const out = try cli.run(allocator, null, &.{ "git", "ls-remote", "--refs", "-tb", url, sha_tag_branch }, 4096);
+    const out = try cli.run(allocator, null, &.{ "git", "ls-remote", "--refs", "-tb", url, sha_tag_branch });
     var iter = std.mem.tokenizeAny(u8, out, &std.ascii.whitespace);
     return iter.next() orelse return error.GitResolveShaFailed;
 }
@@ -164,7 +168,7 @@ fn nixFetchGit(allocator: std.mem.Allocator, ctx: LockBuilderContext, zhash: []c
     return gitPrefetch(allocator, ctx.tmp, zhash, base, rev);
 }
 
-fn nixFetch(allocator: std.mem.Allocator, ctx: LockBuilderContext, zhash: []const u8, url: []const u8, stderr: anytype) !NixFetchResult {
+fn nixFetch(allocator: std.mem.Allocator, ctx: LockBuilderContext, zhash: []const u8, url: []const u8, stderr: *std.Io.Writer) !NixFetchResult {
     const Prefix = enum {
         @"git+http://",
         @"git+https://",
@@ -185,8 +189,8 @@ fn nixFetch(allocator: std.mem.Allocator, ctx: LockBuilderContext, zhash: []cons
     return error.UnsupportedUrl;
 }
 
-fn zigFetch(allocator: std.mem.Allocator, zhash: []const u8, url: []const u8, stderr: anytype) !void {
-    const zfhash = try cli.run(allocator, null, &.{ "zig", "fetch", url }, 128);
+fn zigFetch(allocator: std.mem.Allocator, zhash: []const u8, url: []const u8, stderr: *std.Io.Writer) !void {
+    const zfhash = try cli.run(allocator, null, &.{ "zig", "fetch", url });
     defer allocator.free(zfhash);
     if (!std.mem.eql(u8, zhash, zfhash)) {
         try stderr.print("fetching (zig fetch): {s}\n", .{url});
@@ -198,15 +202,15 @@ fn zigFetch(allocator: std.mem.Allocator, zhash: []const u8, url: []const u8, st
     }
 }
 
-fn writeInner(arena: std.mem.Allocator, ctx: LockBuilderContext, writer: anytype, stderr: anytype) !void {
-    var json: std.ArrayListUnmanaged(u8) = .{};
-    defer json.deinit(arena);
-    zon2json.parsePath(arena, ctx.cwd, ctx.path, json.writer(arena), stderr) catch |err| switch (err) {
+fn writeInner(arena: std.mem.Allocator, ctx: LockBuilderContext, writer: *std.json.Stringify, stderr: *std.Io.Writer) !void {
+    var json = try std.Io.Writer.Allocating.initCapacity(arena, 1024);
+    defer json.deinit();
+    zon2json.parsePath(arena, ctx.cwd, ctx.path, &json.writer, stderr) catch |err| switch (err) {
         error.FileNotFound => |e| if (ctx.is_root) return e else return,
         else => |e| return e,
     };
 
-    var scanner = std.json.Scanner.initCompleteInput(arena, json.items);
+    var scanner = std.json.Scanner.initCompleteInput(arena, try json.toOwnedSlice());
     defer scanner.deinit();
 
     try assumeNext(&scanner, .object_begin);
@@ -288,18 +292,20 @@ fn openFileDir(cwd: std.fs.Dir, path: []const u8) !std.fs.Dir {
     return cwd.openDir(dname, .{});
 }
 
-pub fn write(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, stdout: anytype, stderr: anytype) !void {
+pub fn write(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, stdout: *std.Io.Writer, stderr: *std.Io.Writer) !void {
     var dir = try openFileDir(cwd, path);
     defer if (cwd.fd != dir.fd) dir.close();
     var arena_state: std.heap.ArenaAllocator = .init(allocator);
     defer arena_state.deinit();
-    var env = try cli.fetchZigEnv(allocator);
+    var env = try cli.fetchZigEnv(allocator, stderr);
     defer env.deinit();
     var tmp = try cli.mktemp("zig2nix_");
     defer tmp.close();
     var set: std.StringHashMapUnmanaged(void) = .{};
-    var writer = std.json.writeStream(stdout, .{ .whitespace = .indent_2 });
-    defer writer.deinit();
+    var writer = std.json.Stringify{
+        .writer = stdout,
+        .options = .{ .whitespace = .indent_2 },
+    };
     try writer.beginObject();
     const lock_path = try std.fmt.allocPrint(arena_state.allocator(), "{s}2json-lock", .{path});
     var lock = parsePath(arena_state.allocator(), cwd, lock_path) catch |err| switch (err) {

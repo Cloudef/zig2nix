@@ -12,12 +12,14 @@ pub fn build(b: *std.Build) void {
 
     const exe = b.addExecutable(.{
         .name = "loader",
-        .root_source_file = b.path("src/loader.zig"),
-        .target = target,
-        .optimize = optimize,
-        .link_libc = false,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/loader.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = false,
+            .single_threaded = true,
+        }),
         .linkage = .static,
-        .single_threaded = true,
     });
 
     b.installArtifact(exe);

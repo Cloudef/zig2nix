@@ -43,7 +43,7 @@ const Executor = struct {
             }
         };
 
-        var args: std.ArrayListUnmanaged([]const u8) = .{};
+        var args: std.ArrayList([]const u8) = .empty;
         defer args.deinit(allocator);
 
         var dynamic = false;

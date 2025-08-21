@@ -55,13 +55,13 @@ const StoreIterator = struct {
 
     pub fn get(allocator: std.mem.Allocator, store: []const u8, needle: []const u8, component: []const u8) ![]const u8 {
         var iter = StoreIterator.init(store);
-        var tmp: std.ArrayListUnmanaged(u8) = .{};
-        defer tmp.deinit(allocator);
+        var tmp = try std.Io.Writer.Allocating.initCapacity(allocator, 1024);
+        defer tmp.deinit();
         while (iter.findNext(needle)) |path| {
-            try tmp.resize(allocator, 0);
-            try tmp.writer(allocator).print("{s}/{s}", .{ path, component });
+            tmp.shrinkRetainingCapacity(0);
+            try tmp.writer.print("{s}/{s}", .{ path, component });
             if (std.fs.accessAbsolute(path, .{ .mode = .read_only })) {
-                return try tmp.toOwnedSlice(allocator);
+                return try tmp.toOwnedSlice();
             } else |_| {}
         }
         log.err("could not find {s} from the store", .{needle});
@@ -70,7 +70,7 @@ const StoreIterator = struct {
 };
 
 const SearchPath = struct {
-    bytes: std.ArrayListUnmanaged(u8) = .{},
+    bytes: std.ArrayList(u8) = .{},
 
     pub fn deinit(self: *@This(), allocator: std.mem.Allocator) void {
         self.bytes.deinit(allocator);
@@ -266,8 +266,8 @@ fn setupLinux(allocator: std.mem.Allocator, bin: []const u8) !std.process.EnvMap
             const sonames = try getSonames(allocator, grep, bin);
             defer allocator.free(sonames);
 
-            var needle: std.ArrayListUnmanaged(u8) = .{};
-            defer needle.deinit(allocator);
+            var needle = try std.Io.Writer.Allocating.initCapacity(allocator, 1024);
+            defer needle.deinit();
 
             var so_iter = SonameIterator.init(sonames);
             while (so_iter.next(true)) |soname| {
@@ -275,10 +275,10 @@ fn setupLinux(allocator: std.mem.Allocator, bin: []const u8) !std.process.EnvMap
                 var found_any = false;
                 var pkgs_iter = SearchPathIterator.initPath(pkgs);
                 while (pkgs_iter.next()) |pkg| {
-                    try needle.resize(allocator, 0);
-                    try needle.writer(allocator).print("-{s}-", .{pkg});
+                    needle.shrinkRetainingCapacity(0);
+                    try needle.writer.print("-{s}-", .{pkg});
                     var iter = StoreIterator.init(store);
-                    while (iter.findNext(needle.items)) |path| {
+                    while (iter.findNext(needle.written())) |path| {
                         if (try ld_library_path.appendWithPathComponent(allocator, path, "lib")) {
                             found_any = true;
                         }
@@ -300,15 +300,15 @@ fn setupLinux(allocator: std.mem.Allocator, bin: []const u8) !std.process.EnvMap
             const sonames = try getSonames(allocator, "/run/current-system/profile/bin/grep", bin);
             defer allocator.free(sonames);
 
-            var needle: std.ArrayListUnmanaged(u8) = .{};
-            defer needle.deinit(allocator);
+            var needle = try std.Io.Writer.Allocating.initCapacity(allocator, 1024);
+            defer needle.deinit();
 
             // loop the sonames though to let guix user know if there's any missing libraries
             var so_iter = SonameIterator.init(sonames);
             while (so_iter.next(false)) |soname| {
-                try needle.resize(allocator, 0);
-                try needle.writer(allocator).print("/run/current-system/profile/lib/{s}", .{soname});
-                if (std.fs.accessAbsolute(needle.items, .{ .mode = .read_only })) {
+                needle.shrinkRetainingCapacity(0);
+                try needle.writer.print("/run/current-system/profile/lib/{s}", .{soname});
+                if (std.fs.accessAbsolute(needle.written(), .{ .mode = .read_only })) {
                     continue;
                 } else |_| {}
                 log.warn("missing library: {s}", .{soname});

@@ -166,16 +166,21 @@ pub fn initFromAnyReader(allocator: std.mem.Allocator, reader: std.io.AnyReader)
     return initFromContentsUnmanaged(try reader.readAllAlloc(allocator, 4e+6));
 }
 
-/// Reads from a anytype reader
-pub fn initFromReader(allocator: std.mem.Allocator, reader: anytype) Error!@This() {
-    return initFromContentsUnmanaged(try reader.readAllAlloc(allocator, 4e+6));
+/// Reads from a reader
+pub fn initFromReader(allocator: std.mem.Allocator, reader: *std.Io.Reader) Error!@This() {
+    var w = try std.Io.Writer.Allocating.initCapacity(allocator, 1024);
+    defer w.deinit();
+    _ = try reader.streamRemaining(&w.writer);
+    return initFromContentsUnmanaged(try w.toOwnedSlice());
 }
 
 /// Reads from a custom path
 pub fn initFromPath(allocator: std.mem.Allocator, path: []const u8) FileError!@This() {
     const f = try std.fs.openFileAbsolute(path, .{ .mode = .read_only });
     defer f.close();
-    return initFromReader(allocator, f.reader());
+    var buf: [1024]u8 = undefined;
+    var reader = f.reader(&buf);
+    return initFromReader(allocator, &reader.interface);
 }
 
 /// Reads from the standard path "/etc/os-release"

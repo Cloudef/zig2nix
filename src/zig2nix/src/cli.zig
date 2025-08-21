@@ -41,33 +41,27 @@ pub fn exit(status: ExitStatus) noreturn {
     std.posix.exit(@intFromEnum(status));
 }
 
-pub fn download(allocator: std.mem.Allocator, url: []const u8, writer: anytype, max_read_size: usize) !void {
+pub fn download(allocator: std.mem.Allocator, url: []const u8, writer: *std.Io.Writer) !void {
     var client: std.http.Client = .{ .allocator = allocator };
     defer client.deinit();
-
-    var body: std.ArrayList(u8) = .init(allocator);
-    defer body.deinit();
 
     _ = try client.fetch(.{
         .method = .GET,
         .location = .{ .url = url },
-        .response_storage = .{ .dynamic = &body },
-        .max_append_size = max_read_size,
+        .response_writer = writer,
     });
-
-    try writer.writeAll(body.items);
 }
 
 pub const Pipe = struct {
     child: std.process.Child,
     finished: bool = false,
 
-    pub fn writer(self: *@This()) std.fs.File.Writer {
-        return self.child.stdin.?.writer();
+    pub fn writer(self: *@This(), buf: []u8) std.fs.File.Writer {
+        return self.child.stdin.?.writer(buf);
     }
 
-    pub fn reader(self: *@This()) std.fs.File.Reader {
-        return self.child.stdout.?.reader();
+    pub fn reader(self: *@This(), buf: []u8) std.fs.File.Reader {
+        return self.child.stdout.?.reader(buf);
     }
 
     pub fn close(self: *@This()) void {
@@ -98,11 +92,16 @@ pub fn pipe(allocator: std.mem.Allocator, cwd: ?std.fs.Dir, argv: []const []cons
     return .{ .child = child };
 }
 
-pub fn run(allocator: std.mem.Allocator, cwd: ?std.fs.Dir, argv: []const []const u8, max_size: usize) ![]const u8 {
+pub fn run(allocator: std.mem.Allocator, cwd: ?std.fs.Dir, argv: []const []const u8) ![]const u8 {
     var proc = try pipe(allocator, cwd, argv);
     defer proc.deinit();
     proc.close();
-    const body = try proc.reader().readAllAlloc(allocator, max_size);
+    var proc_buf: [1024]u8 = undefined;
+    var proc_reader = proc.reader(&proc_buf);
+    var body_writer = try std.Io.Writer.Allocating.initCapacity(allocator, 1024);
+    defer body_writer.deinit();
+    _ = try proc_reader.interface.streamRemaining(&body_writer.writer);
+    const body = try body_writer.toOwnedSlice();
     switch (try proc.finish()) {
         .Exited => |status| switch (status) {
             0 => {},
@@ -114,14 +113,19 @@ pub fn run(allocator: std.mem.Allocator, cwd: ?std.fs.Dir, argv: []const []const
 }
 
 pub const TmpDir = struct {
-    path: std.BoundedArray(u8, 32),
+    path_buf: [32]u8,
+    path_len: usize,
     dir: std.fs.Dir,
+
+    fn path(self: *const @This()) []const u8 {
+        return self.path_buf[0..self.path_len];
+    }
 
     pub fn close(self: *@This()) void {
         defer self.* = undefined;
         var tmp = std.fs.openDirAbsolute("/tmp", .{}) catch return;
         defer tmp.close();
-        tmp.deleteTree(self.path.constSlice()) catch unreachable;
+        tmp.deleteTree(self.path()) catch unreachable;
     }
 };
 
@@ -135,9 +139,9 @@ pub fn mktemp(comptime prefix: []const u8) !TmpDir {
     const hex = std.fmt.bytesToHex(random_part[0..random_bytes], .lower);
     random_part.* = hex;
     const dir = try tmp.makeOpenPath(&buf, .{ .no_follow = true, .access_sub_paths = false });
-    var cpy: std.BoundedArray(u8, 32) = .{};
-    try cpy.appendSlice(&buf);
-    return .{ .path = cpy, .dir = dir };
+    var cpy: [32]u8 = undefined;
+    @memcpy(cpy[0..buf.len], &buf);
+    return .{ .path_buf = cpy, .path_len = buf.len, .dir = dir };
 }
 
 const ZigEnv = struct {
@@ -148,13 +152,18 @@ const ZigEnv = struct {
     version: []const u8,
 };
 
-pub fn fetchZigEnv(allocator: std.mem.Allocator) !std.json.Parsed(ZigEnv) {
+pub fn fetchZigEnv(allocator: std.mem.Allocator, error_writer: *std.Io.Writer) !std.json.Parsed(ZigEnv) {
     var proc = try pipe(allocator, null, &.{ "zig", "env" });
     defer proc.deinit();
     proc.close();
-    var reader = std.json.reader(allocator, proc.reader());
-    defer reader.deinit();
-    const env = try std.json.parseFromTokenSource(ZigEnv, allocator, &reader, .{ .ignore_unknown_fields = true });
+    var buf: [1024]u8 = undefined;
+    var proc_reader = proc.reader(&buf);
+    var tmp = try std.Io.Writer.Allocating.initCapacity(allocator, 1024);
+    defer tmp.deinit();
+    try @import("zon2json.zig").parse(allocator, &proc_reader.interface, &tmp.writer, error_writer, .{.file_name = "zig env"});
+    var scanner = std.json.Scanner.initCompleteInput(allocator, try tmp.toOwnedSlice());
+    defer scanner.deinit();
+    const env = try std.json.parseFromTokenSource(ZigEnv, allocator, &scanner, .{ .ignore_unknown_fields = true });
     _ = try proc.finish();
     return env;
 }
