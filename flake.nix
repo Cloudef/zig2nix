@@ -198,12 +198,21 @@
       };
 
       test-env = zig-env { zig = zigv.latest; };
+      test-env-0_14 = zig-env { zig = zigv."0_14_1"; };
       test-app = test-env.app-bare;
 
       test = removeAttrs (_callPackage src/test.nix {
         inherit test-app zig2nix-zigless;
         inherit (test-env) zig zig2nix target deriveLockFile;
         zig-env = test-env;
+        zig-stable-env = zig-env {};
+      }) [ "override" "overrideDerivation" "overrideAttrs" ];
+
+      test-0_14 = removeAttrs (_callPackage src/test.nix {
+        inherit zig2nix-zigless;
+        inherit (test-env-0_14) zig zig2nix target deriveLockFile;
+        test-app = test-env-0_14.app-bare;
+        zig-env = test-env-0_14;
         zig-stable-env = zig-env {};
       }) [ "override" "overrideDerivation" "overrideAttrs" ];
 
@@ -375,7 +384,8 @@
         ```
         EOF
         '');
-      } // mapAttrs' (name: value: nameValuePair ("test-" + name) value) test;
+      } // (mapAttrs' (name: value: nameValuePair ("test-" + name) value) test)
+      // (mapAttrs' (name: value: nameValuePair ("test-0_14-" + name) value) test-0_14);
 
       #! Develop shell for building and running Zig projects.
       #! nix develop .#zig_version
