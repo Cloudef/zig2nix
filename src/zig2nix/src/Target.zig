@@ -42,9 +42,9 @@ pub fn parse(allocator: std.mem.Allocator, arch_os_abi: []const u8) !@This() {
         _passthru,
     };
 
-    var cpu_features: std.ArrayListUnmanaged(u8) = .{};
+    var cpu_features: std.ArrayList(u8) = .empty;
     const fixed_arch_os_abi: []const u8 = D: {
-        var buf: std.ArrayListUnmanaged(u8) = try .initCapacity(arena, arch_os_abi.len);
+        var buf: std.ArrayList(u8) = try .initCapacity(arena, arch_os_abi.len);
         var iter = std.mem.splitScalar(u8, arch_os_abi, '-');
 
         const arch = iter.next() orelse break :D arch_os_abi;

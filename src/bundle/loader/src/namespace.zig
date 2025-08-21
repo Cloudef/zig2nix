@@ -7,10 +7,15 @@ fn writeTo(path: []const u8, comptime format: []const u8, args: anytype) !void {
         return err;
     };
     defer f.close();
-    var bounded: std.BoundedArray(u8, 1024) = .{};
-    try bounded.writer().print(format, args);
-    f.writer().writeAll(bounded.constSlice()) catch |err| {
+    var buf: [1024]u8 = undefined;
+    var file_writer = f.writer(&buf);
+    const writer = &file_writer.interface;
+    writer.print(format, args) catch |err| {
         log.err("write failed to: {s}", .{path});
+        return err;
+    };
+    writer.flush() catch |err| {
+        log.err("flush failed to: {s}", .{path});
         return err;
     };
 }
@@ -81,9 +86,9 @@ fn replicatePathWithRoots(allocator: std.mem.Allocator, src_root: []const u8, sr
     std.debug.assert(src_root.len > 0 and dst_root.len > 1);
     std.debug.assert(src_root[0] == '/' and dst_root[0] == '/');
     const resolved_src_root = if (src_root.len > 1 or src_root[0] == '/') "" else src_root;
-    const src = try std.fmt.allocPrintZ(allocator, "{s}/{s}", .{ resolved_src_root, src_base });
+    const src = try std.fmt.allocPrintSentinel(allocator, "{s}/{s}", .{ resolved_src_root, src_base }, 0);
     defer allocator.free(src);
-    const dst = try std.fmt.allocPrintZ(allocator, "{s}/{s}", .{ dst_root, dst_base });
+    const dst = try std.fmt.allocPrintSentinel(allocator, "{s}/{s}", .{ dst_root, dst_base }, 0);
     defer allocator.free(dst);
     try replicatePath(allocator, src, dst);
 }
@@ -118,7 +123,7 @@ fn replicateDir(allocator: std.mem.Allocator, src: []const u8, dst: []const u8, 
 }
 
 pub fn setup(allocator: std.mem.Allocator, workdir: []const u8, appdir: []const u8) !void {
-    const mountroot = try std.fmt.allocPrintZ(allocator, "{s}/mountroot", .{workdir});
+    const mountroot = try std.fmt.allocPrintSentinel(allocator, "{s}/mountroot", .{workdir}, 0);
     defer allocator.free(mountroot);
     std.fs.makeDirAbsolute(mountroot) catch {};
 
@@ -156,14 +161,14 @@ pub fn setup(allocator: std.mem.Allocator, workdir: []const u8, appdir: []const 
 
     // setup nix
     {
-        const src = try std.fmt.allocPrintZ(allocator, "{s}/nix/store", .{appdir});
+        const src = try std.fmt.allocPrintSentinel(allocator, "{s}/nix/store", .{appdir}, 0);
         defer allocator.free(src);
         if (std.fs.accessAbsolute(src, .{ .mode = .read_only })) {
-            const dst = try std.fmt.allocPrintZ(allocator, "{s}/nix/store", .{mountroot});
+            const dst = try std.fmt.allocPrintSentinel(allocator, "{s}/nix/store", .{mountroot}, 0);
             defer allocator.free(dst);
             std.fs.cwd().makePath(dst) catch {};
             if (std.fs.accessAbsolute("/nix", .{ .mode = .read_only })) {
-                const opts = try std.fmt.allocPrintZ(allocator, "lowerdir=/nix/store:{s}", .{src});
+                const opts = try std.fmt.allocPrintSentinel(allocator, "lowerdir=/nix/store:{s}", .{src}, 0);
                 defer allocator.free(opts);
                 log.info("/nix exists, mounting {s} as a overlay: {s}", .{ dst, opts });
                 try mount("overlay", dst, "overlay", 0, @intFromPtr(opts.ptr));

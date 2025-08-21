@@ -18,8 +18,8 @@ const Source = struct {
     size: u64,
 };
 
-fn assumeNext(scanner: anytype, comptime expected: std.json.TokenType) !std.meta.TagPayload(std.json.Token, @enumFromInt(@intFromEnum(expected))) {
-    const tok = try scanner.next();
+fn assumeNext(reader_or_scanner: anytype, comptime expected: std.json.TokenType) !std.meta.TagPayload(std.json.Token, @enumFromInt(@intFromEnum(expected))) {
+    const tok = try reader_or_scanner.next();
     switch (tok) {
         inline else => |_, tag| if (!std.mem.eql(u8, @tagName(tag), @tagName(expected))) {
             std.log.err("expected token: {s}, got: {s}", .{ @tagName(expected), @tagName(tag) });
@@ -29,8 +29,8 @@ fn assumeNext(scanner: anytype, comptime expected: std.json.TokenType) !std.meta
     return @field(tok, @tagName(expected));
 }
 
-fn assumeNextAlloc(allocator: std.mem.Allocator, scanner: anytype, comptime expected: std.json.TokenType) !std.meta.TagPayload(std.json.Token, @enumFromInt(@intFromEnum(expected))) {
-    const tok = try scanner.nextAlloc(allocator, .alloc_always);
+fn assumeNextAlloc(allocator: std.mem.Allocator, reader_or_scanner: anytype, comptime expected: std.json.TokenType) !std.meta.TagPayload(std.json.Token, @enumFromInt(@intFromEnum(expected))) {
+    const tok = try reader_or_scanner.nextAlloc(allocator, .alloc_always);
     switch (tok) {
         inline else => |_, tag| if (!std.mem.eql(u8, @tagName(tag), @tagName(expected))) {
             if (expected == .string and tag == .allocated_string) return tok.allocated_string;
@@ -41,7 +41,7 @@ fn assumeNextAlloc(allocator: std.mem.Allocator, scanner: anytype, comptime expe
     return @field(tok, @tagName(expected));
 }
 
-pub fn write(allocator: std.mem.Allocator, json: []const u8, mirrorlist: []const u8, out: anytype) !void {
+pub fn write(allocator: std.mem.Allocator, json: []const u8, mirrorlist: []const u8, out: *std.Io.Writer) !void {
     var arena_state: std.heap.ArenaAllocator = .init(allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
@@ -51,7 +51,9 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, mirrorlist: []const
 
     var pipe = try cli.pipe(arena, null, &.{ "nixfmt", "-v" });
     defer pipe.deinit();
-    const writer = pipe.writer();
+    var buf: [1024]u8 = undefined;
+    var pipe_writer = pipe.writer(&buf);
+    const writer = &pipe_writer.interface;
 
     try writer.writeAll(
         \\{
@@ -83,7 +85,7 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, mirrorlist: []const
         \\
     , .{mirrorlist});
 
-    var releases: std.ArrayListUnmanaged([]const u8) = .{};
+    var releases: std.ArrayList([]const u8) = .empty;
     defer releases.deinit(arena);
 
     try assumeNext(&scanner, .object_begin);
@@ -183,9 +185,13 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, mirrorlist: []const
     }
 
     try writer.writeAll("}");
+    try writer.flush();
 
     pipe.close();
-    pipe.reader().streamUntilDelimiter(out, 0, null) catch |err| switch (err) {
+
+    var pipe_reader = pipe.reader(&buf);
+
+    _ = pipe_reader.interface.streamDelimiter(out, 0) catch |err| switch (err) {
         error.EndOfStream => {},
         else => |e| return e,
     };
