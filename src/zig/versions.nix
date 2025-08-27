@@ -33,6 +33,8 @@ let
       https://zig.linus.dev/zig
       https://zig.squirl.dev
       https://zig.florent.dev
+      https://zig.mirror.mschae23.de/zig
+      https://zigmirror.meox.dev
     '';
   };
 
