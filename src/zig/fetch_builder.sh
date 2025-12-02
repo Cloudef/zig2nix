@@ -35,7 +35,7 @@ tryDownload() {
     local url="$mirror/$filename"
     echo
     echo "trying $url"
-    local curlexit=18;
+    local curlexit=18
 
     curlRetry "$url.minisig$urlQuery" --output "$TMPDIR/$filename.minisig" || return
     curlRetry "$url$urlQuery" --output "$out" || return
@@ -61,6 +61,6 @@ tryDownload() {
 }
 
 echo "loading mirrors from $mirrorFile"
-shuf  <"$mirrorFile" | while read -r mirror; do
+shuf <"$mirrorFile" | while read -r mirror; do
     tryDownload "$mirror" && break
 done
