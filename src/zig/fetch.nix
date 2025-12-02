@@ -1,4 +1,5 @@
 {
+  lib,
   stdenvNoCC,
   curl,
   minisign,
@@ -21,4 +22,11 @@ stdenvNoCC.mkDerivation {
 
   postHook = null;
   preferLocalBuild = true;
+
+  impureEnvVars =
+    lib.fetchers.proxyImpureEnvVars
+    ++ [
+      # This variable allows the user to pass additional options to curl
+      "NIX_CURL_FLAGS"
+    ];
 }

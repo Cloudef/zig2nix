@@ -17,6 +17,7 @@ curl=(
     --cookie-jar cookies
     --user-agent "curl/$curlVersion Nixpkgs/$nixpkgsVersion"
     --insecure
+    $NIX_CURL_FLAGS
 )
 
 curlRetry() {
