@@ -3,7 +3,7 @@
   , stdenvNoCC
   , zig
   , git
-  , nixfmt-rfc-style
+  , nixfmt
   , nix-prefetch-git
   , nix
   , makeWrapper
@@ -23,7 +23,7 @@ stdenvNoCC.mkDerivation {
     wrapProgram $out/bin/zig2nix --prefix PATH : ${lib.makeBinPath [
       git
       nix
-      nixfmt-rfc-style
+      nixfmt
       nix-prefetch-git
     ]}
   '';
