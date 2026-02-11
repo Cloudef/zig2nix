@@ -81,7 +81,7 @@ in stdenvNoCC.mkDerivation (
       ++ optionals (length wrapper-args > 0) [ makeWrapper ]
       ++ (attrs.nativeBuildInputs or []);
 
-    postPatch = optionalString (pathExists zigBuildZonLock) ''
+    postConfigure = optionalString (pathExists zigBuildZonLock) ''
       ln -s ${deps} "$ZIG_GLOBAL_CACHE_DIR"/p
       ${attrs.postPatch or ""}
       '';

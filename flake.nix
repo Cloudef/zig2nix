@@ -21,7 +21,6 @@
       zigHook = { makeSetupHook, zig }: makeSetupHook {
         name = "zig-hook";
         propagatedBuildInputs = [ zig ];
-        substitutions.zig_default_flags = [];
         passthru = { inherit zig; };
       } ./src/setup-hook.sh;
 
