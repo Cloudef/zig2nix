@@ -127,7 +127,7 @@ fn gitPrefetch(allocator: std.mem.Allocator, cwd: std.fs.Dir, zhash: []const u8,
     const json = try cli.run(
         allocator,
         cwd,
-        &.{ "nix-prefetch-git", "--out", zhash, "--url", url, "--rev", rev, "--no-deepClone", "--fetch-submodules", "--quiet" },
+        &.{ "nix-prefetch-git", "--out", zhash, "--url", url, "--rev", rev, "--no-deepClone", "--quiet" },
     );
     defer cwd.deleteTree(zhash) catch {};
     const Result = struct { hash: []const u8, rev: []const u8 };
