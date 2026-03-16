@@ -37,6 +37,7 @@ let
       https://fs.liujiacai.net/zigbuilds
       https://zigmirror.com
       https://zig.chainsafe.dev
+      https://zig.savalione.com
     '';
   };
 
