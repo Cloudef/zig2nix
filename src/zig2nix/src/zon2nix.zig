@@ -42,6 +42,7 @@ fn writeInternal(arena: std.mem.Allocator, lock: zon2lock.Lock, out: *std.Io.Wri
         \\    inherit name rev hash;
         \\    url = url_without_query;
         \\    deepClone = false;
+        \\    fetchSubmodules = false;
         \\  };
         \\
         \\  fetchZigArtifact = { name, url, hash, ... } @ args: let
