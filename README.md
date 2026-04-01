@@ -10,7 +10,7 @@ https://ziglang.org/
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-* Zig master: `0.16.0-dev.3041+3dc5f1398 @ 2026-03-30`
+* Zig master: `0.16.0-dev.3059+42e33db9d @ 2026-03-30`
 * Zig latest: `0.15.2 @ 2025-10-11`
 
 ## Examples
