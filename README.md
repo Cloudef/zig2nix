@@ -77,6 +77,19 @@ nix run github:Cloudef/zig2nix -- zon2json build.zig.zon
 nix run github:Cloudef/zig2nix -- zon2lock build.zig.zon
 ```
 
+#### Ignore lazy dependencies
+
+Dependencies that are irrelevant for the Nix build may be ignored by providing a `zig2nix.ignore` file in the same directory where `build.zig.zon` is. Each line denotes an ignored dependency path -- dependency identifiers from `build.zig.zon`, separated by dots (`.`) to step into the dependency hierarchy.
+
+The `@"identifier"` notation is supported. Comments start with `#`.
+
+Only lazy dependencies may be ignored -- ignoring non-lazy dependencies would break the build, so `zig2lock` checks for this.
+
+```
+some_library    # Ignores lazy dependency named "some_library"
+another_lib.sub   # Ignores lazy dependency of "another_lib" named "sub"
+```
+
 ### Convert build.zig.zon/2json-lock to a nix derivation
 
 ```bash
