@@ -2,6 +2,12 @@ const std = @import("std");
 const cli = @import("cli.zig");
 const zon2json = @import("zon2json.zig");
 
+test {
+    comptime {
+        _ = Ignore;
+    }
+}
+
 fn assumeNext(reader_or_scanner: anytype, comptime expected: std.json.TokenType) !std.meta.TagPayload(std.json.Token, @enumFromInt(@intFromEnum(expected))) {
     const tok = try reader_or_scanner.next();
     switch (tok) {
@@ -87,20 +93,269 @@ const ZonDependency = struct {
     lazy: bool = false,
 };
 
+const Ignore = union(enum) {
+    self,
+    list: List,
+
+    const empty: Ignore = .{ .list = .empty };
+
+    fn parseList(arena: std.mem.Allocator, rd: *std.Io.Reader) !Ignore {
+        var result: Ignore = .empty;
+        while (try rd.takeDelimiter('\n')) |line| {
+            var target: *Ignore = &result;
+
+            var tokenizer: Tokenizer = .init(line);
+            while (try tokenizer.next(arena)) |token| switch (token) {
+                .identifier => |id| {
+                    switch (target.*) {
+                        .self => {},
+                        .list => |*tl| {
+                            const res = try tl.getOrPut(arena, id);
+                            if (!res.found_existing) {
+                                res.value_ptr.* = .empty;
+                            }
+                            target = res.value_ptr;
+                        },
+                    }
+                },
+            };
+
+            if (target != &result and target.* == .list) {
+                target.list.deinit(arena);
+                target.* = .self;
+            }
+        }
+        return result;
+    }
+
+    const List = std.StringHashMapUnmanaged(Ignore);
+
+    const Token = union(enum) {
+        identifier: []u8,
+    };
+
+    const Tokenizer = struct {
+        buffer: []const u8,
+        pos: usize,
+
+        fn init(buffer: []const u8) Tokenizer {
+            return .{ .buffer = buffer, .pos = 0 };
+        }
+
+        fn next(self: *Tokenizer, arena: std.mem.Allocator) !?Token {
+            const State = enum {
+                start,
+                saw_at_sign,
+                string_literal,
+                string_literal_backslash,
+                identifier,
+                identifier_end,
+            };
+            const first = self.pos == 0;
+            var beg = D: {
+                while (self.pos < self.buffer.len and std.ascii.isWhitespace(self.buffer[self.pos])) {
+                    self.pos += 1;
+                }
+                break :D self.pos;
+            };
+
+            const token: Token = state: switch (@as(State, .start)) {
+                .start => {
+                    if (self.pos >= self.buffer.len) return null;
+                    switch (self.buffer[self.pos]) {
+                        '#' => return if (first) null else error.ParseError,
+                        '@' => continue :state .saw_at_sign,
+                        'a'...'z', 'A'...'Z', '_' => continue :state .identifier,
+                        else => return error.ParseError,
+                    }
+                },
+
+                .saw_at_sign => {
+                    self.pos += 1;
+                    if (self.pos >= self.buffer.len) return error.ParseError;
+                    switch (self.buffer[self.pos]) {
+                        '"' => {
+                            beg = self.pos;
+                            continue :state .string_literal;
+                        },
+                        else => return error.ParseError,
+                    }
+                },
+
+                .string_literal => {
+                    self.pos += 1;
+                    if (self.pos >= self.buffer.len) return error.ParseError;
+                    switch (self.buffer[self.pos]) {
+                        0, '\n', 0x01...0x09, 0x0b...0x1f, 0x7f => return error.ParseError,
+                        '\\' => continue :state .string_literal_backslash,
+                        '"' => {
+                            self.pos += 1;
+                            break :state .{
+                                .identifier = try std.zig.string_literal.parseAlloc(
+                                    arena,
+                                    self.buffer[beg..self.pos],
+                                ),
+                            };
+                        },
+                        else => continue :state .string_literal,
+                    }
+                },
+
+                .string_literal_backslash => {
+                    self.pos += 1;
+                    if (self.pos >= self.buffer.len) return error.ParseError;
+                    switch (self.buffer[self.pos]) {
+                        0, '\n' => return error.ParseError,
+                        else => continue :state .string_literal,
+                    }
+                },
+
+                .identifier => {
+                    self.pos += 1;
+                    if (self.pos >= self.buffer.len) continue :state .identifier_end;
+                    switch (self.buffer[self.pos]) {
+                        'a'...'z', 'A'...'Z', '0'...'9', '_' => continue :state .identifier,
+                        '.', '#' => continue :state .identifier_end,
+                        else => |c| if (std.ascii.isWhitespace(c))
+                            continue :state .identifier_end
+                        else
+                            return error.ParseError,
+                    }
+                },
+
+                .identifier_end => .{ .identifier = try arena.dupe(u8, self.buffer[beg..self.pos]) },
+            };
+
+            while (self.pos < self.buffer.len) {
+                if (self.buffer[self.pos] == '.') {
+                    self.pos += 1;
+                    break;
+                }
+                if (self.buffer[self.pos] == '#') {
+                    self.pos = self.buffer.len;
+                    break;
+                }
+                if (!std.ascii.isWhitespace(self.buffer[self.pos]))
+                    return error.ParseError;
+                self.pos += 1;
+            }
+
+            return token;
+        }
+    };
+
+    test parseList {
+        var arena_state: std.heap.ArenaAllocator = .init(std.testing.allocator);
+        defer arena_state.deinit();
+        {
+            _ = arena_state.reset(.retain_capacity);
+            var rd = std.Io.Reader.fixed(
+                \\# Testident lazy deps
+                \\  testident
+                \\
+                \\a.b.c
+                \\a.b ##comment
+                \\x.y      # another comment
+                \\x.@"z".c
+                \\x.z
+                \\x.x.a1
+                \\x.x.b
+            );
+            const i: Ignore = try .parseList(arena_state.allocator(), &rd);
+            try std.testing.expect(i == .list);
+            try std.testing.expectEqual(3, i.list.count());
+
+            const testident = i.list.get("testident") orelse return error.TestUnexpectedNull;
+            try std.testing.expect(testident == .self);
+
+            const a = i.list.get("a") orelse return error.TestUnexpectedNull;
+            try std.testing.expect(a == .list);
+            try std.testing.expectEqual(1, a.list.count());
+
+            const a_b = a.list.get("b") orelse return error.TestUnexpectedNull;
+            try std.testing.expect(a_b == .self);
+
+            const x = i.list.get("x") orelse return error.TestUnexpectedNull;
+            try std.testing.expect(x == .list);
+            try std.testing.expectEqual(3, x.list.count());
+
+            const x_y = x.list.get("y") orelse return error.TestUnexpectedNull;
+            try std.testing.expect(x_y == .self);
+
+            const x_z = x.list.get("z") orelse return error.TestUnexpectedNull;
+            try std.testing.expect(x_z == .self);
+
+            const x_x = x.list.get("x") orelse return error.TestUnexpectedNull;
+            try std.testing.expect(x_x == .list);
+            try std.testing.expectEqual(2, x_x.list.count());
+
+            const x_x_a1 = x_x.list.get("a1") orelse return error.TestUnexpectedNull;
+            try std.testing.expect(x_x_a1 == .self);
+
+            const x_x_b = x_x.list.get("b") orelse return error.TestUnexpectedNull;
+            try std.testing.expect(x_x_b == .self);
+        }
+
+        {
+            _ = arena_state.reset(.retain_capacity);
+            var rd = std.Io.Reader.fixed("# Comment only");
+            const i: Ignore = try .parseList(arena_state.allocator(), &rd);
+            try std.testing.expect(i == .list);
+            try std.testing.expectEqual(0, i.list.count());
+        }
+
+        {
+            _ = arena_state.reset(.retain_capacity);
+            var rd = std.Io.Reader.fixed("*");
+            try std.testing.expectError(error.ParseError, Ignore.parseList(arena_state.allocator(), &rd));
+        }
+
+        {
+            _ = arena_state.reset(.retain_capacity);
+            var rd = std.Io.Reader.fixed(
+                \\# Testident lazy deps
+                \\  testident.*
+                \\
+                \\a.b.c
+                \\a.b.* ##comment
+                \\x.y      # another comment
+                \\x.@"z".c
+                \\x.z
+                \\x.*.a
+                \\x.x.b
+            );
+            try std.testing.expectError(error.ParseError, Ignore.parseList(arena_state.allocator(), &rd));
+        }
+
+        {
+            _ = arena_state.reset(.retain_capacity);
+            var rd = std.Io.Reader.fixed("0.b.c");
+            try std.testing.expectError(error.ParseError, Ignore.parseList(arena_state.allocator(), &rd));
+        }
+    }
+};
+
 const LockBuilderContext = struct {
     tmp: std.fs.Dir,
     zig_cache: std.fs.Dir,
     cwd: std.fs.Dir,
     path: []const u8,
     set: *std.StringHashMapUnmanaged(void),
+    ignore: *const Ignore,
     lock: ?Lock,
     is_root: bool,
 
-    pub fn with(self: @This(), cwd: std.fs.Dir, path: []const u8) @This() {
+    pub fn with(
+        self: @This(),
+        cwd: std.fs.Dir,
+        path: []const u8,
+        ignore: *const Ignore,
+    ) @This() {
         var cpy = self;
         cpy.cwd = cwd;
         cpy.path = path;
         cpy.is_root = false;
+        cpy.ignore = ignore;
         return cpy;
     }
 };
@@ -203,6 +458,7 @@ fn zigFetch(allocator: std.mem.Allocator, zhash: []const u8, url: []const u8, st
 }
 
 fn writeInner(arena: std.mem.Allocator, ctx: LockBuilderContext, writer: *std.json.Stringify, stderr: *std.Io.Writer) !void {
+    const parent_ignore = ctx.ignore.*;
     var json = try std.Io.Writer.Allocating.initCapacity(arena, 1024);
     defer json.deinit();
     zon2json.parsePath(arena, ctx.cwd, ctx.path, &json.writer, stderr) catch |err| switch (err) {
@@ -228,6 +484,21 @@ fn writeInner(arena: std.mem.Allocator, ctx: LockBuilderContext, writer: *std.js
         if (try scanner.peekNextTokenType() == .object_end) break;
         const name = try assumeNextAlloc(arena, &scanner, .string);
         const dep = try std.json.innerParse(ZonDependency, arena, &scanner, opts);
+        const ignore: *const Ignore = switch (parent_ignore) {
+            .self => unreachable,
+            .list => |*l| l.getPtr(name) orelse &.empty,
+        };
+        if (ignore.* == .self) {
+            if (!dep.lazy) {
+                try stderr.print(
+                    "error: Non-lazy dependency '{s}' ({s}) found in ignore list.\n",
+                    .{ name, dep.hash orelse dep.path orelse "<unknown>" },
+                );
+                return error.NonLazyDepIgnored;
+            }
+            continue;
+        }
+
         if (dep.hash) |hash| {
             const res = try ctx.set.getOrPut(arena, hash);
             if (res.found_existing) continue;
@@ -274,13 +545,13 @@ fn writeInner(arena: std.mem.Allocator, ctx: LockBuilderContext, writer: *std.js
             }
             try writer.endObject();
 
-            try writeInner(arena, ctx.with(dir, "build.zig.zon"), writer, stderr);
+            try writeInner(arena, ctx.with(dir, "build.zig.zon", ignore), writer, stderr);
         }
 
         if (dep.path) |path| {
             var dir = try ctx.cwd.openDir(path, .{});
             defer dir.close();
-            try writeInner(arena, ctx.with(dir, "build.zig.zon"), writer, stderr);
+            try writeInner(arena, ctx.with(dir, "build.zig.zon", ignore), writer, stderr);
         }
     }
 
@@ -297,6 +568,16 @@ pub fn write(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, st
     defer if (cwd.fd != dir.fd) dir.close();
     var arena_state: std.heap.ArenaAllocator = .init(allocator);
     defer arena_state.deinit();
+    const ignore: Ignore = D: {
+        var file = dir.openFile("zig2nix.ignore", .{}) catch |err| switch (err) {
+            error.FileNotFound => break :D .empty,
+            else => |e| return e,
+        };
+        defer file.close();
+        var buf: [4096]u8 = undefined;
+        var rd = file.reader(&buf);
+        break :D try .parseList(arena_state.allocator(), &rd.interface);
+    };
     var env = try cli.fetchZigEnv(allocator);
     defer env.deinit();
     var tmp = try cli.mktemp("zig2nix_");
@@ -319,6 +600,7 @@ pub fn write(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, st
         .cwd = dir,
         .path = std.fs.path.basename(path),
         .set = &set,
+        .ignore = &ignore,
         .lock = lock,
         .is_root = true,
     }, &writer, stderr);
