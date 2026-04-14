@@ -11,7 +11,7 @@ https://ziglang.org/
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 * Zig master: `0.16.0-dev.3153+d6f43caad @ 2026-04-12`
-* Zig latest: `0.15.2 @ 2025-10-11`
+* Zig latest: `0.16.0 @ 2026-04-13`
 
 ## Examples
 
@@ -229,7 +229,7 @@ package = zigPackage;
 
 #! Bundle a package into a zip
 bundle.zip = pkgs.callPackage ./src/bundle/zip.nix {
- zigPackage = (zig-env { zig = zigv.latest; }).package;
+ zigPackage = (zig-env { zig = zigv."0_15_2"; }).package;
 };
 
 #! Bundle a package for running in AWS lambda
