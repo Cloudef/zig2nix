@@ -37,7 +37,7 @@
       # always compiled with zig-latest, does not have zig in the path
       # can be used for zon2json, zon2nix and target queries
       zig2nix-zigless = _callPackage ./src/zig2nix/default.nix {
-        zig = zigv.latest;
+        zig = zigv."0_15_2";
         zigBuildFlags = [ "-Dcpu=baseline" ];
       };
 
@@ -189,36 +189,38 @@
 
         #! Bundle a package into a zip
         bundle.zip = pkgs.callPackage ./src/bundle/zip.nix {
-          zigPackage = (zig-env { zig = zigv.latest; }).package;
+          zigPackage = (zig-env { zig = zigv."0_15_2"; }).package;
         };
 
         #! Bundle a package for running in AWS lambda
         bundle.aws.lambda = pkgs.callPackage ./src/bundle/lambda.nix { bundleZip = bundle.zip; };
       };
 
-      test-env = zig-env { zig = zigv.latest; };
+      # TODO: zig fetch and packaging in general in 0.16 changed significantly
+      #       packaking zig 0.16 apps may not yet work with zig2nix
+      zig-stable-env = zig-env { zig = zigv."0_15_2"; };
+      stable-app = zig-stable-env.app-bare;
+      test-env-0_15 = zig-env { zig = zigv."0_15_2"; };
       test-env-0_14 = zig-env { zig = zigv."0_14_1"; };
-      test-app = test-env.app-bare;
 
-      test = removeAttrs (_callPackage src/test.nix {
-        inherit test-app zig2nix-zigless;
-        inherit (test-env) zig zig2nix target deriveLockFile;
-        zig-env = test-env;
-        zig-stable-env = zig-env {};
+      test-0_15 = removeAttrs (_callPackage src/test.nix {
+        inherit zig2nix-zigless zig-stable-env;
+        inherit (test-env-0_15) zig zig2nix target deriveLockFile;
+        test-app = test-env-0_15.app-bare;
+        zig-env = test-env-0_15;
       }) [ "override" "overrideDerivation" "overrideAttrs" ];
 
       test-0_14 = removeAttrs (_callPackage src/test.nix {
-        inherit zig2nix-zigless;
+        inherit zig2nix-zigless zig-stable-env;
         inherit (test-env-0_14) zig zig2nix target deriveLockFile;
         test-app = test-env-0_14.app-bare;
         zig-env = test-env-0_14;
-        zig-stable-env = zig-env {};
       }) [ "override" "overrideDerivation" "overrideAttrs" ];
 
       flake-outputs = _callPackage (import ./src/zig/outputs.nix) {
         inherit zigv zig-env;
       };
-    in with test-env.pkgs.lib; {
+    in with zig-stable-env.pkgs.lib; {
       #! --- Architecture dependent flake outputs.
       #!     access: `zig2nix.outputs.thing.${system}`
 
@@ -241,7 +243,7 @@
         zon2nix = flake-outputs.apps.zon2nix-latest;
 
         # nix run .#update-versions
-        update-versions = with test-env.pkgs; test-app [ curl test-env.zig2nix ] ''
+        update-versions = with zig-stable-env.pkgs; stable-app [ curl zig-stable-env.zig2nix ] ''
           tmp="$(mktemp)"
           trap 'rm -f "$tmp"' EXIT
           # use curl because zig's std.net is flaky
@@ -250,7 +252,7 @@
         '';
 
         # nix run .#update-templates
-        update-templates = with test-env.pkgs; test-app [ coreutils gnused ] ''
+        update-templates = with zig-stable-env.pkgs; stable-app [ coreutils gnused ] ''
           rm -rf templates/default
           mkdir -p templates/default
           sed 's#/[*]SED_ZIG_VER[*]/##' templates/flake.nix > templates/default/flake.nix
@@ -276,7 +278,7 @@
         # nix run .#readme
         readme = let
           project = "zig2nix flake";
-        in with test-env.pkgs; test-app [ gawk gnused ] (replaceStrings ["`"] ["\\`"] ''
+        in with zig-stable-env.pkgs; stable-app [ gawk gnused ] (replaceStrings ["`"] ["\\`"] ''
         cat <<EOF
         # ${project}
 
@@ -383,7 +385,8 @@
         ```
         EOF
         '');
-      } // (mapAttrs' (name: value: nameValuePair ("test-" + name) value) test)
+      }
+      // (mapAttrs' (name: value: nameValuePair ("test-0_15-" + name) value) test-0_15)
       // (mapAttrs' (name: value: nameValuePair ("test-0_14-" + name) value) test-0_14);
 
       #! Develop shell for building and running Zig projects.

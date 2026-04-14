@@ -226,10 +226,10 @@ let
     ln -sf ${zigld}/bin/zigld $out/bin/ld
     '';
 
-  toolchain-unwrapped = { libllvm, targetPlatform }: symlinkJoin {
-    name = "zig-toolchain-${targetPlatform.config}";
+  toolchain-unwrapped = { libllvm, stdenvNoCC }: symlinkJoin {
+    name = "zig-toolchain-${stdenvNoCC.targetPlatform.config}";
     inherit (zig) version;
-    paths = [ (tools-for-target targetPlatform.config) ];
+    paths = [ (tools-for-target stdenvNoCC.targetPlatform.config) ];
     passthru = {
       isClang = true;
       isLLVM = true;
@@ -240,17 +240,17 @@ in
 
 {
   callPackage
-  , targetPlatform
+  , stdenvNoCC
 }:
 
 wrapCCWith {
   inherit gnugrep coreutils;
   cc = callPackage toolchain-unwrapped {};
   useCcForLibs = false;
-  libc = if (targetPlatform == stdenv.buildPlatform) then stdenv.cc.libc else null;
+  libc = if (stdenvNoCC.targetPlatform == stdenv.buildPlatform) then stdenv.cc.libc else null;
   bintools = wrapBintoolsWith {
     inherit gnugrep coreutils;
-    libc = if (targetPlatform == stdenv.buildPlatform) then stdenv.cc.libc else null;
+    libc = if (stdenvNoCC.targetPlatform == stdenv.buildPlatform) then stdenv.cc.libc else null;
     bintools = callPackage toolchain-unwrapped {};
   };
 }

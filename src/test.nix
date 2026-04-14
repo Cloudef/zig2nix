@@ -12,13 +12,13 @@
   , zig
   , target
   , deriveLockFile
-  , buildPlatform
+  , stdenvNoCC
 }:
 
 with builtins;
 with lib;
 
-{
+rec {
   # nix run .#test-zon2json-lock
   zon2lock = test-app [ zig2nix ] ''
     for f in ./fixtures/*.zig.zon ./fixtures/example/build.zig.zon; do
@@ -122,7 +122,7 @@ with lib;
   cross = let
     blacklist =
       [ "armv6l-linux" "armv7l-linux" "x86_64-freebsd" "riscv64-linux" "powerpc64le-linux" "i686-linux" ]
-      ++ optionals (!buildPlatform.isDarwin) [ "aarch64-darwin" ];
+      ++ optionals (!stdenvNoCC.buildPlatform.isDarwin) [ "aarch64-darwin" ];
     targets = [ "x86_64-windows-gnu" ] ++ (subtractLists blacklist systems.flakeExposed);
   in test-app [] (concatStrings (map (nix: let
     crossPkgs = zig-env.zigCrossPkgsForTarget nix;
@@ -149,11 +149,11 @@ with lib;
   # nix run .#test-all
   all = test-app [] ''
     nix flake check --keep-going
-    nix run -L .#test-targets
-    nix run -L .#test-zon2lock
-    nix run -L .#test-zon2nix
-    nix run -L .#test-templates
-    nix run -L .#test-package
-    nix run -L .#test-bundle
+    ${targets.program}
+    ${zon2lock.program}
+    ${zon2nix.program}
+    ${templates.program}
+    ${package.program}
+    ${bundle.program}
     '';
 }

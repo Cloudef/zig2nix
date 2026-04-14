@@ -59,7 +59,7 @@ import path {
       extraNativeBuildInputs = with buildPackages; old.extraNativeBuildInputs
       # without proper `file` command, libtool sometimes fails
       # to recognize 64-bit DLLs
-      ++ optional (hostPlatform.config == "x86_64-w64-mingw32") file;
+      ++ optional (old.hostPlatform.config == "x86_64-w64-mingw32") file;
     });
   };
 

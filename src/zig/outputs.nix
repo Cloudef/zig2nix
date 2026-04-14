@@ -12,8 +12,8 @@ let
   multimedia = with pkgs; []
     ++ optionals stdenv.isLinux [
       vulkan-loader libGL
-      xorg.libX11 xorg.libXext xorg.libXfixes xorg.libXi xorg.libXrender
-      xorg.libXrandr xorg.libXinerama xorg.libXcursor xorg.xorgproto
+      libx11 libxext libxfixes libxi libxrender
+      libxrandr libxinerama libxcursor xorgproto
       wayland-scanner wayland libxkbcommon libdecor
       alsa-lib pulseaudio
     ];
