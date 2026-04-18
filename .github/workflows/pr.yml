@@ -26,6 +26,7 @@ jobs:
       - uses: DeterminateSystems/flakehub-cache-action@main
       - run: |
           nix run .#update-templates
+          nix run .#test-0_16-all
           nix run .#test-0_15-all
           nix run .#test-0_14-all
           nix run .#readme

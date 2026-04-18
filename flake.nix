@@ -34,7 +34,7 @@
       }) [ "override" "overrideDerivation" "overrideAttrs" ];
 
       # zig2nix bridge utility
-      # always compiled with zig-latest, does not have zig in the path
+      # does not have zig in the path
       # can be used for zon2json, zon2nix and target queries
       zig2nix-zigless = _callPackage ./src/zig2nix/default.nix {
         zig = zigv."0_15_2";
@@ -62,8 +62,8 @@
           text = ''${zig2nix-zigless}/bin/zig2nix "$@"'';
         };
 
-        exec = cmd: args: pkgs.runCommandLocal cmd {} ''${zig2nix-zigless}/bin/zig2nix ${cmd} ${escapeShellArgs args} > $out'';
-        exec-path = cmd: path: args: pkgs.runCommandLocal cmd {} ''${zig2nix-zigless}/bin/zig2nix ${cmd} ${path} ${escapeShellArgs args} > $out'';
+        exec = cmd: args: pkgs.runCommandLocal cmd {} ''ZIG_GLOBAL_CACHE_DIR=$TMPDIR/zig2nix ${zig2nix}/bin/zig2nix ${cmd} ${escapeShellArgs args} > $out'';
+        exec-path = cmd: path: args: pkgs.runCommandLocal cmd {} ''ZIG_GLOBAL_CACHE_DIR=$TMPDIR/zig2nix ${zig2nix}/bin/zig2nix ${cmd} ${path} ${escapeShellArgs args} > $out'';
         exec-json = cmd: args: fromJSON (readFile (exec cmd args));
         exec-json-path = cmd: path: args: fromJSON (readFile (exec-path cmd path args));
 
@@ -200,17 +200,25 @@
       #       packaking zig 0.16 apps may not yet work with zig2nix
       zig-stable-env = zig-env { zig = zigv."0_15_2"; };
       stable-app = zig-stable-env.app-bare;
+      test-env-0_16 = zig-env { zig = zigv."0_16_0"; };
       test-env-0_15 = zig-env { zig = zigv."0_15_2"; };
       test-env-0_14 = zig-env { zig = zigv."0_14_1"; };
 
-      test-0_15 = removeAttrs (_callPackage src/test.nix {
+      test-0_16 = removeAttrs (_callPackage src/test-16.nix {
+        inherit zig2nix-zigless zig-stable-env;
+        inherit (test-env-0_16) zig zig2nix target deriveLockFile;
+        test-app = test-env-0_16.app-bare;
+        zig-env = test-env-0_16;
+      }) [ "override" "overrideDerivation" "overrideAttrs" ];
+
+      test-0_15 = removeAttrs (_callPackage src/test-15.nix {
         inherit zig2nix-zigless zig-stable-env;
         inherit (test-env-0_15) zig zig2nix target deriveLockFile;
         test-app = test-env-0_15.app-bare;
         zig-env = test-env-0_15;
       }) [ "override" "overrideDerivation" "overrideAttrs" ];
 
-      test-0_14 = removeAttrs (_callPackage src/test.nix {
+      test-0_14 = removeAttrs (_callPackage src/test-15.nix {
         inherit zig2nix-zigless zig-stable-env;
         inherit (test-env-0_14) zig zig2nix target deriveLockFile;
         test-app = test-env-0_14.app-bare;
@@ -386,6 +394,7 @@
         EOF
         '');
       }
+      // (mapAttrs' (name: value: nameValuePair ("test-0_16-" + name) value) test-0_16)
       // (mapAttrs' (name: value: nameValuePair ("test-0_15-" + name) value) test-0_15)
       // (mapAttrs' (name: value: nameValuePair ("test-0_14-" + name) value) test-0_14);
 

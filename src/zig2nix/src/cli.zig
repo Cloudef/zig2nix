@@ -125,7 +125,7 @@ pub const TmpDir = struct {
         defer self.* = undefined;
         var tmp = std.fs.openDirAbsolute("/tmp", .{}) catch return;
         defer tmp.close();
-        tmp.deleteTree(self.path()) catch unreachable;
+        tmp.deleteTree(self.path()) catch @panic("deleteTree failed");
     }
 };
 

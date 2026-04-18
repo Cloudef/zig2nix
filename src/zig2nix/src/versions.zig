@@ -167,7 +167,7 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, mirrorlist: []const
         // .{ "0_8_0", "llvmPackages_12" },
     });
 
-    const default_llvm = llvm.get("master") orelse unreachable;
+    const default_llvm = llvm.get("master") orelse @panic("could not get llvm for master");
 
     try writer.print("latest = bin meta-{s};\n", .{latest});
     try writer.print("src-latest = src meta-{s} {s};\n", .{ latest, llvm.get(latest) orelse default_llvm });

@@ -338,6 +338,7 @@ const Ignore = union(enum) {
 const LockBuilderContext = struct {
     tmp: std.fs.Dir,
     zig_cache: std.fs.Dir,
+    zig_version: std.SemanticVersion,
     cwd: std.fs.Dir,
     path: []const u8,
     set: *std.StringHashMapUnmanaged(void),
@@ -444,8 +445,8 @@ fn nixFetch(allocator: std.mem.Allocator, ctx: LockBuilderContext, zhash: []cons
     return error.UnsupportedUrl;
 }
 
-fn zigFetch(allocator: std.mem.Allocator, zhash: []const u8, url: []const u8, stderr: *std.Io.Writer) !void {
-    const zfhash = try cli.run(allocator, null, &.{ "zig", "fetch", url });
+fn zigFetch(allocator: std.mem.Allocator, cwd: std.fs.Dir, zhash: []const u8, url: []const u8, stderr: *std.Io.Writer) !void {
+    const zfhash = try cli.run(allocator, cwd, &.{ "zig", "fetch", url });
     defer allocator.free(zfhash);
     if (!std.mem.eql(u8, zhash, zfhash)) {
         try stderr.print("fetching (zig fetch): {s}\n", .{url});
@@ -511,14 +512,31 @@ fn writeInner(arena: std.mem.Allocator, ctx: LockBuilderContext, writer: *std.js
             const zhash = dep.hash orelse return error.ZigZonDepMissingAHash;
 
             var pdir = ctx.zig_cache.openDir("p", .{}) catch D: {
-                try zigFetch(arena, zhash, url, stderr);
+                try zigFetch(arena, ctx.tmp, zhash, url, stderr);
                 break :D try ctx.zig_cache.openDir("p", .{});
             };
             defer pdir.close();
 
-            var dir = pdir.openDir(zhash, .{}) catch D: {
-                try zigFetch(arena, zhash, url, stderr);
-                break :D try pdir.openDir(zhash, .{});
+            var dir: std.fs.Dir = DIR: {
+                if (ctx.zig_version.minor >= 16) {
+                    const tar_name = try std.fmt.allocPrint(arena, "{s}.tar.gz", .{zhash});
+                    var tar = pdir.openFile(tar_name, .{}) catch D: {
+                        try zigFetch(arena, ctx.tmp, zhash, url, stderr);
+                        break :D try pdir.openFile(tar_name, .{});
+                    };
+                    tar.close();
+                    // TODO: This is suboptimal, should extract the ^ tar
+                    const dep_path = try std.fmt.allocPrint(arena, "zig-pkg/{s}", .{zhash});
+                    break :DIR ctx.tmp.openDir(dep_path, .{}) catch D: {
+                        try zigFetch(arena, ctx.tmp, zhash, url, stderr);
+                        break :D try ctx.tmp.openDir(dep_path, .{});
+                    };
+                } else {
+                    break :DIR pdir.openDir(zhash, .{}) catch D: {
+                        try zigFetch(arena, ctx.tmp, zhash, url, stderr);
+                        break :D try pdir.openDir(zhash, .{});
+                    };
+                }
             };
             defer dir.close();
 
@@ -546,6 +564,11 @@ fn writeInner(arena: std.mem.Allocator, ctx: LockBuilderContext, writer: *std.js
             try writer.endObject();
 
             try writeInner(arena, ctx.with(dir, "build.zig.zon", ignore), writer, stderr);
+
+            if (ctx.zig_version.minor >= 16) {
+                const dep_path = try std.fmt.allocPrint(arena, "zig-pkg/{s}", .{zhash});
+                dir.deleteTree(dep_path) catch @panic("deleteTree failed");
+            }
         }
 
         if (dep.path) |path| {
@@ -578,10 +601,21 @@ pub fn write(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, st
         var rd = file.reader(&buf);
         break :D try .parseList(arena_state.allocator(), &rd.interface);
     };
+
     var env = try cli.fetchZigEnv(allocator);
     defer env.deinit();
+    const zig_version: std.SemanticVersion = try .parse(env.value.version);
     var tmp = try cli.mktemp("zig2nix_");
     defer tmp.close();
+
+    if (zig_version.minor >= 16) {
+        // workaround <https://codeberg.org/ziglang/zig/issues/31866>
+        _ = tmp.dir.createFile("build.zig", .{}) catch |err| switch (err) {
+            error.PathAlreadyExists => {},
+            else => |e| return e,
+        };
+    }
+
     var set: std.StringHashMapUnmanaged(void) = .{};
     var writer = std.json.Stringify{
         .writer = stdout,
@@ -597,6 +631,7 @@ pub fn write(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8, st
     try writeInner(arena_state.allocator(), .{
         .tmp = tmp.dir,
         .zig_cache = try cwd.makeOpenPath(env.value.global_cache_dir, .{ .no_follow = true }),
+        .zig_version = zig_version,
         .cwd = dir,
         .path = std.fs.path.basename(path),
         .set = &set,

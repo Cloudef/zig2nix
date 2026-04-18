@@ -3,6 +3,10 @@ const cli = @import("cli.zig");
 const zon2lock = @import("zon2lock.zig");
 
 fn writeInternal(arena: std.mem.Allocator, lock: zon2lock.Lock, out: *std.Io.Writer) !void {
+    var env = try cli.fetchZigEnv(arena);
+    defer env.deinit();
+    const zig_version: std.SemanticVersion = try .parse(env.value.version);
+
     var pipe = try cli.pipe(arena, null, &.{ "nixfmt", "-v" });
     defer pipe.deinit();
     var buf: [1024]u8 = undefined;
@@ -22,14 +26,34 @@ fn writeInternal(arena: std.mem.Allocator, lock: zon2lock.Lock, out: *std.Io.Wri
         \\}:
         \\
         \\let
-        \\  unpackZigArtifact = { name, artifact }:
-        \\    runCommandLocal name { nativeBuildInputs = [ zig ]; }
-        \\    ''
-        \\    hash="$(zig fetch --global-cache-dir "$TMPDIR" ${artifact})"
-        \\    mv "$TMPDIR/p/$hash" "$out"
-        \\    chmod 755 "$out"
-        \\    '';
-        \\
+    );
+
+    if (zig_version.minor >= 16) {
+        try writer.writeAll(
+            \\  unpackZigArtifact = { name, artifact }:
+            \\    runCommandLocal name { nativeBuildInputs = [ zig ]; }
+            \\    ''
+            \\    touch "$TMPDIR/build.zig" # https://codeberg.org/ziglang/zig/issues/31866
+            \\    hash="$(cd "$TMPDIR" && zig fetch --global-cache-dir "$TMPDIR" ${artifact})"
+            \\    mv "$TMPDIR/p/$hash.tar.gz" "$out.tar.gz"
+            \\    chmod 644 "$out.tar.gz"
+            \\    '';
+            \\
+        );
+    } else {
+        try writer.writeAll(
+            \\  unpackZigArtifact = { name, artifact }:
+            \\    runCommandLocal name { nativeBuildInputs = [ zig ]; }
+            \\    ''
+            \\    hash="$(zig fetch --global-cache-dir "$TMPDIR" ${artifact})"
+            \\    mv "$TMPDIR/p/$hash" "$out"
+            \\    chmod 755 "$out"
+            \\    '';
+            \\
+        );
+    }
+
+    try writer.writeAll(
         \\  fetchZig = { name, url, hash }: let
         \\    artifact = fetchurl { inherit url hash; };
         \\  in unpackZigArtifact { inherit name artifact; };
@@ -75,7 +99,11 @@ fn writeInternal(arena: std.mem.Allocator, lock: zon2lock.Lock, out: *std.Io.Wri
         const zhash = kv.key_ptr.*;
         const dep = kv.value_ptr;
         try writer.writeAll("{\n");
-        try writer.print("name = \"{s}\";\n", .{zhash});
+        if (zig_version.minor >= 16) {
+            try writer.print("name = \"{s}.tar.gz\";\n", .{zhash});
+        } else {
+            try writer.print("name = \"{s}\";\n", .{zhash});
+        }
         try writer.writeAll("path = fetchZigArtifact {\n");
         try writer.print("name = \"{s}\";\n", .{dep.name});
         try writer.print("url = \"{s}\";\n", .{dep.url});
