@@ -35,7 +35,7 @@
 
       # zig2nix bridge utility
       # does not have zig in the path
-      # can be used for zon2json, zon2nix and target queries
+      # can be used for target queries
       zig2nix-zigless = _callPackage ./src/zig2nix/default.nix {
         zig = zigv."0_15_2";
         zigBuildFlags = [ "-Dcpu=baseline" ];

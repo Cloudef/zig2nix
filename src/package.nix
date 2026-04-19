@@ -65,6 +65,9 @@ let
   # We do not use autopatchelf because we already use makeWrapper to setup proper runtime environment otherwise
   dl-path = runCommandCC "dl-path" {} "ln -s $NIX_CC/nix-support/dynamic-linker $out";
 
+  # -Ddynamic-linker doesn't seem to work with zig 0.16 ... packaging for nix may be broken :/
+  brokenDynamicLinker = versionAtLeast zig.version "0.16";
+
   default-flags =
     if versionAtLeast zig.version "0.11" then
       [ "-Doptimize=ReleaseSafe" ]
@@ -75,7 +78,7 @@ in stdenvNoCC.mkDerivation (
     zigBuildFlags =
       (attrs.zigBuildFlags or default-flags)
       ++ [ "-Dtarget=${resolved-target}" ]
-      ++ optionals (length wrapper-args > 0 && stdenvNoCC.isLinux) [ "-Ddynamic-linker=${readFile dl-path}" ];
+      ++ optionals (length wrapper-args > 0 && stdenvNoCC.isLinux && !brokenDynamicLinker) [ "-Ddynamic-linker=${readFile dl-path}" ];
 
     nativeBuildInputs = [ zig.hook removeReferencesTo pkg-config ]
       ++ optionals (length wrapper-args > 0) [ makeWrapper ]

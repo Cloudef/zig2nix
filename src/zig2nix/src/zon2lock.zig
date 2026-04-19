@@ -1,6 +1,7 @@
 const std = @import("std");
 const cli = @import("cli.zig");
 const zon2json = @import("zon2json.zig");
+const log = std.log.scoped(.zon2lock);
 
 test {
     comptime {
@@ -35,7 +36,6 @@ pub const LockDependency = struct {
     name: []const u8,
     url: []const u8,
     hash: []const u8,
-    rev: ?[]const u8 = null,
 };
 
 pub const Lock = struct {
@@ -83,7 +83,11 @@ pub fn parsePath(allocator: std.mem.Allocator, cwd: std.fs.Dir, path: []const u8
     var file_reader = file.reader(&buf);
     var reader = std.json.Reader.init(allocator, &file_reader.interface);
     defer reader.deinit();
-    return parse(allocator, &reader);
+    return parse(allocator, &reader) catch |e| D: {
+        log.err("{s}: {}", .{ path, e });
+        log.err("The lock file format may have changed, please re-generate your lock file.", .{});
+        break :D e;
+    };
 }
 
 const ZonDependency = struct {
@@ -363,86 +367,19 @@ const LockBuilderContext = struct {
 
 const NixFetchResult = struct {
     hash: []const u8,
-    rev: ?[]const u8 = null,
 };
 
-fn nixFetchHttp(allocator: std.mem.Allocator, ctx: LockBuilderContext, zhash: []const u8, url: []const u8) !NixFetchResult {
-    defer ctx.tmp.deleteFile(zhash) catch {};
-    {
-        var file = try ctx.tmp.createFile(zhash, .{});
-        defer file.close();
-        var buf: [1024]u8 = undefined;
-        var file_writer = file.writer(&buf);
-        try cli.download(allocator, url, &file_writer.interface);
-        try file_writer.interface.flush();
-    }
-    return .{ .hash = try cli.run(allocator, ctx.tmp, &.{ "nix", "hash", "path", "--mode", "flat", zhash }) };
-}
-
-fn gitPrefetch(allocator: std.mem.Allocator, cwd: std.fs.Dir, zhash: []const u8, url: []const u8, rev: []const u8) !NixFetchResult {
-    const json = try cli.run(
-        allocator,
-        cwd,
-        &.{ "nix-prefetch-git", "--out", zhash, "--url", url, "--rev", rev, "--no-deepClone", "--quiet" },
-    );
-    defer cwd.deleteTree(zhash) catch {};
-    const Result = struct { hash: []const u8, rev: []const u8 };
-    const res = try std.json.parseFromSliceLeaky(Result, allocator, json, .{ .ignore_unknown_fields = true, .max_value_len = 128 });
-    return .{ .hash = res.hash, .rev = res.rev };
-}
-
-fn gitResolveRev(allocator: std.mem.Allocator, url: []const u8, sha_tag_branch: []const u8) ![]const u8 {
-    const is_sha: bool = D: {
-        if (sha_tag_branch.len == 40) {
-            for (sha_tag_branch) |chr| {
-                if (!std.ascii.isAlphanumeric(chr)) {
-                    break :D false;
-                }
-            }
-            break :D true;
-        }
-        break :D false;
-    };
-    if (is_sha) return sha_tag_branch;
-    const out = try cli.run(allocator, null, &.{ "git", "ls-remote", "--refs", "-tb", url, sha_tag_branch });
-    var iter = std.mem.tokenizeAny(u8, out, &std.ascii.whitespace);
-    return iter.next() orelse return error.GitResolveShaFailed;
-}
-
-fn nixFetchGit(allocator: std.mem.Allocator, ctx: LockBuilderContext, zhash: []const u8, url: []const u8) !NixFetchResult {
-    const base: []const u8 = D: {
-        var iter = std.mem.tokenizeAny(u8, url, "?#");
-        break :D iter.next() orelse return error.InvalidGitUrl;
-    };
-
-    const rev: []const u8 = D: {
-        var iter = std.mem.tokenizeScalar(u8, url, '#');
-        _ = iter.next() orelse return error.InvalidGitUrl;
-        break :D try gitResolveRev(allocator, base, iter.rest());
-    };
-
-    return gitPrefetch(allocator, ctx.tmp, zhash, base, rev);
-}
-
 fn nixFetch(allocator: std.mem.Allocator, ctx: LockBuilderContext, zhash: []const u8, url: []const u8, stderr: *std.Io.Writer) !NixFetchResult {
-    const Prefix = enum {
-        @"git+http://",
-        @"git+https://",
-        @"http://",
-        @"https://",
-    };
-
-    try stderr.print("fetching (nix hash): {s}\n", .{url});
-    inline for (std.meta.fields(Prefix)) |field| {
-        if (std.mem.startsWith(u8, url, field.name)) {
-            return switch (@as(Prefix, @enumFromInt(field.value))) {
-                .@"git+http://", .@"git+https://" => nixFetchGit(allocator, ctx, zhash, url[4..]),
-                .@"http://", .@"https://" => nixFetchHttp(allocator, ctx, zhash, url),
-            };
-        }
+    try stderr.print("hashing (nix hash): {s}\n", .{url});
+    var pdir = try ctx.zig_cache.openDir("p", .{});
+    defer pdir.close();
+    if (ctx.zig_version.minor >= 16) {
+        const tar = try std.fmt.allocPrint(allocator, "{s}.tar.gz", .{zhash});
+        defer allocator.free(tar);
+        return .{ .hash = try cli.run(allocator, pdir, &.{ "nix", "hash", "path", "--mode", "flat", tar }) };
+    } else {
+        return .{ .hash = try cli.run(allocator, pdir, &.{ "nix", "hash", "path", "--mode", "nar", zhash }) };
     }
-
-    return error.UnsupportedUrl;
 }
 
 fn zigFetch(allocator: std.mem.Allocator, cwd: std.fs.Dir, zhash: []const u8, url: []const u8, stderr: *std.Io.Writer) !void {
@@ -545,7 +482,7 @@ fn writeInner(arena: std.mem.Allocator, ctx: LockBuilderContext, writer: *std.js
                     break :D try nixFetch(arena, ctx, zhash, url, stderr);
                 } else {
                     const cached = ctx.lock.?.map.get(zhash).?;
-                    break :D .{ .hash = cached.hash, .rev = cached.rev };
+                    break :D .{ .hash = cached.hash };
                 }
             };
 
@@ -557,10 +494,6 @@ fn writeInner(arena: std.mem.Allocator, ctx: LockBuilderContext, writer: *std.js
             try writer.write(url);
             try writer.objectField("hash");
             try writer.write(nix.hash);
-            if (nix.rev) |rev| {
-                try writer.objectField("rev");
-                try writer.write(rev);
-            }
             try writer.endObject();
 
             try writeInner(arena, ctx.with(dir, "build.zig.zon", ignore), writer, stderr);

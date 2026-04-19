@@ -19,6 +19,43 @@ with builtins;
 with lib;
 
 rec {
+  # nix run .#test-zon2json-lock
+  zon2lock = test-app [ zig2nix ] ''
+    for f in ./fixtures/zig-16/*.zig.zon ./fixtures/zig-16/example/build.zig.zon; do
+      echo "testing (zon2lock): $f"
+      if ! cmp <(zig2nix zon2lock "$f" -) "''${f}2json-lock"; then
+        error "unexpected output"
+      fi
+    done
+    '';
+
+  # nix run .#test-zon2nix
+  zon2nix = let
+    fixtures = filter (f: hasSuffix ".zig.zon2json-lock" f) (attrNames (readDir ../fixtures/zig-16)) ++ [ "example/build.zig.zon2json-lock"];
+    drvs = map (f: {
+      lck = f;
+      out = deriveLockFile (../fixtures/zig-16 + "/${f}") { inherit zig; };
+    }) fixtures;
+    test = drv: ''
+      echo "testing (zon2nix): ${drv.lck}"
+      if [[ "$(cat "${../fixtures/zig-16/${drv.lck}}")" != "{}" ]]; then
+        for d in ${drv.out}/*; do
+          test -d "$d" || error 'is not a directory: %s' "$d"
+          if [[ $(wc -l < <(find "$d/" -mindepth 1 -maxdepth 1 -type f)) == 0 ]]; then
+            error "does not contain any regular files: %s" "$d"
+          fi
+          zhash="$(basename "$d")"
+          if ! ${jq}/bin/jq -er --arg k "$zhash" '."\($k)"' ${../fixtures/zig-16/${drv.lck}} > /dev/null; then
+            error 'missing zhash: %s' "$zhash"
+          fi
+        done
+      else
+        test "$(find ${drv.out}/ -mindepth 1 -maxdepth 1 | wc -l)" = 0 || error 'output not empty: %s' '${drv.out}'
+      fi
+      echo "  ${drv.out}"
+      '';
+
+  in test-app [ findutils coreutils ] (concatStringsSep "\n" (map test drvs));
   # nix run .#test-templates
   templates = test-app [] ''
     for var in default master; do
@@ -75,8 +112,8 @@ rec {
   in test-app [ libarchive ] ''
     tmpdir="$(mktemp -d)"
     trap 'chmod -R 755 "$tmpdir"; rm -rf "$tmpdir"' EXIT
-    (cd "$tmpdir"; bsdtar -xf ${zip1}; ./run zon2json ${../fixtures/zig-15/1.zig.zon}; echo)
-    (cd "$tmpdir"; bsdtar -xf ${zip2}; ./run zon2json ${../fixtures/zig-15/1.zig.zon}; echo)
+    (cd "$tmpdir"; bsdtar -xf ${zip1}; ./run zon2json ${../fixtures/zig-16/1.zig.zon}; echo)
+    (cd "$tmpdir"; bsdtar -xf ${zip2}; ./run zon2json ${../fixtures/zig-16/1.zig.zon}; echo)
     echo ${lambda} | grep provided.al2023-arm64.zip
     bsdtar -tf ${lambda} | grep bootstrap
     '';
@@ -114,6 +151,8 @@ rec {
   all = test-app [] ''
     nix flake check --keep-going
     ${targets.program}
+    ${zon2lock.program}
+    ${zon2nix.program}
     ${templates.program}
     ${package.program}
     ${bundle.program}
