@@ -41,8 +41,8 @@
 
       # Get Zls for zig version
       zls-for = zigVersion: let
-        verUnderscore = replaceStrings ["."] ["_"] zig.version;
-      in if zlsv ? verUnderscore then zlsv."${verUnderscore}" else zlsv.latest;
+        verUnderscore = replaceStrings ["."] ["_"] zigVersion;
+      in if zlsv ? ${verUnderscore} then zlsv."${verUnderscore}" else zlsv.latest;
 
       # zig2nix bridge utility
       # does not have zig in the path
