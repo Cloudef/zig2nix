@@ -3,6 +3,7 @@
   , stdenvNoCC
   , fetchurl
   , release
+  , writeScriptBin
 }:
 
 with builtins;
@@ -40,4 +41,8 @@ in if release ? ${system} then stdenvNoCC.mkDerivation (finalAttrs: {
   };
 
   meta = meta-for release;
-}) else throw "There is no zls-${release.version} binary available for ${system}"
+}) else writeScriptBin "zls" ''echo "There is no zls-${release.version} binary available for ${system}"; exit 1''
+
+# ^ Using shell script instead due to `nix flake show --all-systems` fails otherwise
+#   which is annoying as it prevents flakehub publish :/
+# throw "There is no zls-${release.version} binary available for ${system}"
