@@ -297,6 +297,15 @@ pub fn writeZls(allocator: std.mem.Allocator, json: []const u8, out: *std.Io.Wri
         }
     }
 
+    try writer.writeAll(
+        \\# aliases
+        \\"0_15_2" = bin meta-0_15_1;
+        \\"0_14_1" = bin meta-0_14_0;
+        \\"0_12_1" = bin meta-0_12_0;
+        \\"0_10_1" = bin meta-0_10_0;
+        \\"0_9_1" = bin meta-0_9_0;
+    );
+
     try writer.writeAll("}");
     try writer.flush();
 
