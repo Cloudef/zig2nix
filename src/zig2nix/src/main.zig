@@ -46,6 +46,7 @@ pub const MainCommand = enum {
     zon2nix,
     target,
     versions,
+    @"versions-zls",
     help,
     zen,
 };
@@ -76,6 +77,7 @@ fn usage(writer: *std.Io.Writer) !void {
             .zon2nix => writer.writeAll("Convert build.zig.zon2json-lock to a nix derivation\n"),
             .target => writer.writeAll("Print information about the target\n"),
             .versions => writer.writeAll("Generate versions.nix from a zig binary index\n"),
+            .@"versions-zls" => writer.writeAll("Generate versions.nix from a zls binary index\n"),
             .help => writer.writeAll("Print this help and exit\n"),
             .zen => writer.writeAll("Print zen of zig2nix and exit\n"),
         };
@@ -168,11 +170,17 @@ fn @"cmd::zon2nix"(arena: std.mem.Allocator, args: *std.process.ArgIterator, std
 }
 
 fn @"cmd::versions"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: *std.Io.Writer, _: *std.Io.Writer) !void {
-    const input = args.next() orelse "https://ziglang.org/download/index.json";
+    const input = args.next() orelse "https://ziglang.org/download/index.json?source=zig2nix";
     const mirrors = args.next() orelse "https://ziglang.org/download/community-mirrors.txt";
     const json = try readInput(arena, std.fs.cwd(), input);
     const mirrorlist = try readInput(arena, std.fs.cwd(), mirrors);
     try versions.write(arena, json, mirrorlist, stdout);
+}
+
+fn @"cmd::versions-zls"(arena: std.mem.Allocator, args: *std.process.ArgIterator, stdout: *std.Io.Writer, _: *std.Io.Writer) !void {
+    const input = args.next() orelse "https://builds.zigtools.org/index.json?source=zig2nix";
+    const json = try readInput(arena, std.fs.cwd(), input);
+    try versions.writeZls(arena, json, stdout);
 }
 
 fn realMain(stdout: *std.Io.Writer, stderr: *std.Io.Writer) !void {

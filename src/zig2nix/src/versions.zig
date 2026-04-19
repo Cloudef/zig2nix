@@ -207,3 +207,113 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, mirrorlist: []const
         else => error.NixFmtFailed,
     };
 }
+
+pub fn writeZls(allocator: std.mem.Allocator, json: []const u8, out: *std.Io.Writer) !void {
+    var arena_state: std.heap.ArenaAllocator = .init(allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+
+    var scanner = std.json.Scanner.initCompleteInput(arena, json);
+    defer scanner.deinit();
+
+    var pipe = try cli.pipe(arena, null, &.{ "nixfmt", "-v" });
+    defer pipe.deinit();
+    var buf: [1024]u8 = undefined;
+    var pipe_writer = pipe.writer(&buf);
+    const writer = &pipe_writer.interface;
+
+    try writer.writeAll(
+        \\{
+        \\  zlsBin
+        \\}:
+        \\
+        \\let
+        \\  bin = release: zlsBin { inherit release; };
+        \\
+    );
+
+    var releases: std.ArrayList([]const u8) = .empty;
+    defer releases.deinit(arena);
+
+    try assumeNext(&scanner, .object_begin);
+    const opts: std.json.ParseOptions = .{ .max_value_len = 4096, .allocate = .alloc_always, .ignore_unknown_fields = true };
+    while (true) {
+        if (try scanner.peekNextTokenType() == .object_end) break;
+        const release = try assumeNextAlloc(arena, &scanner, .string);
+        const release_name = try arena.dupe(u8, release);
+        std.mem.replaceScalar(u8, release_name, '.', '_');
+        try releases.append(arena, release_name);
+        try assumeNext(&scanner, .object_begin);
+        try writer.print("\nmeta-{s} = {{\n", .{release_name});
+        if (!std.mem.eql(u8, release, "master")) {
+            try writer.print("version = \"{s}\";\n", .{release});
+        }
+        while (true) {
+            if (try scanner.peekNextTokenType() == .object_end) break;
+            const str_key = try assumeNextAlloc(arena, &scanner, .string);
+            if (std.meta.stringToEnum(Meta, str_key)) |_| {
+                const value = try assumeNextAlloc(arena, &scanner, .string);
+                try writer.print("{s} = \"{s}\";\n", .{ str_key, value });
+            } else {
+                if (std.json.innerParse(Source, arena, &scanner, opts)) |src| {
+                    if (std.mem.eql(u8, str_key, "src") or
+                        std.mem.eql(u8, str_key, "bootstrap"))
+                    {
+                        try writer.print("\n{s} = {{\n", .{str_key});
+                    } else {
+                        if (Target.parse(arena, str_key)) |target| {
+                            try writer.print("\n{s} = {{\n", .{target.system});
+                        } else |_| {
+                            try writer.print("\n{s} = {{\n", .{str_key});
+                        }
+                    }
+
+                    const slash = std.mem.lastIndexOfScalar(u8, src.tarball, '/') orelse 0;
+                    const filename = if (src.tarball.len > slash) src.tarball[slash + 1 ..] else "";
+
+                    try writer.print("filename = \"{s}\";\n", .{filename});
+                    try writer.print("shasum = \"{s}\";\n", .{src.shasum});
+                    try writer.print("size = {};\n", .{src.size});
+                    try writer.writeAll("};\n");
+                } else |_| {
+                    // ignore
+                }
+            }
+        }
+        try writer.writeAll("};\n");
+        try assumeNext(&scanner, .object_end);
+    }
+
+    try writer.writeAll("in {\n");
+
+    const latest: []const u8 = releases.items[0];
+
+    try writer.print("latest = bin meta-{s};\n", .{latest});
+    for (releases.items) |release| {
+        if (std.mem.eql(u8, release, "latest")) {
+            // ignore
+        } else {
+            try writer.print("\"{s}\" = bin meta-{s};\n", .{ release, release });
+        }
+    }
+
+    try writer.writeAll("}");
+    try writer.flush();
+
+    pipe.close();
+
+    var pipe_reader = pipe.reader(&buf);
+
+    _ = pipe_reader.interface.streamDelimiter(out, 0) catch |err| switch (err) {
+        error.EndOfStream => {},
+        else => |e| return e,
+    };
+
+    return switch (try pipe.finish()) {
+        .Exited => |status| switch (status) {
+            0 => {},
+            else => error.NixFmtFailed,
+        },
+        else => error.NixFmtFailed,
+    };
+}

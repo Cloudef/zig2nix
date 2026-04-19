@@ -33,6 +33,17 @@
         fetchFromMirror = _callPackage ./src/zig/fetch.nix;
       }) [ "override" "overrideDerivation" "overrideAttrs" ];
 
+      # Zls versions
+      # <https://builds.zigtools.org/index.json>
+      zlsv = removeAttrs (_callPackage ./src/zls/versions.nix {
+        zlsBin = _callPackage ./src/zls/bin.nix;
+      }) [ "override" "overrideDerivation" "overrideAttrs" ];
+
+      # Get Zls for zig version
+      zls-for = zigVersion: let
+        verUnderscore = replaceStrings ["."] ["_"] zig.version;
+      in if zlsv ? verUnderscore then zlsv."${verUnderscore}" else zlsv.latest;
+
       # zig2nix bridge utility
       # does not have zig in the path
       # can be used for target queries
@@ -47,6 +58,8 @@
         nixpkgs ? self.inputs.nixpkgs,
         # Zig version to use.
         zig ? zigv.latest,
+        # Zls version to use.
+        zls ? zls-for zig.version,
       }: with nixpkgs.lib; let
         #! --- Outputs of zig-env {} function.
         #!     access: (zig-env {}).thing
@@ -119,10 +132,10 @@
           };
         in warn "zigCross: ${(target any).zig}" crossPkgs;
 
-        _deps = [ zig zig2nix pkgs.pkg-config ];
+        _deps = [ zig zls zig2nix pkgs.pkg-config ];
       in rec {
         inherit pkgs pkgsForTarget crossPkgsForTarget zigCrossPkgsForTarget binaryPkgsForTarget;
-        inherit zig zigHook zig2nix target fromZON deriveLockFile;
+        inherit zig zigHook zls zig2nix target fromZON deriveLockFile;
 
         #! Flake app helper (Without zig-env and root dir restriction).
         app-bare-no-root = deps: script: {
@@ -239,7 +252,8 @@
       #! nix build .#zig-master
       #! nix build .#zig-latest
       #! nix run .#zig-0_13_0
-      packages = mapAttrs' (k: v: nameValuePair ("zig-" + k) v) zigv;
+      packages = mapAttrs' (k: v: nameValuePair ("zig-" + k) v) zigv
+        // mapAttrs' (k: v: nameValuePair ("zls-" + k) v) zlsv;
 
       # Generates flake apps for all the zig versions.
       apps = flake-outputs.apps // {
@@ -255,8 +269,10 @@
           tmp="$(mktemp)"
           trap 'rm -f "$tmp"' EXIT
           # use curl because zig's std.net is flaky
-          curl "''${@:-https://ziglang.org/download/index.json}" | zig2nix versions - > "$tmp"
+          curl "''${@:-https://ziglang.org/download/index.json?source=zig2nix}" | zig2nix versions - > "$tmp"
           cp -f "$tmp" src/zig/versions.nix
+          curl "''${@:-https://builds.zigtools.org/index.json?source=zig2nix}" | zig2nix versions-zls - > "$tmp"
+          cp -f "$tmp" src/zls/versions.nix
         '';
 
         # nix run .#update-templates
@@ -302,6 +318,8 @@
 
         * Zig master: `${zigv.master.version} @ ${zigv.master.date}`
         * Zig latest: `${zigv.latest.version} @ ${zigv.latest.date}`
+        * Zls master: `${zlsv.master.version} @ ${zlsv.master.date}`
+        * Zls latest: `${zlsv.latest.version} @ ${zlsv.latest.date}`
 
         ## Examples
 
