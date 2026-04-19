@@ -318,7 +318,6 @@
 
         * Zig master: `${zigv.master.version} @ ${zigv.master.date}`
         * Zig latest: `${zigv.latest.version} @ ${zigv.latest.date}`
-        * Zls master: `${zlsv.master.version} @ ${zlsv.master.date}`
         * Zls latest: `${zlsv.latest.version} @ ${zlsv.latest.date}`
 
         ## Examples

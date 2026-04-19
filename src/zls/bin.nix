@@ -22,13 +22,22 @@ let
 in if release ? ${system} then stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "zls";
   inherit (release) version;
+
   src = fetchurl {
     url = "https://builds.zigtools.org/${release."${system}".filename}";
     outputHash = release."${system}".shasum;
     outputHashAlgo = "sha256";
   };
+
   sourceRoot = ".";
   phases = [ "unpackPhase" "installPhase" ];
   installPhase = ''install -Dt "$out/bin" zls'';
+
+  passthru = {
+    info = release;
+    inherit (release) date;
+    inherit (release.${system}) size;
+  };
+
   meta = meta-for release;
 }) else throw "There is no zls-${release.version} binary available for ${system}"
