@@ -20,17 +20,6 @@ jobs:
         with:
           determinate: true
       - uses: DeterminateSystems/flakehub-cache-action@main
-      - uses: DeterminateSystems/flakehub-push@main
-        with:
-          name: Cloudef/zig2nix
-          rolling: true
-          visibility: public
-          include-output-paths: true
-      - uses: cachix/cachix-action@master
-        with:
-          name: zig2nix
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-          skipAddingSubstituter: true
       - run: |
           nix flake update
           nix run .#update-versions
@@ -50,3 +39,14 @@ jobs:
             README.md
           commit-msg: Automatic update
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: DeterminateSystems/flakehub-push@main
+        with:
+          name: Cloudef/zig2nix
+          rolling: true
+          visibility: public
+          include-output-paths: true
+      - uses: cachix/cachix-action@master
+        with:
+          name: zig2nix
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          skipAddingSubstituter: true
