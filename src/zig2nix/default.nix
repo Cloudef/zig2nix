@@ -4,7 +4,6 @@
   , zig
   , git
   , nixfmt
-  , nix-prefetch-git
   , nix
   , makeWrapper
   , zigBuildFlags ? []
@@ -24,7 +23,6 @@ stdenvNoCC.mkDerivation {
       git
       nix
       nixfmt
-      nix-prefetch-git
     ]}
   '';
 }
