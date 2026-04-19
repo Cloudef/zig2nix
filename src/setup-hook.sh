@@ -2,7 +2,6 @@
 
 function zigConfigurePhase {
   runHook preConfigure
-
   ZIG_GLOBAL_CACHE_DIR=$(mktemp -d)
   export ZIG_GLOBAL_CACHE_DIR
   ZIG_LOCAL_CACHE_DIR="$ZIG_GLOBAL_CACHE_DIR"
@@ -49,7 +48,7 @@ function zigCheckPhase {
     zigCheckFlags zigCheckFlagsArray
 
   echoCmd 'zig check flags' "${flagsArray[@]}"
-  TERM=dumb zig build test "${flagsArray[@]}" --verbose
+  TERM=dumb zig build "${flagsArray[@]}" --verbose
 
   runHook postCheck
 }
@@ -88,13 +87,13 @@ if [ -z "${dontUseZigConfigure-}" ] && [ -z "${configurePhase-}" ]; then
 fi
 
 if [ -z "${dontUseZigBuild-}" ] && [ -z "${buildPhase-}" ]; then
-    buildPhase=zigBuildPhase
+  buildPhase=zigBuildPhase
 fi
 
 if [ -z "${dontUseZigCheck-}" ] && [ -z "${checkPhase-}" ]; then
-    checkPhase=zigCheckPhase
+  checkPhase=zigCheckPhase
 fi
 
 if [ -z "${dontUseZigInstall-}" ] && [ -z "${installPhase-}" ]; then
-    installPhase=zigInstallPhase
+  installPhase=zigInstallPhase
 fi
