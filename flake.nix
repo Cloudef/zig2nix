@@ -209,8 +209,7 @@
         bundle.aws.lambda = pkgs.callPackage ./src/bundle/lambda.nix { bundleZip = bundle.zip; };
       };
 
-      # TODO: zig fetch and packaging in general in 0.16 changed significantly
-      #       packaking zig 0.16 apps may not yet work with zig2nix
+      # some tools not updated to 0.16 yet
       zig-stable-env = zig-env { zig = zigv."0_15_2"; };
       stable-app = zig-stable-env.app-bare;
       test-env-0_16 = zig-env { zig = zigv."0_16_0"; };

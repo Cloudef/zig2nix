@@ -145,7 +145,6 @@ rec {
     '') systems.flakeExposed));
 
   # nix run .#test-all
-  # TODO: add zig-16 package fixtures
   all = test-app [] ''
     ${targets.program}
     ${zon2lock.program}
