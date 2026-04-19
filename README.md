@@ -12,6 +12,7 @@ https://ziglang.org/
 
 * Zig master: `0.17.0-dev.27+0dd99c37c @ 2026-04-17`
 * Zig latest: `0.16.0 @ 2026-04-13`
+* Zls latest: `0.16.0 @ 2026-04-16`
 
 ## Examples
 
@@ -107,6 +108,8 @@ zig-env = {
  nixpkgs ? self.inputs.nixpkgs,
  # Zig version to use.
  zig ? zigv.latest,
+ # Zls version to use.
+ zls ? zls-for zig.version,
 }: { ... };
 
 #! --- Outputs of zig-env {} function.
@@ -245,7 +248,8 @@ inherit zig-env;
 #! nix build .#zig-master
 #! nix build .#zig-latest
 #! nix run .#zig-0_13_0
-packages = mapAttrs' (k: v: nameValuePair ("zig-" + k) v) zigv;
+packages = mapAttrs' (k: v: nameValuePair ("zig-" + k) v) zigv
+// mapAttrs' (k: v: nameValuePair ("zls-" + k) v) zlsv;
 
 #! Develop shell for building and running Zig projects.
 #! nix develop .#zig_version
