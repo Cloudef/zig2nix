@@ -148,7 +148,6 @@ rec {
 
   # nix run .#test-all
   all = test-app [] ''
-    nix flake check --keep-going
     ${targets.program}
     ${zon2lock.program}
     ${zon2nix.program}

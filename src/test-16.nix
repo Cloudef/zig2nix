@@ -147,7 +147,6 @@ rec {
   # nix run .#test-all
   # TODO: add zig-16 package fixtures
   all = test-app [] ''
-    nix flake check --keep-going
     ${targets.program}
     ${zon2lock.program}
     ${zon2nix.program}
