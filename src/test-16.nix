@@ -40,11 +40,9 @@ rec {
       echo "testing (zon2nix): ${drv.lck}"
       if [[ "$(cat "${../fixtures/zig-16/${drv.lck}}")" != "{}" ]]; then
         for d in ${drv.out}/*; do
-          test -d "$d" || error 'is not a directory: %s' "$d"
-          if [[ $(wc -l < <(find "$d/" -mindepth 1 -maxdepth 1 -type f)) == 0 ]]; then
-            error "does not contain any regular files: %s" "$d"
-          fi
-          zhash="$(basename "$d")"
+          test -f "$d" || error 'is not a file: %s' "$d"
+          base="$(basename "''${d%.*}")"
+          zhash="''${base%.*}"
           if ! ${jq}/bin/jq -er --arg k "$zhash" '."\($k)"' ${../fixtures/zig-16/${drv.lck}} > /dev/null; then
             error 'missing zhash: %s' "$zhash"
           fi
