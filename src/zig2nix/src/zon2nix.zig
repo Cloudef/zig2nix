@@ -34,7 +34,7 @@ fn writeInternal(arena: std.mem.Allocator, lock: zon2lock.Lock, out: *std.Io.Wri
             \\    outputHashMode = "flat";
             \\  } ''
             \\    touch "$TMPDIR/build.zig" # workaround <https://codeberg.org/ziglang/zig/issues/31866>
-            \\    hash="$(cd $TMPDIR && zig fetch --global-cache-dir "$TMPDIR" ${url})"
+            \\    hash="$(cd "$TMPDIR" && zig fetch --global-cache-dir "$TMPDIR" "${url}")"
             \\    mv "$TMPDIR/p/$hash.tar.gz" "$out"
             \\  '';
             \\
@@ -47,7 +47,7 @@ fn writeInternal(arena: std.mem.Allocator, lock: zon2lock.Lock, out: *std.Io.Wri
             \\    outputHash = hash;
             \\    outputHashMode = "nar";
             \\  } ''
-            \\    hash="$(zig fetch --global-cache-dir "$TMPDIR" ${url})"
+            \\    hash="$(zig fetch --global-cache-dir "$TMPDIR" "${url}")"
             \\    mv "$TMPDIR/p/$hash" "$out"
             \\    chmod 755 "$out"
             \\  '';
