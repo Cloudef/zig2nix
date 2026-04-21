@@ -124,7 +124,8 @@
         #! NOTE: This is an experimental feature, expect it not faring well
         zigCrossPkgsForTarget = any: let
           crossPkgs = pkgs.callPackage ./src/cross {
-            inherit zig zigPackage target;
+            inherit zig target;
+            zigPackage = (zig-env { zig = zigv."0_15_2"; }).package;
             nixCrossPkgs = pkgsForTarget any;
             nixBinaryPkgs = binaryPkgsForTarget any;
             localSystem = system;

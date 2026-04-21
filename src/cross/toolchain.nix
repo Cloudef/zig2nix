@@ -57,6 +57,8 @@ let
 
     os = (target any).os;
 
+    native = (target any).config == stdenv.buildPlatform.config;
+
     # Does not support the -c compiler flag
     multiple-objects-supported = os != "windows" && os != "darwin";
 
@@ -66,6 +68,8 @@ let
     cc_args = [
       # Symbol versioning hell ...
       "-Wl,--undefined-version"
+    ] ++ optionals native [
+      "-Wl,-dynamic-linker,${stdenv.cc.bintools.dynamicLinker}"
     ] ++ optionals multiple-objects-supported [
       # Provides arc4random family functions
       # This is quite unfortunate, but zig ships recent glibc headers, but links against older glibc stubs
@@ -240,17 +244,16 @@ in
 
 {
   callPackage
-  , stdenvNoCC
 }:
 
 wrapCCWith {
   inherit gnugrep coreutils;
   cc = callPackage toolchain-unwrapped {};
   useCcForLibs = false;
-  libc = if (stdenvNoCC.targetPlatform == stdenv.buildPlatform) then stdenv.cc.libc else null;
+  libc = null;
   bintools = wrapBintoolsWith {
     inherit gnugrep coreutils;
-    libc = if (stdenvNoCC.targetPlatform == stdenv.buildPlatform) then stdenv.cc.libc else null;
+    libc = null;
     bintools = callPackage toolchain-unwrapped {};
   };
 }
