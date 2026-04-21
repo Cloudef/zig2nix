@@ -6,12 +6,13 @@
   , makeWrapper
   , removeReferencesTo
   , pkg-config
-  , runCommandCC
   , target
 }:
 
 {
   src
+  , glibc
+  , musl
   , stdenvNoCC
   # Specify target for zig compiler, defaults to stdenv.targetPlatform.
   , zigTarget ? null
@@ -61,12 +62,17 @@ let
     name = "${attrs.pname or attrs.name}-dependencies";
   };
 
-  # Do the same thing autopatchelf does, that is assume stdenv's dynamic-linker is what we want
-  # We do not use autopatchelf because we already use makeWrapper to setup proper runtime environment otherwise
-  dl-path = runCommandCC "dl-path" {} "ln -s $NIX_CC/nix-support/dynamic-linker $out";
-
-  # -Ddynamic-linker doesn't seem to work with zig 0.16 ... packaging for nix may be broken :/
-  brokenDynamicLinker = versionAtLeast zig.version "0.16";
+  abi = (target resolved-target).abi;
+  dynamic-linker =
+    if !stdenvNoCC.isLinux then null
+    # -Ddynamic-linker doesn't seem to work with zig 0.16 ... packaging for nix may be broken :/
+    else if versionAtLeast zig.version "0.16" then null
+    # cross-compiling
+    else if resolved-target != default-target && zigTarget != null then null
+    else if ((target resolved-target).dynamicLinker or null) == null then null
+    else if abi == "gnu" then "${glibc}${(target resolved-target).dynamicLinker}"
+    else if abi == "musl" then "${musl}${(target resolved-target).dynamicLinker}"
+    else null;
 
   default-flags =
     if versionAtLeast zig.version "0.11" then
@@ -78,7 +84,7 @@ in stdenvNoCC.mkDerivation (
     zigBuildFlags =
       (attrs.zigBuildFlags or default-flags)
       ++ [ "-Dtarget=${resolved-target}" ]
-      ++ optionals (length wrapper-args > 0 && stdenvNoCC.isLinux && !brokenDynamicLinker) [ "-Ddynamic-linker=${readFile dl-path}" ];
+      ++ optionals (length wrapper-args > 0 && dynamic-linker != null) [ "-Ddynamic-linker=${dynamic-linker}" ];
 
     nativeBuildInputs = [ zig.hook removeReferencesTo pkg-config ]
       ++ optionals (length wrapper-args > 0) [ makeWrapper ]

@@ -4,6 +4,8 @@ zig: []const u8,
 system: []const u8,
 config: []const u8,
 os: []const u8,
+abi: []const u8,
+dynamicLinker: ?[]const u8,
 libc: bool,
 
 pub fn parse(allocator: std.mem.Allocator, arch_os_abi: []const u8) !@This() {
@@ -189,6 +191,8 @@ pub fn parse(allocator: std.mem.Allocator, arch_os_abi: []const u8) !@This() {
         .system = try std.fmt.allocPrint(allocator, "{s}-{s}", .{ arch, os }),
         .config = config,
         .os = @tagName(target.os.tag),
+        .abi = @tagName(target.abi),
+        .dynamicLinker = if (target.dynamic_linker.get()) |s| try allocator.dupe(u8, s) else null,
         .libc = switch (@TypeOf(std.zig.target.canBuildLibC)) {
             fn (std.Target) bool => std.zig.target.canBuildLibC(target),
             fn (*const std.Target) bool => std.zig.target.canBuildLibC(&target),
