@@ -61,6 +61,7 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, mirrorlist: []const
         \\  , zigBin
         \\  , zigSrc
         \\  , fetchFromMirror
+        \\  , llvmPackages_22
         \\  , llvmPackages_21
         \\  , llvmPackages_20
         \\  , llvmPackages_19
@@ -150,7 +151,9 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, mirrorlist: []const
     };
 
     const llvm = std.StaticStringMap([]const u8).initComptime(.{
-        .{ "master", "llvmPackages_21" },
+        .{ "master", "llvmPackages_22" },
+        .{ "0_16_0", "llvmPackages_21" },
+        .{ "0_15_2", "llvmPackages_20" },
         .{ "0_15_1", "llvmPackages_20" },
         .{ "0_14_1", "llvmPackages_19" },
         .{ "0_14_0", "llvmPackages_19" },

@@ -3,6 +3,7 @@
   zigBin,
   zigSrc,
   fetchFromMirror,
+  llvmPackages_22,
   llvmPackages_21,
   llvmPackages_20,
   llvmPackages_19,
@@ -1755,9 +1756,11 @@ in
   latest = bin meta-0_16_0;
   src-latest = src meta-0_16_0 llvmPackages_21;
   master = bin meta-master;
-  src-master = src meta-master llvmPackages_21;
+  src-master = src meta-master llvmPackages_22;
   "0_16_0" = bin meta-0_16_0;
+  src-0_16_0 = src meta-0_16_0 llvmPackages_21;
   "0_15_2" = bin meta-0_15_2;
+  src-0_15_2 = src meta-0_15_2 llvmPackages_20;
   "0_15_1" = bin meta-0_15_1;
   src-0_15_1 = src meta-0_15_1 llvmPackages_20;
   "0_14_1" = bin meta-0_14_1;
