@@ -45,7 +45,7 @@ fn writeInternal(arena: std.mem.Allocator, lock: zon2lock.Lock, out: *std.Io.Wri
             \\    src = url;
             \\    nativeBuildInputs = [ zig ];
             \\    outputHash = hash;
-            \\    outputHashMode = "nar";
+            \\    outputHashMode = "recursive";
             \\  } ''
             \\    hash="$(zig fetch --global-cache-dir "$TMPDIR" "${url}")"
             \\    mv "$TMPDIR/p/$hash" "$out"
