@@ -39,6 +39,8 @@ let
       https://zigmirror.com
       https://zig.chainsafe.dev
       https://zig.savalione.com
+      https://zig.bcr.ist
+      https://zig.vortan.dev/zig
     '';
   };
 
