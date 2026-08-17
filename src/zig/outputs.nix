@@ -10,7 +10,7 @@ with builtins;
 
 let
   multimedia = with pkgs; []
-    ++ optionals stdenv.isLinux [
+    ++ optionals stdenv.hostPlatform.isLinux [
       vulkan-loader libGL
       libx11 libxext libxfixes libxi libxrender
       libxrandr libxinerama libxcursor xorgproto

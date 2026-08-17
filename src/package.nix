@@ -47,8 +47,8 @@ let
 
   wrapper-args = []
     ++ optionals (length zigWrapperBins > 0) [ "--prefix" "PATH" ":" (makeBinPath zigWrapperBins) ]
-    ++ optionals (length zigWrapperLibs > 0 && stdenvNoCC.isLinux) [ "--prefix" "LD_LIBRARY_PATH" ":" (makeLibraryPath zigWrapperLibs) ]
-    ++ optionals (length zigWrapperLibs > 0 && stdenvNoCC.isDarwin) [ "--prefix" "DYLD_LIBRARY_PATH" ":" (makeLibraryPath zigWrapperLibs) ]
+    ++ optionals (length zigWrapperLibs > 0 && stdenvNoCC.hostPlatform.isLinux) [ "--prefix" "LD_LIBRARY_PATH" ":" (makeLibraryPath zigWrapperLibs) ]
+    ++ optionals (length zigWrapperLibs > 0 && stdenvNoCC.hostPlatform.isDarwin) [ "--prefix" "DYLD_LIBRARY_PATH" ":" (makeLibraryPath zigWrapperLibs) ]
     ++ zigWrapperArgs;
 
   attrs = optionalAttrs (pathExists zigBuildZon && !userAttrs ? name && !userAttrs ? pname) {
@@ -64,7 +64,7 @@ let
 
   abi = (target resolved-target).abi;
   dynamic-linker =
-    if !stdenvNoCC.isLinux then null
+    if !stdenvNoCC.hostPlatform.isLinux then null
     # -Ddynamic-linker doesn't seem to work with zig 0.16 ... packaging for nix may be broken :/
     else if versionAtLeast zig.version "0.16" then null
     # cross-compiling

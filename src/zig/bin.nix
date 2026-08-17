@@ -58,7 +58,7 @@ in if release ? ${system} then stdenvNoCC.mkDerivation (finalAttrs: {
     inherit (release) date notes stdDocs docs src;
     inherit (release.${system}) size;
     hook = callPackage zigHook {
-      zig = if (stdenvNoCC.isLinux) then
+      zig = if (stdenvNoCC.hostPlatform.isLinux) then
         # Wrap binary package zig on linux so /usr/bin/env can be found inside a sandbox
         writeScriptBin "zig" ''
           args=()
