@@ -79,8 +79,25 @@ let
       [ "-Doptimize=ReleaseSafe" ]
     else
       [ "-Drelease-safe=true" ];
+
+  # Arguments consumed by this wrapper. They must be stripped from the
+  # derivation attrs, otherwise derivationStrict forces them: glibc/musl
+  # make the package depend on those store paths at best, and at worst
+  # fail to evaluate at all (glibc is linux-only, breaking darwin).
+  consumedArgs = [
+    "stdenvNoCC"
+    "glibc"
+    "musl"
+    "zigTarget"
+    "zigPreferMusl"
+    "zigWrapperBins"
+    "zigWrapperLibs"
+    "zigWrapperArgs"
+    "zigBuildZon"
+    "zigBuildZonLock"
+  ];
 in stdenvNoCC.mkDerivation (
-  (removeAttrs attrs [ "stdenvNoCC" ]) // {
+  (removeAttrs attrs consumedArgs) // {
     zigBuildFlags =
       (attrs.zigBuildFlags or default-flags)
       ++ [ "-Dtarget=${resolved-target}" ]
