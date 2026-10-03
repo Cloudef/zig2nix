@@ -74,17 +74,23 @@ let
     else if abi == "musl" then "${musl}${(target resolved-target).dynamicLinker}"
     else null;
 
+  needs-dynamic-linker-path = length wrapper-args > 0 && dynamic-linker != null;
+
   default-flags =
     if versionAtLeast zig.version "0.11" then
       [ "-Doptimize=ReleaseSafe" ]
     else
       [ "-Drelease-safe=true" ];
 in stdenvNoCC.mkDerivation (
-  (removeAttrs attrs [ "stdenvNoCC" ]) // {
+  (removeAttrs attrs
+    ([ "stdenvNoCC" ]
+    ++ optionals (needs-dynamic-linker-path && abi == "gnu") [ "musl" ]
+    ++ optionals (needs-dynamic-linker-path && abi == "musl") [ "glibc" ]
+    ++ optionals (!needs-dynamic-linker-path) [ "glibc" "musl" ])) // {
     zigBuildFlags =
       (attrs.zigBuildFlags or default-flags)
       ++ [ "-Dtarget=${resolved-target}" ]
-      ++ optionals (length wrapper-args > 0 && dynamic-linker != null) [ "-Ddynamic-linker=${dynamic-linker}" ];
+      ++ optionals (needs-dynamic-linker-path) [ "-Ddynamic-linker=${dynamic-linker}" ];
 
     nativeBuildInputs = [ zig.hook removeReferencesTo pkg-config ]
       ++ optionals (length wrapper-args > 0) [ makeWrapper ]
