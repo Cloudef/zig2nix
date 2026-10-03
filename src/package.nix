@@ -74,7 +74,7 @@ let
     else if abi == "musl" then "${musl}${(target resolved-target).dynamicLinker}"
     else null;
 
-  needs-dynamic-linker-path = length wrapper-args > 0 && dynamic-linker != null;
+  needs-dynamic-linker-path = length zigWrapperLibs > 0 && dynamic-linker != null;
 
   default-flags =
     if versionAtLeast zig.version "0.11" then
