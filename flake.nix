@@ -7,7 +7,9 @@
   };
 
   outputs = { self, flake-utils, ... }: with builtins; let
-    outputs = (flake-utils.lib.eachDefaultSystem (system: let
+    # Nix does not support x86_64-darwin anymore
+    supportedSystems = builtins.filter (system: system != "x86_64-darwin") flake-utils.lib.defaultSystems;
+    outputs = (flake-utils.lib.eachSystem supportedSystems (system: let
       # Used only for top level stuff, everything else should be done with env.pkgs
       _callPackage = self.inputs.nixpkgs.outputs.legacyPackages.${system}.callPackage;
 
