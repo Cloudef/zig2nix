@@ -25,6 +25,7 @@ jobs:
           nix run .#update-versions
           nix run .#update-templates
           nix flake check --keep-going
+          nix run .#test-0_17-all
           nix run .#test-0_16-all
           nix run .#test-0_15-all
           nix run .#test-0_14-all

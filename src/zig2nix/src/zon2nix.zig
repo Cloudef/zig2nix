@@ -25,7 +25,20 @@ fn writeInternal(arena: std.mem.Allocator, lock: zon2lock.Lock, out: *std.Io.Wri
         \\let
     );
 
-    if (zig_version.minor >= 16) {
+    if (zig_version.minor >= 17) {
+        try writer.writeAll(
+            \\  fetchZig = { name, url, hash }: runCommand name {
+            \\    src = url;
+            \\    nativeBuildInputs = [ zig ];
+            \\    outputHash = hash;
+            \\    outputHashMode = "flat";
+            \\  } ''
+            \\    hash="$(ZIG_GLOBAL_CACHE_DIR="$TMPDIR" zig fetch "${url}")"
+            \\    mv "$TMPDIR/p/$hash.tar.gz" "$out"
+            \\  '';
+            \\
+        );
+    } else if (zig_version.minor >= 16) {
         try writer.writeAll(
             \\  fetchZig = { name, url, hash }: runCommand "${name}.tar.gz" {
             \\    src = url;

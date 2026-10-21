@@ -395,6 +395,12 @@ fn zigFetch(allocator: std.mem.Allocator, cwd: std.fs.Dir, zhash: []const u8, ur
     }
 }
 
+// TODO: --save is so zig unpacks to zig-pkg folder, however ideally we would want to unpack the archive instead
+fn zigFetchSave(allocator: std.mem.Allocator, cwd: std.fs.Dir, url: []const u8) !void {
+    const zfhash = try cli.run(allocator, cwd, &.{ "zig", "fetch", "--save=zig2nix-temporary", url });
+    defer allocator.free(zfhash);
+}
+
 fn writeInner(arena: std.mem.Allocator, ctx: LockBuilderContext, writer: *std.json.Stringify, stderr: *std.Io.Writer) !void {
     const parent_ignore = ctx.ignore.*;
     var json = try std.Io.Writer.Allocating.initCapacity(arena, 1024);
@@ -465,7 +471,7 @@ fn writeInner(arena: std.mem.Allocator, ctx: LockBuilderContext, writer: *std.js
                     // TODO: This is suboptimal, should extract the ^ tar
                     const dep_path = try std.fmt.allocPrint(arena, "zig-pkg/{s}", .{zhash});
                     break :DIR ctx.tmp.openDir(dep_path, .{}) catch D: {
-                        try zigFetch(arena, ctx.tmp, zhash, url, stderr);
+                        try zigFetchSave(arena, ctx.tmp, url);
                         break :D try ctx.tmp.openDir(dep_path, .{});
                     };
                 } else {

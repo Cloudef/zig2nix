@@ -215,9 +215,17 @@
       # some tools not updated to 0.16 yet
       zig-stable-env = zig-env { zig = zigv."0_15_2"; };
       stable-app = zig-stable-env.app-bare;
+      test-env-0_17 = zig-env { zig = zigv."0_17_0"; };
       test-env-0_16 = zig-env { zig = zigv."0_16_0"; };
       test-env-0_15 = zig-env { zig = zigv."0_15_2"; };
       test-env-0_14 = zig-env { zig = zigv."0_14_1"; };
+
+      test-0_17 = removeAttrs (_callPackage src/test-16.nix {
+        inherit zig2nix-zigless zig-stable-env;
+        inherit (test-env-0_17) zig zig2nix target deriveLockFile;
+        test-app = test-env-0_17.app-bare;
+        zig-env = test-env-0_17;
+      }) [ "override" "overrideDerivation" "overrideAttrs" ];
 
       test-0_16 = removeAttrs (_callPackage src/test-16.nix {
         inherit zig2nix-zigless zig-stable-env;
@@ -413,6 +421,7 @@
         EOF
         '');
       }
+      // (mapAttrs' (name: value: nameValuePair ("test-0_17-" + name) value) test-0_17)
       // (mapAttrs' (name: value: nameValuePair ("test-0_16-" + name) value) test-0_16)
       // (mapAttrs' (name: value: nameValuePair ("test-0_15-" + name) value) test-0_15)
       // (mapAttrs' (name: value: nameValuePair ("test-0_14-" + name) value) test-0_14);
