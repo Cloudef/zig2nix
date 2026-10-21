@@ -66,7 +66,7 @@ let
   dynamic-linker =
     if !stdenvNoCC.hostPlatform.isLinux then null
     # -Ddynamic-linker doesn't seem to work with zig 0.16 ... packaging for nix may be broken :/
-    else if versionAtLeast zig.version "0.16" then null
+    else if (versionAtLeast zig.version "0.16" && !(versionAtLeast "0.17")) then null
     # cross-compiling
     else if resolved-target != default-target && zigTarget != null then null
     else if ((target resolved-target).dynamicLinker or null) == null then null
