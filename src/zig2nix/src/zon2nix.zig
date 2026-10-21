@@ -34,6 +34,8 @@ fn writeInternal(arena: std.mem.Allocator, lock: zon2lock.Lock, out: *std.Io.Wri
             \\    outputHashMode = "flat";
             \\  } ''
             \\    hash="$(ZIG_GLOBAL_CACHE_DIR="$TMPDIR" zig fetch "${url}")"
+            \\    touch "$TMPDIR/build.zig" # workaround <https://github.com/Cloudef/zig2nix/issues/62>
+            \\    (cd "$TMPDIR" && ZIG_GLOBAL_CACHE_DIR="$TMPDIR" zig fetch --save=zig2nix-temporary "${url}")
             \\    mv "$TMPDIR/p/$hash.tar.gz" "$out"
             \\  '';
             \\
