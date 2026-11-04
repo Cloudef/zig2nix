@@ -226,6 +226,189 @@ let
     };
   };
 
+  meta-0_17_1 = {
+    version = "0.17.1";
+    zigVersion = "0.17.1";
+    date = "2026-11-02";
+    docs = "https://ziglang.org/documentation/0.17.1/";
+    stdDocs = "https://ziglang.org/documentation/0.17.1/std/";
+    notes = "https://ziglang.org/download/0.17.0/release-notes.html";
+
+    src = {
+      filename = "zig-0.17.1.tar.xz";
+      shasum = "1e89bf06610b769a8c77676c6c8d54b093a0db60f4891f2f91014829012f0e24";
+      size = 23183076;
+    };
+
+    bootstrap = {
+      filename = "zig-bootstrap-0.17.1.tar.xz";
+      shasum = "58c099060ad9237496c7e7f57235d9eb9e5a3713e7df5f90d8ccc06391a359dd";
+      size = 57776428;
+    };
+
+    x86_64-darwin = {
+      filename = "zig-x86_64-macos-0.17.1.tar.xz";
+      shasum = "9af07b20319fbd0c92ee46ad23e81d6a782b1aaea2cfb8dcbff35f1d2c7ddbb7";
+      size = 59496824;
+    };
+
+    arm64-darwin = {
+      filename = "zig-aarch64-macos-0.17.1.tar.xz";
+      shasum = "75f1bc7a1e9852f17ec9a0c1895f767c4ec56d46bc8a834920eece1d0359dd8d";
+      size = 54001240;
+    };
+
+    x86_64-linux = {
+      filename = "zig-x86_64-linux-0.17.1.tar.xz";
+      shasum = "3581863e3cbcfd0fce0efc682ce7e9e93da96668a977791d356a26d2a7e9b17a";
+      size = 57411036;
+    };
+
+    aarch64-linux = {
+      filename = "zig-aarch64-linux-0.17.1.tar.xz";
+      shasum = "a1546d5646eb184437918d6635ca6b762a0e889eac09cef720ee7a1ed3fe7795";
+      size = 52977364;
+    };
+
+    armv7l-linux = {
+      filename = "zig-arm-linux-0.17.1.tar.xz";
+      shasum = "45b5262ef4d4d1e70d21683b2ef4c1b765b067f34a13e2aa57d5f92bb02382a9";
+      size = 53933248;
+    };
+
+    riscv64-linux = {
+      filename = "zig-riscv64-linux-0.17.1.tar.xz";
+      shasum = "b31a3fd8b42b614cb68f93f18aab11c1721336654a9c8dd389ff7bab3a6827dc";
+      size = 57202796;
+    };
+
+    powerpc64le-linux = {
+      filename = "zig-powerpc64le-linux-0.17.1.tar.xz";
+      shasum = "f06911010b44fa4fdd8e8775669acf499310ff18e209bb392f2eb2428dccc05e";
+      size = 57103788;
+    };
+
+    i686-linux = {
+      filename = "zig-x86-linux-0.17.1.tar.xz";
+      shasum = "0855367e096917bb0b628050d994d1871cc8c1f9192542163f9f93b6a30c9c6c";
+      size = 59914316;
+    };
+
+    loongarch64-linux = {
+      filename = "zig-loongarch64-linux-0.17.1.tar.xz";
+      shasum = "cc698ceda768c2bd94eb15dfa53496da94bc432f20ac713b60798b9f319cc228";
+      size = 54346288;
+    };
+
+    s390x-linux = {
+      filename = "zig-s390x-linux-0.17.1.tar.xz";
+      shasum = "e88c93115bdc18f7f37551945cb55ba041a002d2334fd1d6f7424187bec3dee8";
+      size = 57321120;
+    };
+
+    x86_64-mingw32 = {
+      filename = "zig-x86_64-windows-0.17.1.zip";
+      shasum = "b03f477a1943673e02aca0f570e8030dffd536ce1f45cbc4d3326ec31159562e";
+      size = 100343666;
+    };
+
+    aarch64-mingw32 = {
+      filename = "zig-aarch64-windows-0.17.1.zip";
+      shasum = "4789895bdb1e312a2ea73b2a7c0a0cc8d2ab62ba6976e834a7c54cf443377c15";
+      size = 96063469;
+    };
+
+    i686-mingw32 = {
+      filename = "zig-x86-windows-0.17.1.zip";
+      shasum = "a93f48164339ecc3c2d8f470d5b5d8ec54895db3aabdd1737c216ddf9284fd8d";
+      size = 101967293;
+    };
+
+    aarch64-freebsd = {
+      filename = "zig-aarch64-freebsd-0.17.1.tar.xz";
+      shasum = "5ebd395db8996df2bfe1c252b5b6848ec8fad886192cbd88358fbcbf91c91703";
+      size = 52910744;
+    };
+
+    armv7l-freebsd = {
+      filename = "zig-arm-freebsd-0.17.1.tar.xz";
+      shasum = "a0ec7b932278086cef43a460938f85f7959a44a660aabda30044bbbc0132cb6f";
+      size = 54342644;
+    };
+
+    powerpc64le-freebsd = {
+      filename = "zig-powerpc64le-freebsd-0.17.1.tar.xz";
+      shasum = "ba175e24970d9711bf4fbab196914f3d6324a60effca2fde34a68afebbafdfc0";
+      size = 57126696;
+    };
+
+    riscv64-freebsd = {
+      filename = "zig-riscv64-freebsd-0.17.1.tar.xz";
+      shasum = "b237ebfbe0b276641bf1036c7557dcd72dcfc00493ef3491ea71f455b4989175";
+      size = 57281992;
+    };
+
+    x86_64-freebsd = {
+      filename = "zig-x86_64-freebsd-0.17.1.tar.xz";
+      shasum = "fd8b9728f05db2a9942fc1f18087c0e0d6dfccb7a51557b06cf026d3e4c78542";
+      size = 57566596;
+    };
+
+    aarch64-netbsd = {
+      filename = "zig-aarch64-netbsd-0.17.1.tar.xz";
+      shasum = "ddf6ea43b006f4a4766e81e396d53f3f4eb4d5526f137ded797ccf6d597abdef";
+      size = 52861340;
+    };
+
+    armv7l-netbsd = {
+      filename = "zig-arm-netbsd-0.17.1.tar.xz";
+      shasum = "71aff179be613b47ef690d34784df5885403d5fbe600710686c7eb14faf8b835";
+      size = 55426764;
+    };
+
+    riscv64-netbsd = {
+      filename = "zig-riscv64-netbsd-0.17.1.tar.xz";
+      shasum = "af5b5ce63e21b9e85a0ed988651ec03c2d039cabbc0f9dd41be1e8594be8c3e6";
+      size = 57250072;
+    };
+
+    i686-netbsd = {
+      filename = "zig-x86-netbsd-0.17.1.tar.xz";
+      shasum = "ecfcbff50565d2510c39295f1f7bccb3b9fb8e147cece317a575226e58b33eef";
+      size = 60456436;
+    };
+
+    x86_64-netbsd = {
+      filename = "zig-x86_64-netbsd-0.17.1.tar.xz";
+      shasum = "ab96eafda31fab8525f37d5ec66ffab53b40ce542388ac0aaa8924a7df2acb47";
+      size = 57463676;
+    };
+
+    aarch64-openbsd = {
+      filename = "zig-aarch64-openbsd-0.17.1.tar.xz";
+      shasum = "cb23acb22dc53674d399e0e935568aad94f15055d5e12f8d776f93fb5836d17c";
+      size = 53330636;
+    };
+
+    armv7l-openbsd = {
+      filename = "zig-arm-openbsd-0.17.1.tar.xz";
+      shasum = "bd4f7b8d33c5a8af7d176e52e4d22157c89442440fbb423d1a9be314c8ce989a";
+      size = 54098212;
+    };
+
+    riscv64-openbsd = {
+      filename = "zig-riscv64-openbsd-0.17.1.tar.xz";
+      shasum = "00a6b773ed54cc6ef4ebae8fa3f3e398350249e99bbd45c937ceff3a02178b23";
+      size = 57583076;
+    };
+
+    x86_64-openbsd = {
+      filename = "zig-x86_64-openbsd-0.17.1.tar.xz";
+      shasum = "282bd7041d25c4280d66626461c7e946d5553b5b31719de68aa1b27ddb39ed9f";
+      size = 58705132;
+    };
+  };
+
   meta-0_17_0 = {
     version = "0.17.0";
     zigVersion = "0.17.0";
@@ -1945,10 +2128,11 @@ let
   };
 in
 {
-  latest = bin meta-0_17_0;
-  src-latest = src meta-0_17_0 llvmPackages_22;
+  latest = bin meta-0_17_1;
+  src-latest = src meta-0_17_1 llvmPackages_22;
   master = bin meta-master;
   src-master = src meta-master llvmPackages_22;
+  "0_17_1" = bin meta-0_17_1;
   "0_17_0" = bin meta-0_17_0;
   "0_16_0" = bin meta-0_16_0;
   src-0_16_0 = src meta-0_16_0 llvmPackages_21;
