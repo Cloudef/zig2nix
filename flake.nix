@@ -39,6 +39,7 @@
       # <https://builds.zigtools.org/index.json>
       zlsv = removeAttrs (_callPackage ./src/zls/versions.nix {
         zlsBin = _callPackage ./src/zls/bin.nix;
+        fetchRelease = _callPackage ./src/zls/fetch.nix {};
       }) [ "override" "overrideDerivation" "overrideAttrs" ];
 
       # Get Zls for zig version

@@ -7,7 +7,7 @@ fn writeInternal(arena: std.mem.Allocator, lock: zon2lock.Lock, out: *std.Io.Wri
     defer env.deinit();
     const zig_version: std.SemanticVersion = try .parse(env.value.version);
 
-    var pipe = try cli.pipe(arena, null, &.{ "nixfmt", "-v" });
+    var pipe = try cli.pipe(arena, null, &.{ "nixfmt", "-v", "-" });
     defer pipe.deinit();
     var buf: [1024]u8 = undefined;
     var pipe_writer = pipe.writer(&buf);

@@ -49,7 +49,7 @@ pub fn write(allocator: std.mem.Allocator, json: []const u8, mirrorlist: []const
     var scanner = std.json.Scanner.initCompleteInput(arena, json);
     defer scanner.deinit();
 
-    var pipe = try cli.pipe(arena, null, &.{ "nixfmt", "-v" });
+    var pipe = try cli.pipe(arena, null, &.{ "nixfmt", "-v", "-" });
     defer pipe.deinit();
     var buf: [1024]u8 = undefined;
     var pipe_writer = pipe.writer(&buf);
@@ -222,7 +222,7 @@ pub fn writeZls(allocator: std.mem.Allocator, json: []const u8, out: *std.Io.Wri
     var scanner = std.json.Scanner.initCompleteInput(arena, json);
     defer scanner.deinit();
 
-    var pipe = try cli.pipe(arena, null, &.{ "nixfmt", "-v" });
+    var pipe = try cli.pipe(arena, null, &.{ "nixfmt", "-v", "-" });
     defer pipe.deinit();
     var buf: [1024]u8 = undefined;
     var pipe_writer = pipe.writer(&buf);
@@ -230,11 +230,12 @@ pub fn writeZls(allocator: std.mem.Allocator, json: []const u8, out: *std.Io.Wri
 
     try writer.writeAll(
         \\{
-        \\  zlsBin
+        \\  zlsBin,
+        \\  fetchRelease,
         \\}:
         \\
         \\let
-        \\  bin = release: zlsBin { inherit release; };
+        \\  bin = release: zlsBin { inherit release fetchRelease; };
         \\
     );
 

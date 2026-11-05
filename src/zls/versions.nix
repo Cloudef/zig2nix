@@ -1,9 +1,10 @@
 {
   zlsBin,
+  fetchRelease,
 }:
 
 let
-  bin = release: zlsBin { inherit release; };
+  bin = release: zlsBin { inherit release fetchRelease; };
 
   meta-0_17_0 = {
     version = "0.17.0";

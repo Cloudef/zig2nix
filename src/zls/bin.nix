@@ -4,6 +4,7 @@
   , fetchurl
   , release
   , writeScriptBin
+  , fetchRelease
 }:
 
 with builtins;
@@ -24,11 +25,7 @@ in if release ? ${system} then stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "zls";
   inherit (release) version;
 
-  src = fetchurl {
-    url = "https://builds.zigtools.org/${release."${system}".filename}";
-    outputHash = release."${system}".shasum;
-    outputHashAlgo = "sha256";
-  };
+  src = fetchRelease release.${system};
 
   sourceRoot = ".";
   phases = [ "unpackPhase" "installPhase" ];
