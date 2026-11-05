@@ -5,6 +5,184 @@
 let
   bin = release: zlsBin { inherit release; };
 
+  meta-0_17_0 = {
+    version = "0.17.0";
+    date = "2026-10-18";
+
+    aarch64-linux = {
+      filename = "zls-aarch64-linux-0.17.0.tar.xz";
+      shasum = "0d314f3cab30da770328e1b8c84ab89bb308e56dbc26a85ac82429ff02b44873";
+      size = 3832280;
+    };
+
+    arm64-darwin = {
+      filename = "zls-aarch64-macos-0.17.0.tar.xz";
+      shasum = "2e451358b4f7e2d4b1fccb65db177dbb321c5a98e95f67e09aa72d6ecfb39d20";
+      size = 1045676;
+    };
+
+    aarch64-mingw32 = {
+      filename = "zls-aarch64-windows-0.17.0.zip";
+      shasum = "98869d1d2e9532044a3bbb25be16a932041bdc2f422fe074cc499fd20d1b6f53";
+      size = 4590139;
+    };
+
+    armv7l-linux = {
+      filename = "zls-arm-linux-0.17.0.tar.xz";
+      shasum = "51542693ec0a19cf870f95e6f06971af84779cbe294d8899fa6484131ced43e7";
+      size = 4021144;
+    };
+
+    loongarch64-linux = {
+      filename = "zls-loongarch64-linux-0.17.0.tar.xz";
+      shasum = "7c54b1bb617b33e10572c6560f629585ac70189c6af549a33bd7769fa8dacea6";
+      size = 4189508;
+    };
+
+    riscv64-linux = {
+      filename = "zls-riscv64-linux-0.17.0.tar.xz";
+      shasum = "64c1aa60cbf8e4b478c9b687f5352b6e2e08642d8c94c1242b9971bac0a211e1";
+      size = 4599976;
+    };
+
+    i686-linux = {
+      filename = "zls-x86-linux-0.17.0.tar.xz";
+      shasum = "7078dca2564ab8a5ba74b40ca5cee784ebbe35521da6348a0d771bb7ee2ef688";
+      size = 4068816;
+    };
+
+    i686-mingw32 = {
+      filename = "zls-x86-windows-0.17.0.zip";
+      shasum = "e798fba43c5a994fcecf51426bc541e339a3d7a798b0216c95c1a890bdacbf83";
+      size = 4943327;
+    };
+
+    x86_64-linux = {
+      filename = "zls-x86_64-linux-0.17.0.tar.xz";
+      shasum = "dfa4514e1868803fdf2ae56832c88b9d400094d70ea6bb136b57bcc91af10258";
+      size = 4070752;
+    };
+
+    x86_64-darwin = {
+      filename = "zls-x86_64-macos-0.17.0.tar.xz";
+      shasum = "0801481ebf0027620db6729968c069401c7b80f376d35f9f91f480d72c393523";
+      size = 1214848;
+    };
+
+    x86_64-mingw32 = {
+      filename = "zls-x86_64-windows-0.17.0.zip";
+      shasum = "b0e557b13032322f530a818ea4eb899a51a2e738808397a8cf3868fd56b73972";
+      size = 4872862;
+    };
+
+    wasm32-wasi = {
+      filename = "zls-wasm32-wasi-0.17.0.tar.xz";
+      shasum = "93bca68284aca1e14cb06665cee8cc4708f010855cf9539b34f4243fd29acd8c";
+      size = 2479028;
+    };
+
+    powerpc64le-linux = {
+      filename = "zls-powerpc64le-linux-0.17.0.tar.xz";
+      shasum = "86c89db1bb5f528b63cea41aeec9e80ae5f20a99199db6a37a90d9cbc64c3c26";
+      size = 3950024;
+    };
+
+    s390x-linux = {
+      filename = "zls-s390x-linux-0.17.0.tar.xz";
+      shasum = "359fc937470477e27134a8f31980e7e8cdb4a09355f33ed6420b1db8022b522c";
+      size = 4356488;
+    };
+  };
+
+  meta-0_16_1 = {
+    version = "0.16.1";
+    date = "2026-10-18";
+
+    aarch64-linux = {
+      filename = "zls-aarch64-linux-0.16.1.tar.xz";
+      shasum = "6d2f2de1dd4c62b6f8ab2272aebdf701032a4789204a050f099543cfd152057a";
+      size = 3814992;
+    };
+
+    arm64-darwin = {
+      filename = "zls-aarch64-macos-0.16.1.tar.xz";
+      shasum = "777df2d16f5ca9d9d77ee2f10db47e90b474039f008bf735c0066cc70c498d91";
+      size = 1080472;
+    };
+
+    aarch64-mingw32 = {
+      filename = "zls-aarch64-windows-0.16.1.zip";
+      shasum = "ae735058a05c48f5f1f3865309d8e09a8cdac628af563d189ec1f46d31f51e61";
+      size = 4562930;
+    };
+
+    armv7l-linux = {
+      filename = "zls-arm-linux-0.16.1.tar.xz";
+      shasum = "102fd9feecd68db93a7bd673a0110fe1dacb7d60e9d6fd588be281374469e305";
+      size = 3931692;
+    };
+
+    loongarch64-linux = {
+      filename = "zls-loongarch64-linux-0.16.1.tar.xz";
+      shasum = "b409902841c2aedf960407178f86dc9ef4610535aa03fd49b17a5cc3b461d8ed";
+      size = 3711888;
+    };
+
+    riscv64-linux = {
+      filename = "zls-riscv64-linux-0.16.1.tar.xz";
+      shasum = "6afa2a47b37e44dbe49ca83547b2250dc70c057f941cb35a7dcaa47776ad7a1b";
+      size = 4810256;
+    };
+
+    i686-linux = {
+      filename = "zls-x86-linux-0.16.1.tar.xz";
+      shasum = "dbc2ac7865c4348c78fadf7ff285d91727975a9ba57eed70f5c38d4a225aa65b";
+      size = 4062408;
+    };
+
+    i686-mingw32 = {
+      filename = "zls-x86-windows-0.16.1.zip";
+      shasum = "9aa2bab750bf64f7a840e380aa735794d2566f0561cc4ce1009158dbc7c0a389";
+      size = 4920956;
+    };
+
+    x86_64-linux = {
+      filename = "zls-x86_64-linux-0.16.1.tar.xz";
+      shasum = "7f3f993d61134b7db0d2f26f5e4a9e20d20c96521bae11d667ff78bbca97e357";
+      size = 4016540;
+    };
+
+    x86_64-darwin = {
+      filename = "zls-x86_64-macos-0.16.1.tar.xz";
+      shasum = "996bd864095208728096ec5b879fffb7ec5c125df70793cfb151e2838cac8abb";
+      size = 1249388;
+    };
+
+    x86_64-mingw32 = {
+      filename = "zls-x86_64-windows-0.16.1.zip";
+      shasum = "97fdd44fee0b63cece4e966795617a46f0b7a0ee41df69656a9d1204fabba6b9";
+      size = 4800775;
+    };
+
+    wasm32-wasi = {
+      filename = "zls-wasm32-wasi-0.16.1.tar.xz";
+      shasum = "699af32a3531328bb20bbcef8aa7ca237be832b2548841dfb02865be0638ea01";
+      size = 2499804;
+    };
+
+    powerpc64le-linux = {
+      filename = "zls-powerpc64le-linux-0.16.1.tar.xz";
+      shasum = "e9cfe520e5201d88cf0a2b7a6ab3ad3ce1db7b1f256bfa16a4587ee6f98b0c76";
+      size = 3898192;
+    };
+
+    s390x-linux = {
+      filename = "zls-s390x-linux-0.16.1.tar.xz";
+      shasum = "826757d12273a299d18344d25d3cfccdbf4ca80f4da855c883dd43efff7670f0";
+      size = 4302980;
+    };
+  };
+
   meta-0_16_0 = {
     version = "0.16.0";
     date = "2026-04-16";
@@ -591,7 +769,9 @@ let
   };
 in
 {
-  latest = bin meta-0_16_0;
+  latest = bin meta-0_17_0;
+  "0_17_0" = bin meta-0_17_0;
+  "0_16_1" = bin meta-0_16_1;
   "0_16_0" = bin meta-0_16_0;
   "0_15_1" = bin meta-0_15_1;
   "0_15_0" = bin meta-0_15_0;

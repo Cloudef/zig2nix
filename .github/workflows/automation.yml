@@ -36,6 +36,7 @@ jobs:
           file-path: |
             flake.lock
             src/zig/versions.nix
+            src/zls/versions.nix
             templates/**
             README.md
           commit-msg: Automatic update
