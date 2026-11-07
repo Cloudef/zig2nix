@@ -47,183 +47,183 @@ let
   };
 
   meta-master = {
-    version = "0.18.0-dev.861+1a0778dc2";
-    date = "2026-11-05";
+    version = "0.18.0-dev.930+1d9e7ec5a";
+    date = "2026-11-06";
     docs = "https://ziglang.org/documentation/master/";
     stdDocs = "https://ziglang.org/documentation/master/std/";
 
     src = {
-      filename = "zig-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "ce496c03b4d51229de4a6d9bada8c5f8fe9f5f6edd07019ab7fc580b56073876";
-      size = 23229456;
+      filename = "zig-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "afc7ee565b33d31cf5e0d9d3ae433a2ce45f74c51130ec1ce3ab62b5a689aa81";
+      size = 23234932;
     };
 
     bootstrap = {
-      filename = "zig-bootstrap-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "f53ec4862ed856fb0a4d74d2ca11b7a38a2362ea44e2315fa0896d3817325ea5";
-      size = 63315960;
+      filename = "zig-bootstrap-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "8675568a630fe4f691fbbd9a5b51aa9660364ecfd8ecadd9fe33f72ef2982e37";
+      size = 63319312;
     };
 
     x86_64-darwin = {
-      filename = "zig-x86_64-macos-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "440239f221f2954ebe825087a83bc255007f51e96287e80381189d5e01af3dc7";
-      size = 61078240;
+      filename = "zig-x86_64-macos-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "bbfba25b16de632c64fda387248d7d8a14f4d138c4ad79597a3c4826249bee44";
+      size = 61113000;
     };
 
     arm64-darwin = {
-      filename = "zig-aarch64-macos-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "f3f435ff4a2650b2b62fcd799aa5a122b38a9c0db60f2c7a41e9ed03ad17180f";
-      size = 55399340;
+      filename = "zig-aarch64-macos-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "5cca46a39de1ebf0986b47084f22865db173591a489d8cac7a4d029c85b8ae8f";
+      size = 55414144;
     };
 
     x86_64-linux = {
-      filename = "zig-x86_64-linux-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "49225b4b3151a11346d4c469a308ddf037d316cda234505b8fb34262ae9dd1ae";
-      size = 59224432;
+      filename = "zig-x86_64-linux-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "2af75c8076792918765eab5a24d436cee3d07535eac82fce1d8361af7191ffe7";
+      size = 59235528;
     };
 
     aarch64-linux = {
-      filename = "zig-aarch64-linux-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "383e69e9e844d5e1ad98fb5ab8bfa54e9c1eb96d9fb5e3c68a28ca40e1b6f2fc";
-      size = 54513088;
+      filename = "zig-aarch64-linux-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "2e699682487d455c238c2ed81145a3d2800a4960f40ee41f51bf45e487cecfb0";
+      size = 54514800;
     };
 
     armv7l-linux = {
-      filename = "zig-arm-linux-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "7f66bb100a1f6fe06f87a1dd0f1a9e02a5d434b2f61884f5d18e1057e29ee31e";
-      size = 55218724;
+      filename = "zig-arm-linux-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "65e0d6350eae79d29f0e514339f06c194874c37c6b648c7243727ec5d580de4a";
+      size = 55220928;
     };
 
     riscv64-linux = {
-      filename = "zig-riscv64-linux-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "c7778db31e93fb7cc6e5a974ee089df45b6c7866cc72d30a2b3fe6b36e85f235";
-      size = 58248496;
+      filename = "zig-riscv64-linux-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "9127ecf63ce72d216a785b4ebc7f4261056a38d4f35dd0589814aae2ea36126b";
+      size = 58247692;
     };
 
     powerpc64le-linux = {
-      filename = "zig-powerpc64le-linux-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "69c2c6e3b6f70cf502a1d6647b0221bbc26ecc1a06ad4efe3c77a1aab1f45f9a";
-      size = 58735852;
+      filename = "zig-powerpc64le-linux-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "ef98f2046449690caeb972d06d3b6a3542fbf06308b3aaebd7c3505ee28daae9";
+      size = 58741976;
     };
 
     i686-linux = {
-      filename = "zig-x86-linux-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "6320b677d6d1ed3796b622ea5dd25f1a2f47800d313e020414a72c666bbbe97b";
-      size = 61783584;
+      filename = "zig-x86-linux-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "253a4c4d5515084b1e278ba99fc00d49e6a66b4cb276dd221fa89e65285d8e56";
+      size = 61763224;
     };
 
     loongarch64-linux = {
-      filename = "zig-loongarch64-linux-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "48703a88133aa944ec4deab2c881743fd10de6a959c5f7ad7809286146596441";
-      size = 55688980;
+      filename = "zig-loongarch64-linux-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "796318758d7311875279b5cb91a5701bbcade98dfdfbf4e40f89dcf1fa9aad57";
+      size = 55726984;
     };
 
     s390x-linux = {
-      filename = "zig-s390x-linux-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "2c08a946b0d5780be9685cf7b19d0c62d8a15dca304ca7a53a1474189d592e05";
-      size = 59175056;
+      filename = "zig-s390x-linux-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "c255d79529db158b1135063fc634593f02b6761d9e1d1078f1c571f51448b321";
+      size = 59210636;
     };
 
     x86_64-mingw32 = {
-      filename = "zig-x86_64-windows-0.18.0-dev.861+1a0778dc2.zip";
-      shasum = "e9d1c39ae088c2d67cf0c5930847e7a26a449d3e93e2eba67a71f30c40758ab7";
-      size = 102954175;
+      filename = "zig-x86_64-windows-0.18.0-dev.930+1d9e7ec5a.zip";
+      shasum = "88c1f9b490d642e1e34365e64df4f29dd57977c459574ea6ab155f6dbb923dc8";
+      size = 102968825;
     };
 
     aarch64-mingw32 = {
-      filename = "zig-aarch64-windows-0.18.0-dev.861+1a0778dc2.zip";
-      shasum = "ce21a4dfd473688d0cc7761e7ff8dcc380e0a5d2ac0516da0c605399f948abb0";
-      size = 98380399;
+      filename = "zig-aarch64-windows-0.18.0-dev.930+1d9e7ec5a.zip";
+      shasum = "cd6c725cda96f2d8d750ca134c4dd71a28afd733fb6821ebded1d867952e1ac5";
+      size = 98394251;
     };
 
     i686-mingw32 = {
-      filename = "zig-x86-windows-0.18.0-dev.861+1a0778dc2.zip";
-      shasum = "6542559cfb779623c6394d162cd1a025e4003aa9ef4e60bebb9e317b37a4ba6a";
-      size = 104927759;
+      filename = "zig-x86-windows-0.18.0-dev.930+1d9e7ec5a.zip";
+      shasum = "889402b3bd5495944e5ecfe9184259c7c3c2cdba7433a03d395fe8da98189f65";
+      size = 104942688;
     };
 
     aarch64-freebsd = {
-      filename = "zig-aarch64-freebsd-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "f40939ce58cd73667223e80affb7dfd906243c86a872fd7978691d93c72cb998";
-      size = 54494672;
+      filename = "zig-aarch64-freebsd-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "489f923f277b893445b4add97929502d965c4fc6ef98a276e8ab5d4dfff32be5";
+      size = 54524676;
     };
 
     armv7l-freebsd = {
-      filename = "zig-arm-freebsd-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "b25733a47489c7e327009ebdcd68e2a8226657fc019ea6e8fac38eba908a1f28";
-      size = 55558908;
+      filename = "zig-arm-freebsd-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "728400a30f85ce2afbcc2eba144975f918d828c8642459226011e431b39d6495";
+      size = 55542920;
     };
 
     powerpc64le-freebsd = {
-      filename = "zig-powerpc64le-freebsd-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "aad23825e1ddd018c00f3054b6af45594cbf14a2b2d3f5ec0d089b5fb1852f37";
-      size = 58799836;
+      filename = "zig-powerpc64le-freebsd-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "4479cb369d0782fac3e33ce5fe528cecd6bd362fa6b4a0ba728ee2666e32e055";
+      size = 58793596;
     };
 
     riscv64-freebsd = {
-      filename = "zig-riscv64-freebsd-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "901b25bd8bff2f3e5d28956cc98a9116f2af0b18fd6af8876c03a13f94168861";
-      size = 58218732;
+      filename = "zig-riscv64-freebsd-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "ca7b6b8c2e36b98f00869255ea162d434d9b9a30ddbc206d91333e4b89e2bc0b";
+      size = 58225044;
     };
 
     x86_64-freebsd = {
-      filename = "zig-x86_64-freebsd-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "96bba72cd0e69b9f113f05bf372ea862d4dde65516db457474fb61702714016a";
-      size = 59352428;
+      filename = "zig-x86_64-freebsd-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "73bd6d30a88a54af211bcb165863444c6405357d6296c074ba5b4254ed831f61";
+      size = 59380456;
     };
 
     aarch64-netbsd = {
-      filename = "zig-aarch64-netbsd-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "e8ae9094fcf3408bb4efb69d18925408d18f55e9e701378603af40de31801397";
-      size = 54432216;
+      filename = "zig-aarch64-netbsd-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "dbcb37faacc0ccfbed8ac2b790a1d5c53a85aacc2ec7f4ee39b0939cad485073";
+      size = 54440228;
     };
 
     armv7l-netbsd = {
-      filename = "zig-arm-netbsd-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "dacf43449a8883a3e00e8fce01874078752f4e0a657ba8dfdc4acd7447d450d0";
-      size = 56683264;
+      filename = "zig-arm-netbsd-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "9dccb1e505a988a8259103b2b89ec1f38141afc16190ca89cb83eeb5d7280167";
+      size = 56701520;
     };
 
     riscv64-netbsd = {
-      filename = "zig-riscv64-netbsd-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "405df57a5538ba44c7a47952142f1551a6332370f3eb92cea80dd8d975c3ec6a";
-      size = 58148488;
+      filename = "zig-riscv64-netbsd-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "0cec26b361dd70e90c9a0fc450ba20e87db99283e3d7ddfac391031e0f00ffa4";
+      size = 58152196;
     };
 
     i686-netbsd = {
-      filename = "zig-x86-netbsd-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "3c6c12e9ced6e24c13a3d995ea1dc4aa483374fe6122c434da692b744baa6ffd";
-      size = 62186788;
+      filename = "zig-x86-netbsd-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "7ed0624b78432f7fce1b069d56b3eb025d87ec18e483a29d31d2bdfe2f458ec8";
+      size = 62193376;
     };
 
     x86_64-netbsd = {
-      filename = "zig-x86_64-netbsd-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "2c3bcbc55612ef5501c6e4fed31a736a4ba110d24ebd25d66257c66dd780d045";
-      size = 59268388;
+      filename = "zig-x86_64-netbsd-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "c92da46c9ee6765db9b76f2d9dc4e58908e402b155fa72911582adf6c86a8c29";
+      size = 59269480;
     };
 
     aarch64-openbsd = {
-      filename = "zig-aarch64-openbsd-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "77be416bee6e43e79ae62e19cfb7720a01f763cef9a943f7aa087666245a0429";
-      size = 54890100;
+      filename = "zig-aarch64-openbsd-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "6789f8dfc6c70e7fccc40d82eb7a366555bab2c482c77e92a12226c53867d482";
+      size = 54914776;
     };
 
     armv7l-openbsd = {
-      filename = "zig-arm-openbsd-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "7fc1575468ea630a86d15f115f97b9d22146fb853123897b159261aa2a033cf5";
-      size = 55384788;
+      filename = "zig-arm-openbsd-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "4ce941311620b5d3bbabb8901dfe5f7f845fd272608e1c223924ef65af8ba5a0";
+      size = 55403268;
     };
 
     riscv64-openbsd = {
-      filename = "zig-riscv64-openbsd-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "e1cad62993d227808a6a41fa34a0a111f196ec43690bcbd633c8c900cf26302e";
-      size = 58623492;
+      filename = "zig-riscv64-openbsd-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "443fb07da529cad5fd73a503f2cca07fa4b4f46b1d4954148373e96ab82b59df";
+      size = 58631364;
     };
 
     x86_64-openbsd = {
-      filename = "zig-x86_64-openbsd-0.18.0-dev.861+1a0778dc2.tar.xz";
-      shasum = "d8f4d2e64a3fef4f831cf9a27b03c18da85b21df021a81097262053e04bcbf5a";
-      size = 60553112;
+      filename = "zig-x86_64-openbsd-0.18.0-dev.930+1d9e7ec5a.tar.xz";
+      shasum = "81b306d4db54ec187bf2b70f846d8ff0a4dc147de79800346a1faf574b800934";
+      size = 60558084;
     };
   };
 
